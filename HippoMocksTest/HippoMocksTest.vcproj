@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="HippoMocksTest"
 	ProjectGUID="{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
 	RootNamespace="HippoMocksTest"
@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\projects\hippomocks\trunk\Hippo Mocks&quot;"
+				AdditionalIncludeDirectories="&quot;..\Hippo Mocks&quot;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -159,6 +159,18 @@
 	<Files>
 		<File
 			RelativePath=".\test.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_args.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\yaffut.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\yaffut.h"
 			>
 		</File>
 	</Files>

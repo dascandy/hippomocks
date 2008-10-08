@@ -13,7 +13,7 @@ public:
 	const char *what() const { return "Expectation was violated!"; }
 };
 
-base_mock *mockUnderConstruction;
+extern base_mock *mockUnderConstruction;
 
 template <class T>
 class mock : public base_mock {
@@ -55,7 +55,8 @@ class mock : public base_mock {
 	MockRepository *repo;
 public:
 	mock(MockRepository *repo) 
-		: repo(repo)
+		: repo(repo),
+		vdestructor(-1)
 	{
 		funcs[0] = (void (*)())d0;
 		funcs[1] = (void (*)())d1;
@@ -67,12 +68,12 @@ public:
 		funcs[7] = (void (*)())d7;
 		funcs[8] = (void (*)())d8;
 		funcs[9] = (void (*)())d9;
-		// this assumes the destructor is fairly type safe...
 		memset(base.remaining, 0, sizeof(base.remaining));
 		base.vft = (void *)&funcs;
 		mockUnderConstruction = this;
 		T *tp = reinterpret_cast<T *>(this);
 		tp->~T();
+
 		mockUnderConstruction = NULL;
 		if (vdestructor != 0) funcs[0] = (void (*)())f0;
 		if (vdestructor != 1) funcs[1] = (void (*)())f1;
