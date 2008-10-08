@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Hippo Mocks", "Hippo Mocks.vcproj", "{3FADB4FF-EF92-4823-B400-B324420F3DB3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HippoMocksTest", "..\HippoMocksTest\HippoMocksTest.vcproj", "{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3FADB4FF-EF92-4823-B400-B324420F3DB3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3FADB4FF-EF92-4823-B400-B324420F3DB3}.Release|Win32.ActiveCfg = Release|Win32
+		{3FADB4FF-EF92-4823-B400-B324420F3DB3}.Release|Win32.Build.0 = Release|Win32
+		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Debug|Win32.Build.0 = Debug|Win32
+		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Release|Win32.ActiveCfg = Release|Win32
+		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
