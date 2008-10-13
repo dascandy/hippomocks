@@ -12,8 +12,8 @@ FUNC (checkBaseCase)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.newMock<IA>();
-	iamock->f();
-	iamock->g();
+	mocks.RegisterExpectation(iamock, &IA::f);
+	mocks.RegisterExpectation(iamock, &IA::g);
 	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
@@ -25,8 +25,8 @@ FUNC (checkExpectationsNotCompleted)
 	bool exceptionCaught = false;
 	MockRepository mocks;
 	IA *iamock = mocks.newMock<IA>();
-	iamock->f();
-	iamock->g();
+	mocks.RegisterExpectation(iamock, &IA::f);
+	mocks.RegisterExpectation(iamock, &IA::g);
 	mocks.ReplayAll();
 	iamock->f();
 	try {
@@ -43,8 +43,8 @@ FUNC (checkOvercompleteExpectations)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.newMock<IA>();
-	iamock->f();
-	iamock->g();
+	mocks.RegisterExpectation(iamock, &IA::f);
+	mocks.RegisterExpectation(iamock, &IA::g);
 	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
@@ -63,8 +63,8 @@ FUNC (checkExpectationsAreInOrder)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.newMock<IA>();
-	iamock->f();
-	iamock->g();
+	mocks.RegisterExpectation(iamock, &IA::f);
+	mocks.RegisterExpectation(iamock, &IA::g);
 	mocks.ReplayAll();
 	bool exceptionCaught = true;
 	try {

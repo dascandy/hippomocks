@@ -13,7 +13,19 @@ public:
 	const char *what() const { return "Expectation was violated!"; }
 };
 
-extern base_mock *mockUnderConstruction;
+class NullType {};
+
+template <typename T> struct size { enum { value = ((4 > sizeof(T)) ? sizeof(T) : 4) }; };
+template <> struct size<NullType> { enum { value = 0 }; };
+
+template <typename A = NullType, typename B = NullType, typename C = NullType, typename D = NullType, 
+		  typename E = NullType, typename F = NullType, typename G = NullType, typename H = NullType, 
+		  typename I = NullType, typename J = NullType, typename K = NullType, typename L = NullType, 
+		  typename M = NullType, typename N = NullType, typename O = NullType, typename P = NullType>
+struct sizelist { enum { value = size<A>::value + size<B>::value + size<C>::value + size<D>::value + 
+								 size<E>::value + size<F>::value + size<G>::value + size<H>::value + 
+								 size<I>::value + size<J>::value + size<K>::value + size<L>::value + 
+								 size<M>::value + size<N>::value + size<O>::value + size<P>::value }; };
 
 template <class T>
 class mock : public base_mock {
@@ -32,59 +44,62 @@ class mock : public base_mock {
 	static void __thiscall f7(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(7); };
 	static void __thiscall f8(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(8); };
 	static void __thiscall f9(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(9); };
-	static void __stdcall d0(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(0); };
-	static void __stdcall d1(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(1); };
-	static void __stdcall d2(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(2); };
-	static void __stdcall d3(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(3); };
-	static void __stdcall d4(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(4); };
-	static void __stdcall d5(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(5); };
-	static void __stdcall d6(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(6); };
-	static void __stdcall d7(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(7); };
-	static void __stdcall d8(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(8); };
-	static void __stdcall d9(T *obj) { ((mock<T> *)(mockUnderConstruction))->setDestructor(9); };
-	void setDestructor(int index) {
-		funcs[index] = (void (*)())destr; vdestructor = index;
-	}
 	void base_func(int which) 
 	{
-		repo->DoExpectation(this, which);
+		if (vdestructor == -1) 
+		{
+			funcs[which] = (void (*)())destr;
+		}
+		else
+		{
+			repo->DoExpectation(this, which);
+		}
+
+		if (nextFuncSize != 0) 
+		{
+			funcSizes[which] = nextFuncSize;
+			nextFuncSize = 0;
+		}
 	};
 	int last_call;
 	int vdestructor;
+	int nextFuncSize;
+	int funcSizes[10];
 	static void __stdcall destr() {}
 	MockRepository *repo;
 public:
-	mock(MockRepository *repo) 
-		: repo(repo),
-		vdestructor(-1)
+	void setNextFuncSize(int size) 
 	{
-		funcs[0] = (void (*)())d0;
-		funcs[1] = (void (*)())d1;
-		funcs[2] = (void (*)())d2;
-		funcs[3] = (void (*)())d3;
-		funcs[4] = (void (*)())d4;
-		funcs[5] = (void (*)())d5;
-		funcs[6] = (void (*)())d6;
-		funcs[7] = (void (*)())d7;
-		funcs[8] = (void (*)())d8;
-		funcs[9] = (void (*)())d9;
+		nextFuncSize = size; 
+	}
+	mock(MockRepository *repo) 
+		: repo(repo)
+	{
+		funcs[0] = (void (*)())f0;
+		funcs[1] = (void (*)())f1;
+		funcs[2] = (void (*)())f2;
+		funcs[3] = (void (*)())f3;
+		funcs[4] = (void (*)())f4;
+		funcs[5] = (void (*)())f5;
+		funcs[6] = (void (*)())f6;
+		funcs[7] = (void (*)())f7;
+		funcs[8] = (void (*)())f8;
+		funcs[9] = (void (*)())f9;
+		//TODO: find some way of constructing the interface type without 
+		// explicitly "implementing" its functions
+		// can't use normal constructor method because of pure virtuals
+		// can't inherit because of pure virtuals
+		// if you don't construct it, it fails because it might contain
+		// objects which are then not constructed.
 		memset(base.remaining, 0, sizeof(base.remaining));
 		base.vft = (void *)&funcs;
-		mockUnderConstruction = this;
+		/*TODO: this code needs some work - detecting which is the destructor 
+		 * works, the ret in the destructor doesn't
 		T *tp = reinterpret_cast<T *>(this);
+		vdestructor == -1;
 		tp->~T();
-
-		mockUnderConstruction = NULL;
-		if (vdestructor != 0) funcs[0] = (void (*)())f0;
-		if (vdestructor != 1) funcs[1] = (void (*)())f1;
-		if (vdestructor != 2) funcs[2] = (void (*)())f2;
-		if (vdestructor != 3) funcs[3] = (void (*)())f3;
-		if (vdestructor != 4) funcs[4] = (void (*)())f4;
-		if (vdestructor != 5) funcs[5] = (void (*)())f5;
-		if (vdestructor != 6) funcs[6] = (void (*)())f6;
-		if (vdestructor != 7) funcs[7] = (void (*)())f7;
-		if (vdestructor != 8) funcs[8] = (void (*)())f8;
-		if (vdestructor != 9) funcs[9] = (void (*)())f9;
+		vdestructor == -2;
+		*/
 	}
 };
 
@@ -94,6 +109,30 @@ private:
 	std::list<std::pair<base_mock *, int> > expectations;
 	enum { Record, Playback, Verified } state;
 public:
+	// for next year
+#ifdef CPP0X
+	template <typename Y, typename Z, typename A...>
+	void RegisterExpectation(Z *mock, Y (Z::*func)(A...), A... a) {
+		reinterpret_cast<mock<Z> *>(mock)->setNextFuncSize(sizelist<A...>::value);
+		(mock->*func)(a...);
+	}
+#else
+	template <typename Y, typename Z>
+	void RegisterExpectation(Z *mck, Y (Z::*func)()) {
+		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<>::value);
+		(mck->*func)();
+	}
+	template <typename Y, typename Z, typename A>
+	void RegisterExpectation(Z *mck, Y (Z::*func)(A), A a) {
+		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<A>::value);
+		(mck->*func)(a);
+	}
+	template <typename Y, typename Z, typename A, typename B>
+	void RegisterExpectation(Z *mck, Y (Z::*func)(A, B), A a, B b) {
+		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<A, B>::value);
+		(mck->*func)(a, b);
+	}
+#endif
 	void DoExpectation(base_mock *mock, int funcno) 
 	{
 		switch(state)

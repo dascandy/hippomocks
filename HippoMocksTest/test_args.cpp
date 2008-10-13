@@ -12,8 +12,8 @@ FUNC (checkArgumentsAccepted)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.newMock<IB>();
-	iamock->f(1);
-	iamock->g(2);
+	mocks.RegisterExpectation(iamock, &IB::f, 1);
+	mocks.RegisterExpectation(iamock, &IB::g, 2);
 	mocks.ReplayAll();
 	iamock->f(1);
 	iamock->g(2);
