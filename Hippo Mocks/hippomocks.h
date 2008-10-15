@@ -4,7 +4,44 @@
 #include <list>
 #include <map>
 
-class base_mock {};
+extern "C" {
+	void __fastcall f0(void *ths);
+}
+
+class base_mock {
+public:
+	void *vft;
+	void (base_mock::*next_func)();
+	void (base_mock::*funcs[10])();
+	void f0();
+	void f1();
+	void f2();
+	void f3();
+	void f4();
+	void f5();
+	void f6();
+	void f7();
+	void f8();
+	void f9();
+	base_mock() : vft((void *)&funcs) {
+		funcs[0] = &base_mock::f0;
+		funcs[1] = &base_mock::f1;
+		funcs[2] = &base_mock::f2;
+		funcs[3] = &base_mock::f3;
+		funcs[4] = &base_mock::f4;
+		funcs[5] = &base_mock::f5;
+		funcs[6] = &base_mock::f6;
+		funcs[7] = &base_mock::f7;
+		funcs[8] = &base_mock::f8;
+		funcs[9] = &base_mock::f9;
+		&base_mock::base_func;	// to "inform" the compiler to export the symbol
+	}
+	void (base_mock::*base_func(int index))()
+	{
+		funcs[index] = next_func;
+		return next_func;
+	}
+};
 
 class MockRepository;
 
@@ -29,21 +66,7 @@ struct sizelist { enum { value = size<A>::value + size<B>::value + size<C>::valu
 
 template <class T>
 class mock : public base_mock {
-	struct {
-		void *vft;
-		char remaining[sizeof(T)];
-	} base;
-	void (*funcs[10])();
-	static void __thiscall f0(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(0); };
-	static void __thiscall f1(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(1); };
-	static void __thiscall f2(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(2); };
-	static void __thiscall f3(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(3); };
-	static void __thiscall f4(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(4); };
-	static void __thiscall f5(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(5); };
-	static void __thiscall f6(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(6); };
-	static void __thiscall f7(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(7); };
-	static void __thiscall f8(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(8); };
-	static void __thiscall f9(T *obj) { reinterpret_cast<mock<T> *>(obj)->base_func(9); };
+	char remaining[sizeof(T)];
 	void base_func(int which) 
 	{
 		if (vdestructor == -1) 
@@ -75,24 +98,13 @@ public:
 	mock(MockRepository *repo) 
 		: repo(repo)
 	{
-		funcs[0] = (void (*)())f0;
-		funcs[1] = (void (*)())f1;
-		funcs[2] = (void (*)())f2;
-		funcs[3] = (void (*)())f3;
-		funcs[4] = (void (*)())f4;
-		funcs[5] = (void (*)())f5;
-		funcs[6] = (void (*)())f6;
-		funcs[7] = (void (*)())f7;
-		funcs[8] = (void (*)())f8;
-		funcs[9] = (void (*)())f9;
 		//TODO: find some way of constructing the interface type without 
 		// explicitly "implementing" its functions
 		// can't use normal constructor method because of pure virtuals
 		// can't inherit because of pure virtuals
 		// if you don't construct it, it fails because it might contain
 		// objects which are then not constructed.
-		memset(base.remaining, 0, sizeof(base.remaining));
-		base.vft = (void *)&funcs;
+		memset(remaining, 0, sizeof(remaining));
 		/*TODO: this code needs some work - detecting which is the destructor 
 		 * works, the ret in the destructor doesn't
 		T *tp = reinterpret_cast<T *>(this);
@@ -100,6 +112,20 @@ public:
 		tp->~T();
 		vdestructor == -2;
 		*/
+	}
+	void expectation0()
+	{
+		printf("xx0");
+	}
+	template <typename A>
+	void expectation1(A a)
+	{
+		printf("xx1");
+	}
+	template <typename A, typename B>
+	void expectation2(A a, B b)
+	{
+		printf("xx2");
 	}
 };
 
@@ -119,17 +145,23 @@ public:
 #else
 	template <typename Y, typename Z>
 	void RegisterExpectation(Z *mck, Y (Z::*func)()) {
-		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<>::value);
+		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
+		zMock->setNextFuncSize(sizelist<>::value);
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation0;
 		(mck->*func)();
 	}
 	template <typename Y, typename Z, typename A>
 	void RegisterExpectation(Z *mck, Y (Z::*func)(A), A a) {
-		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<A>::value);
+		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
+		zMock->setNextFuncSize(sizelist<A>::value);
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation1<A>;
 		(mck->*func)(a);
 	}
 	template <typename Y, typename Z, typename A, typename B>
 	void RegisterExpectation(Z *mck, Y (Z::*func)(A, B), A a, B b) {
-		reinterpret_cast<mock<Z> *>(mck)->setNextFuncSize(sizelist<A, B>::value);
+		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
+		zMock->setNextFuncSize(sizelist<A, B>::value);
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation2<A,B>;
 		(mck->*func)(a, b);
 	}
 #endif
