@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Hippo Mocks"
 	ProjectGUID="{3FADB4FF-EF92-4823-B400-B324420F3DB3}"
 	RootNamespace="HippoMocks"
@@ -156,10 +156,6 @@
 	<References>
 	</References>
 	<Files>
-		<File
-			RelativePath=".\hippomocks.h"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

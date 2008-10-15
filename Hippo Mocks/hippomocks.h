@@ -4,15 +4,15 @@
 #include <list>
 #include <map>
 
-extern "C" {
-	void __fastcall f0(void *ths);
-}
+class MockRepository;
 
 class base_mock {
 public:
 	void *vft;
 	void (base_mock::*next_func)();
 	void (base_mock::*funcs[10])();
+	int curFuncNo;
+	MockRepository *repo;
 	void f0();
 	void f1();
 	void f2();
@@ -23,7 +23,7 @@ public:
 	void f7();
 	void f8();
 	void f9();
-	base_mock() : vft((void *)&funcs) {
+	base_mock(MockRepository *repo) : repo(repo), vft((void *)&funcs) {
 		funcs[0] = &base_mock::f0;
 		funcs[1] = &base_mock::f1;
 		funcs[2] = &base_mock::f2;
@@ -34,152 +34,176 @@ public:
 		funcs[7] = &base_mock::f7;
 		funcs[8] = &base_mock::f8;
 		funcs[9] = &base_mock::f9;
-		&base_mock::base_func;	// to "inform" the compiler to export the symbol
 	}
-	void (base_mock::*base_func(int index))()
-	{
-		funcs[index] = next_func;
-		return next_func;
-	}
+	void (base_mock::*base_func(int index))();
 };
-
-class MockRepository;
 
 class ExpectationException : public std::exception {
 public:
 	const char *what() const { return "Expectation was violated!"; }
 };
 
-class NullType {};
+class NullType 
+{
+public: 
+	bool operator==(const NullType &) const 
+	{
+		return true; 
+	}
+};
 
-template <typename T> struct size { enum { value = ((4 > sizeof(T)) ? sizeof(T) : 4) }; };
-template <> struct size<NullType> { enum { value = 0 }; };
+class base_tuple 
+{
+protected:
+	base_tuple() 
+	{
+	} 
+public: 
+	virtual ~base_tuple() 
+	{
+	}
+	virtual bool operator==(const base_tuple &) const = 0;
+};
 
 template <typename A = NullType, typename B = NullType, typename C = NullType, typename D = NullType, 
 		  typename E = NullType, typename F = NullType, typename G = NullType, typename H = NullType, 
 		  typename I = NullType, typename J = NullType, typename K = NullType, typename L = NullType, 
 		  typename M = NullType, typename N = NullType, typename O = NullType, typename P = NullType>
-struct sizelist { enum { value = size<A>::value + size<B>::value + size<C>::value + size<D>::value + 
-								 size<E>::value + size<F>::value + size<G>::value + size<H>::value + 
-								 size<I>::value + size<J>::value + size<K>::value + size<L>::value + 
-								 size<M>::value + size<N>::value + size<O>::value + size<P>::value }; };
+class tuple : public base_tuple
+{
+private:
+	A a;
+	B b;
+	C c;
+	D d;
+	E e;
+	F f;
+	G g;
+	H h;
+	I i;
+	J j;
+	K k;
+	L l;
+	M m;
+	N n;
+	O o;
+	P p;
+public:
+	tuple(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(),
+		  I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P())
+		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
+	{}
+	bool operator==(const base_tuple &bo) const {
+		const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &o = (const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &)bo;
+		return (a == o.a &&
+				b == o.b &&
+				c == o.c &&
+				d == o.d &&
+				e == o.e &&
+				f == o.f &&
+				g == o.g &&
+				h == o.h &&
+				i == o.i &&
+				j == o.j &&
+				k == o.k &&
+				l == o.l &&
+				m == o.m &&
+				n == o.n &&
+				this->o == o.o &&
+				p == o.p);
+	}
+};
 
 template <class T>
-class mock : public base_mock {
+class mock : public base_mock 
+{
+	//TODO: fill remaining with some kind of instance of T
 	char remaining[sizeof(T)];
-	void base_func(int which) 
-	{
-		if (vdestructor == -1) 
-		{
-			funcs[which] = (void (*)())destr;
-		}
-		else
-		{
-			repo->DoExpectation(this, which);
-		}
-
-		if (nextFuncSize != 0) 
-		{
-			funcSizes[which] = nextFuncSize;
-			nextFuncSize = 0;
-		}
-	};
-	int last_call;
-	int vdestructor;
-	int nextFuncSize;
-	int funcSizes[10];
-	static void __stdcall destr() {}
-	MockRepository *repo;
 public:
-	void setNextFuncSize(int size) 
-	{
-		nextFuncSize = size; 
-	}
 	mock(MockRepository *repo) 
-		: repo(repo)
+		: base_mock(repo)
 	{
-		//TODO: find some way of constructing the interface type without 
-		// explicitly "implementing" its functions
-		// can't use normal constructor method because of pure virtuals
-		// can't inherit because of pure virtuals
-		// if you don't construct it, it fails because it might contain
-		// objects which are then not constructed.
 		memset(remaining, 0, sizeof(remaining));
-		/*TODO: this code needs some work - detecting which is the destructor 
-		 * works, the ret in the destructor doesn't
-		T *tp = reinterpret_cast<T *>(this);
-		vdestructor == -1;
-		tp->~T();
-		vdestructor == -2;
-		*/
 	}
+	// for next year
+#ifdef CPP0X
+	template <int X, typename A...>
+	void expectation(A... a)
+	{
+		repo->DoExpectation(this, X);
+	}
+#else
+	template <int X>
 	void expectation0()
 	{
-		printf("xx0");
+		repo->DoExpectation(this, X, new tuple<>());
 	}
-	template <typename A>
+	template <int X, typename A>
 	void expectation1(A a)
 	{
-		printf("xx1");
+		repo->DoExpectation(this, X, new tuple<A>(a));
 	}
-	template <typename A, typename B>
+	template <int X, typename A, typename B>
 	void expectation2(A a, B b)
 	{
-		printf("xx2");
+		repo->DoExpectation(this, X, new tuple<A>(b));
 	}
+#endif
 };
 
 class MockRepository {
 private:
 	std::list<base_mock *> mocks;
-	std::list<std::pair<base_mock *, int> > expectations;
+	std::list<std::pair<base_mock *, std::pair<int, base_tuple *> > > expectations;
 	enum { Record, Playback, Verified } state;
 public:
 	// for next year
 #ifdef CPP0X
 	template <typename Y, typename Z, typename A...>
 	void RegisterExpectation(Z *mock, Y (Z::*func)(A...), A... a) {
-		reinterpret_cast<mock<Z> *>(mock)->setNextFuncSize(sizelist<A...>::value);
+		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation<X, A...>;
 		(mock->*func)(a...);
 	}
 #else
-	template <typename Y, typename Z>
-	void RegisterExpectation(Z *mck, Y (Z::*func)()) {
+#define RegisterExpectation RegisterExpect_<__COUNTER__>
+	template <int X, typename Y, typename Z>
+	void RegisterExpect_(Z *mck, Y (Z::*func)()) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->setNextFuncSize(sizelist<>::value);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation0;
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation0<X>;
 		(mck->*func)();
 	}
-	template <typename Y, typename Z, typename A>
-	void RegisterExpectation(Z *mck, Y (Z::*func)(A), A a) {
+	template <int X, typename Y, typename Z, typename A>
+	void RegisterExpect_(Z *mck, Y (Z::*func)(A), A a) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->setNextFuncSize(sizelist<A>::value);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation1<A>;
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation1<X,A>;
 		(mck->*func)(a);
 	}
-	template <typename Y, typename Z, typename A, typename B>
-	void RegisterExpectation(Z *mck, Y (Z::*func)(A, B), A a, B b) {
+	template <int X, typename Y, typename Z, typename A, typename B>
+	void RegisterExpect_(Z *mck, Y (Z::*func)(A, B), A a, B b) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->setNextFuncSize(sizelist<A, B>::value);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation2<A,B>;
+		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation2<X,A,B>;
 		(mck->*func)(a, b);
 	}
 #endif
-	void DoExpectation(base_mock *mock, int funcno) 
+	void DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
 	{
 		switch(state)
 		{
 		case Record: 
-			expectations.push_back(std::make_pair(mock, funcno)); 
+			expectations.push_back(std::make_pair(mock, std::make_pair(funcno, tuple))); 
 			break;
 		case Playback: 
 			{
 				if (expectations.size() == 0)
 					throw ExpectationException();
 
-				std::pair<base_mock *, int> call = expectations.front(); 
+				std::pair<base_mock *, std::pair<int, base_tuple *> > call = expectations.front(); 
 				expectations.pop_front(); 
-				if (mock != call.first || funcno != call.second) throw ExpectationException();
+				if (mock != call.first || 
+					funcno != call.second.first ||
+					!((*tuple) == (*call.second.second))) throw ExpectationException();
+				delete call.second.second;
 			}
 			break;
 		case Verified:

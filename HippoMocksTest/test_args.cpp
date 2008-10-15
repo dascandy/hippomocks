@@ -7,7 +7,7 @@ public:
 	virtual void f(int);
 	virtual void g(int) = 0;
 };
-/*
+
 FUNC (checkArgumentsAccepted)
 {
 	MockRepository mocks;
@@ -19,4 +19,23 @@ FUNC (checkArgumentsAccepted)
 	iamock->g(2);
 	mocks.VerifyAll();
 }
-*/
+
+FUNC (checkArgumentsChecked)
+{
+	MockRepository mocks;
+	IB *iamock = mocks.newMock<IB>();
+	mocks.RegisterExpectation(iamock, &IB::f, 1);
+	mocks.RegisterExpectation(iamock, &IB::g, 2);
+	mocks.ReplayAll();
+	bool exceptionCaught = false;
+	try 
+	{
+		iamock->f(2);
+	}
+	catch (ExpectationException)
+	{
+		exceptionCaught = true;
+	}
+	CHECK(exceptionCaught);
+}
+

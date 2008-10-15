@@ -13,6 +13,9 @@
 		/>
 	</Platforms>
 	<ToolFiles>
+		<DefaultToolFile
+			FileName="masm.rules"
+		/>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
@@ -27,6 +30,9 @@
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="MASM"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -98,6 +104,9 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
+				Name="MASM"
+			/>
+			<Tool
 				Name="VCXMLDataGeneratorTool"
 			/>
 			<Tool
@@ -158,11 +167,27 @@
 	</References>
 	<Files>
 		<File
+			RelativePath="..\Hippo Mocks\base_mock.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\Hippo Mocks\fN.asm"
+			>
+		</File>
+		<File
+			RelativePath="..\Hippo Mocks\hippomocks.h"
+			>
+		</File>
+		<File
 			RelativePath=".\test.cpp"
 			>
 		</File>
 		<File
 			RelativePath=".\test_args.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_class_args.cpp"
 			>
 		</File>
 		<File
