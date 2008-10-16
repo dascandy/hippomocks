@@ -12,8 +12,8 @@ FUNC (checkArgumentsAccepted)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.newMock<IB>();
-	mocks.RegisterExpectation(iamock, &IB::f, 1);
-	mocks.RegisterExpectation(iamock, &IB::g, 2);
+	mocks.RegisterExpectation(iamock, &IB::f);
+	mocks.RegisterExpectation(iamock, &IB::g);
 	mocks.ReplayAll();
 	iamock->f(1);
 	iamock->g(2);
@@ -24,8 +24,8 @@ FUNC (checkArgumentsChecked)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.newMock<IB>();
-	mocks.RegisterExpectation(iamock, &IB::f, 1);
-	mocks.RegisterExpectation(iamock, &IB::g, 2);
+	mocks.RegisterExpectation(iamock, &IB::f);
+	mocks.RegisterExpectation(iamock, &IB::g);
 	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 

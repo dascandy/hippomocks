@@ -203,7 +203,7 @@ public:
     }
 
     Factory::Instance().Report ();
-    return Factory::Instance().Fail ();
+    return (int)Factory::Instance().Fail ();
   }
 };
 

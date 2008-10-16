@@ -6,41 +6,16 @@
 
 class MockRepository;
 
-class base_mock {
-public:
-	void *vft;
-	void (base_mock::*next_func)();
-	void (base_mock::*funcs[10])();
-	int curFuncNo;
-	MockRepository *repo;
-	void f0();
-	void f1();
-	void f2();
-	void f3();
-	void f4();
-	void f5();
-	void f6();
-	void f7();
-	void f8();
-	void f9();
-	base_mock(MockRepository *repo) : repo(repo), vft((void *)&funcs) {
-		funcs[0] = &base_mock::f0;
-		funcs[1] = &base_mock::f1;
-		funcs[2] = &base_mock::f2;
-		funcs[3] = &base_mock::f3;
-		funcs[4] = &base_mock::f4;
-		funcs[5] = &base_mock::f5;
-		funcs[6] = &base_mock::f6;
-		funcs[7] = &base_mock::f7;
-		funcs[8] = &base_mock::f8;
-		funcs[9] = &base_mock::f9;
-	}
-	void (base_mock::*base_func(int index))();
-};
+class base_mock {};
 
 class ExpectationException : public std::exception {
 public:
 	const char *what() const { return "Expectation was violated!"; }
+};
+
+class NotImplementedException : public std::exception {
+public:
+	const char *what() const { return "Function called with no expectations"; }
 };
 
 class NullType 
@@ -94,35 +69,45 @@ public:
 		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
 	{}
 	bool operator==(const base_tuple &bo) const {
-		const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &o = (const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &)bo;
-		return (a == o.a &&
-				b == o.b &&
-				c == o.c &&
-				d == o.d &&
-				e == o.e &&
-				f == o.f &&
-				g == o.g &&
-				h == o.h &&
-				i == o.i &&
-				j == o.j &&
-				k == o.k &&
-				l == o.l &&
-				m == o.m &&
-				n == o.n &&
-				this->o == o.o &&
-				p == o.p);
+		const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to = (const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &)bo;
+		return (a == to.a &&
+				b == to.b &&
+				c == to.c &&
+				d == to.d &&
+				e == to.e &&
+				f == to.f &&
+				g == to.g &&
+				h == to.h &&
+				i == to.i &&
+				j == to.j &&
+				k == to.k &&
+				l == to.l &&
+				m == to.m &&
+				n == to.n &&
+				o == to.o &&
+				p == to.p);
 	}
 };
 
 template <class T>
 class mock : public base_mock 
 {
+	friend class MockRepository;
+	static const int VIRT_FUNC_LIMIT = 1024;
+	void *vft;
 	//TODO: fill remaining with some kind of instance of T
+	void (mock<T>::*funcs[VIRT_FUNC_LIMIT])();
+	MockRepository *repo;
 	char remaining[sizeof(T)];
+	void NotImplemented() { throw NotImplementedException(); }
 public:
 	mock(MockRepository *repo) 
-		: base_mock(repo)
+		: repo(repo), vft((void *)&funcs)
 	{
+		for (int i = 0; i < VIRT_FUNC_LIMIT; i++) {
+			funcs[i] = &mock<T>::NotImplemented;
+		}
+		//TODO: replace remaining with instance of T (somehow)
 		memset(remaining, 0, sizeof(remaining));
 	}
 	// for next year
@@ -166,24 +151,41 @@ public:
 		(mock->*func)(a...);
 	}
 #else
+	class func_index {
+	public:
+		virtual int f0() { return 0; }
+		virtual int f1() { return 1; }
+		virtual int f2() { return 2; }
+		virtual int f3() { return 3; }
+		virtual int f4() { return 4; }
+		virtual int f5() { return 5; }
+		virtual int f6() { return 6; }
+		virtual int f7() { return 7; }
+		virtual int f8() { return 8; }
+		virtual int f9() { return 9; }
+		int index(int (func_index::*func)()) { return (this->*func)(); }
+	};
 #define RegisterExpectation RegisterExpect_<__COUNTER__>
 	template <int X, typename Y, typename Z>
 	void RegisterExpect_(Z *mck, Y (Z::*func)()) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation0<X>;
-		(mck->*func)();
+		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
+		zMock->funcs[funcIndex] = (void (base_mock::*)())&mock<Z>::expectation0<X>;
+		DoExpectation(zMock, X, NULL);
 	}
 	template <int X, typename Y, typename Z, typename A>
-	void RegisterExpect_(Z *mck, Y (Z::*func)(A), A a) {
+	void RegisterExpect_(Z *mck, Y (Z::*func)(A)) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation1<X,A>;
-		(mck->*func)(a);
+		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
+		zMock->funcs[funcIndex] = (void (base_mock::*)())&mock<Z>::expectation1<X,A>;
+		DoExpectation(zMock, X, NULL);
 	}
 	template <int X, typename Y, typename Z, typename A, typename B>
-	void RegisterExpect_(Z *mck, Y (Z::*func)(A, B), A a, B b) {
+	void RegisterExpect_(Z *mck, Y (Z::*func)(A, B)) {
 		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation2<X,A,B>;
-		(mck->*func)(a, b);
+		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
+		zMock->funcs[funcIndex] = (void (base_mock::*)())&mock<Z>::expectation2<X,A,B>;
+		DoExpectation(zMock, X, NULL);
 	}
 #endif
 	void DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
@@ -202,7 +204,8 @@ public:
 				expectations.pop_front(); 
 				if (mock != call.first || 
 					funcno != call.second.first ||
-					!((*tuple) == (*call.second.second))) throw ExpectationException();
+					((call.second.second != NULL) &&
+					!((*tuple) == (*call.second.second)))) throw ExpectationException();
 				delete call.second.second;
 			}
 			break;
@@ -233,17 +236,6 @@ public:
 		state = Verified;
 	}
 };
-
-class Expect_ 
-{
-public:
-	template <typename T>
-	Expect_ &Call(T) { 
-		return *this;
-	}
-};
-
-extern Expect_ Expect;
 
 #endif
 

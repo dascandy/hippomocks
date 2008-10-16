@@ -14,8 +14,8 @@ FUNC (checkClassArgumentsAccepted)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.newMock<IC>();
-	mocks.RegisterExpectation(iamock, &IC::f, std::string("hi"));
-	mocks.RegisterExpectation(iamock, &IC::g, std::string("bye"));
+	mocks.RegisterExpectation(iamock, &IC::f);
+	mocks.RegisterExpectation(iamock, &IC::g);
 	mocks.ReplayAll();
 	iamock->f("hi");
 	iamock->g("bye");
@@ -26,8 +26,8 @@ FUNC (checkClassArgumentsChecked)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.newMock<IC>();
-	mocks.RegisterExpectation(iamock, &IC::f, std::string("hi"));
-	mocks.RegisterExpectation(iamock, &IC::g, std::string("bye"));
+	mocks.RegisterExpectation(iamock, &IC::f);
+	mocks.RegisterExpectation(iamock, &IC::g);
 	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
