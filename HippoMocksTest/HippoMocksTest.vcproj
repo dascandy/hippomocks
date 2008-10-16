@@ -167,14 +167,6 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\Hippo Mocks\base_mock.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\Hippo Mocks\fN.asm"
-			>
-		</File>
-		<File
 			RelativePath="..\Hippo Mocks\hippomocks.h"
 			>
 		</File>
@@ -188,6 +180,10 @@
 		</File>
 		<File
 			RelativePath=".\test_class_args.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_retval.cpp"
 			>
 		</File>
 		<File
