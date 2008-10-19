@@ -11,7 +11,7 @@ public:
 FUNC (checkBaseCase)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ReplayAll();
@@ -23,7 +23,7 @@ FUNC (checkBaseCase)
 FUNC (checkMultiCall)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
@@ -37,7 +37,7 @@ FUNC (checkMultiCall)
 FUNC (checkMultiCallNotCalled)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
@@ -58,7 +58,7 @@ FUNC (checkMultiCallNotCalled)
 FUNC (checkMultiCallWrongOrder)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
@@ -79,7 +79,7 @@ FUNC (checkExpectationsNotCompleted)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ReplayAll();
@@ -97,7 +97,7 @@ FUNC (checkExpectationsNotCompleted)
 FUNC (checkOvercompleteExpectations)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ReplayAll();
@@ -117,7 +117,7 @@ FUNC (checkOvercompleteExpectations)
 FUNC (checkExpectationsAreInOrder)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.newMock<IA>();
+	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ReplayAll();

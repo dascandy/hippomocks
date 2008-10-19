@@ -13,7 +13,7 @@ public:
 FUNC (checkClassArgumentsAccepted)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.newMock<IC>();
+	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f).With("hi");
 	mocks.OnCall(iamock, &IC::g).With("bye");
 	mocks.ReplayAll();
@@ -25,7 +25,7 @@ FUNC (checkClassArgumentsAccepted)
 FUNC (checkClassArgumentsChecked)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.newMock<IC>();
+	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f).With("hi");
 	mocks.OnCall(iamock, &IC::g).With("bye");
 	mocks.ReplayAll();
@@ -44,7 +44,7 @@ FUNC (checkClassArgumentsChecked)
 FUNC (checkClassArgumentsIgnored)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.newMock<IC>();
+	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f);
 	mocks.ReplayAll();
 	iamock->f("bye");

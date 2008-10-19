@@ -396,7 +396,7 @@ public:
 	{
 	}
 	template <typename base>
-	base *newMock() {
+	base *InterfaceMock() {
 		mock<base> *m = new mock<base>(this);
 		mocks.push_back(m);
 		return reinterpret_cast<base *>(m);
