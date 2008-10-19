@@ -1,8 +1,11 @@
 #include "yaffut.h"
 #include "injector.h"
 
-static bool hit = false;
+// "volatile" prevents the compiler from eliminating the "CHECK(!hit)" code.
+static volatile bool hit = false;
 
+// The compiler will inline this function without this pragma.
+#pragma auto_inline(off)
 int HelloWorld(int i)
 {
 	// mystic code...
@@ -19,8 +22,6 @@ int ReplaceHelloWorld(int i)
 	return 42;
 }
 
-// This will get further in release mode, because debug mode functions always
-// start with a jmp (which is actually easier to detour hahaha)
 FUNC (checkInjection)
 {
 	hit = false;
@@ -32,8 +33,7 @@ FUNC (checkInjection)
 	CHECK(hit);
 	uninject(result);
 	hit = false;
-	r = HelloWorld(1);
+	r = HelloWorld(2);
 	CHECK(r != 42);
 	CHECK(!hit);
-
 }

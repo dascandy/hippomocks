@@ -38,17 +38,37 @@ static size_t simpleSize(void* code)
 	return 0;
 }
 
+static size_t copyCorrected(void* fnDst, void* fnSrc)
+{
+	INT_PTR distance = (unsigned char*)fnSrc - (unsigned char*)fnDst;
+	if ((*(unsigned char*)fnSrc & 0xE8) == 0xE8) // E9=jmp, E8=call
+	{
+        *(unsigned char*)fnDst = *(unsigned char*)fnSrc;
+        *(int*)((unsigned char*)fnDst + 1) = *(int*)((unsigned char*)fnSrc + 1) + (int)(distance);
+		return 5;
+	}
+	return 0;
+}
+
 static size_t copy(void* fnDst, void* fnSrc, size_t count)
 {
 	size_t done = 0;
 	while (done < count)
 	{
 		size_t instructionSize = simpleSize(fnSrc);
+
 		if (instructionSize == 0)
 		{
-			return 0; // unknown instruction...
+			instructionSize = copyCorrected(fnDst, fnSrc);
+			if (instructionSize == 0)
+			{
+				return 0;
+			}
 		}
-		memcpy(fnDst, fnSrc, instructionSize);
+		else
+		{
+			memcpy(fnDst, fnSrc, instructionSize);
+		}
 		done += instructionSize;
 		fnDst = (char*)fnDst + instructionSize;
 		fnSrc = (char*)fnSrc + instructionSize;
@@ -56,7 +76,8 @@ static size_t copy(void* fnDst, void* fnSrc, size_t count)
 	return done;
 }
 
-// For Win32, this is good enough...
+// For Win32, this is good enough. For x64, find a spot near the current code.
+// Hint: VirtualQuery and GetSystemInfo
 static void* NearAllocate(void* fnNearMe)
 {
 	return VirtualAlloc(NULL, MAX_FUNCTION_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -80,24 +101,55 @@ void* inject(void* fnOriginal, void* fnReplace)
 		return NULL;
 	}
 
-	// TODO: Append the JMP instruction
-
 	// Keep a copy of the original code and the original pointer so that uninject can restore everything.
 	memcpy((char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(WORD) + sizeof(void*), fnOriginal, bytes);
 	*(void**)((char*)fnInter + ORIGINAL_COPY_OFFSET) = fnOriginal;
 	*(WORD*)((char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(void*)) = (WORD)bytes;
 
-	// TODO: un-protect memory and insert a JMP to the replacement function in the original
-	// TODO: Flush the CPU cache
+	// Append the JMP instruction to the intermediate
+	unsigned char* jmpInstruction;
+	jmpInstruction = (unsigned char*)fnInter + bytes;
+	jmpInstruction[0] = 0xE9; // jmp
+	*(DWORD*)(jmpInstruction + 1) = (DWORD)((unsigned char*)fnOriginal + bytes - (jmpInstruction + 5));
+
+	// Tell CPU that we changed some code
+	FlushInstructionCache(GetCurrentProcess(), fnInter, MAX_FUNCTION_SIZE);
+
+	// un-protect memory and insert a JMP to the replacement function in the original
+	DWORD previousVirtualProtect;
+    if (!VirtualProtect(fnOriginal, MAX_FUNCTION_SIZE, PAGE_EXECUTE_READWRITE, &previousVirtualProtect))
+	{
+		VirtualFree(fnInter, 0, MEM_RELEASE);
+		return NULL;
+	}
+	
+	// Insert jump to replacement
+	jmpInstruction = (unsigned char*)fnOriginal;
+	jmpInstruction[0] = 0xE9; // jmp
+	*(DWORD*)(jmpInstruction + 1) = (DWORD)((unsigned char*)fnReplace - ((unsigned char*)fnOriginal + 5));
+	// Fill remainder with NOP to help the disassembly viewer.
+	jmpInstruction += 5;
+	for (int i = (int)(bytes-5); i != 0; --i)
+	{
+		*jmpInstruction = 0x90;
+		++jmpInstruction;
+	}
+
+	// Flush the CPU cache
+	FlushInstructionCache(GetCurrentProcess(), fnOriginal, bytes);
+
 	return fnInter;
 }
 
 void uninject(void* fnInter)
 {
-	WORD bytes = *(WORD*)((char*)fnInter + ORIGINAL_COPY_OFFSET);
+	// Copy original code back from intermediate
+	void* fnOriginal = *(void**)((char*)fnInter + ORIGINAL_COPY_OFFSET);
+	WORD bytes = *(WORD*)((char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(void*));
 	memcpy(
-		*(void**)((char*)fnInter + ORIGINAL_COPY_OFFSET),
-		(char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(WORD),
+		fnOriginal,
+		(char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(void*) + sizeof(WORD),
 		bytes);
+	FlushInstructionCache(GetCurrentProcess(), fnOriginal, bytes);
 	VirtualFree(fnInter, 0, MEM_RELEASE);
 }
