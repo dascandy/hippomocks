@@ -1,9 +1,9 @@
 #include "hippomocks.h"
 #include "yaffut.h"
 
-class ID {
+class IE {
 public:
-	virtual ~ID() {}
+	virtual ~IE() {}
 	virtual int f();
 	virtual std::string g() = 0;
 };
@@ -11,8 +11,8 @@ public:
 FUNC (checkPrimitiveExceptionAcceptedAndThrown)
 {
 	MockRepository mocks;
-	ID *iamock = mocks.InterfaceMock<ID>();
-	mocks.ExpectCall(iamock, &ID::f).Throw(42);
+	IE *iamock = mocks.InterfaceMock<IE>();
+	mocks.ExpectCall(iamock, &IE::f).Throw(42);
 	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
@@ -40,8 +40,8 @@ FUNC (checkClassTypeExceptionWithContent)
 {
 	const char *sText = "someText";
 	MockRepository mocks;
-	ID *iamock = mocks.InterfaceMock<ID>();
-	mocks.ExpectCall(iamock, &ID::f).Throw(SomeException(sText));
+	IE *iamock = mocks.InterfaceMock<IE>();
+	mocks.ExpectCall(iamock, &IE::f).Throw(SomeException(sText));
 	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 

@@ -97,13 +97,12 @@ class mock : public base_mock
 	friend class MockRepository;
 	static const int VIRT_FUNC_LIMIT = 1024;
 	void *vft;
+	unsigned char remaining[sizeof(T)];
 	//TODO: fill remaining with some kind of instance of T
-	void (mock<T>::*funcs[VIRT_FUNC_LIMIT])();
-protected:
-	MockRepository *repo;
-private:
-	char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(); }
+protected:
+	void (mock<T>::*funcs[VIRT_FUNC_LIMIT])();
+	MockRepository *repo;
 public:
 	int funcMap[VIRT_FUNC_LIMIT];
 	mock(MockRepository *repo) 
@@ -124,6 +123,30 @@ public:
 			if (funcMap[i] == x) return i;
 		}
 		return -1;
+	}
+};
+
+template <class T>
+class classMock : public mock<T>
+{
+	void *backupVft;
+public:
+	void *rewriteVft(void *&addr, void *newVf) 
+	{
+		void *oldVf = addr;
+		addr = newVf;
+		return oldVf;
+	}
+	classMock(MockRepository *repo) 
+		: mock<T>(repo)
+	{
+		new(this)T();
+		backupVft = rewriteVft(*(void **)this, (void *)funcs);
+	}
+	~classMock()
+	{
+		rewriteVft((void *&)obj, backupVft);
+		((T *)this)::~T();
 	}
 };
 
@@ -277,15 +300,6 @@ private:
 	std::list<Call *> expectations;
 	enum { Record, Playback, Verified } state;
 public:
-	// for next year
-#ifdef CPP0X
-	template <typename Y, typename Z, typename A...>
-	void RegisterExpectation(Z *mock, Y (Z::*func)(A...), A... a) {
-		mock<Z> *zMock = reinterpret_cast<mock<Z> *>(mck);
-		zMock->next_func = (void (base_mock::*)())&mock<Z>::expectation<X, A...>;
-		(mock->*func)(a...);
-	}
-#else
 	class func_index {
 	public:
 		virtual int f0() { return 0; }
@@ -344,7 +358,6 @@ public:
 		expectations.push_back(call);
 		return *call;
 	}
-#endif
 	template <typename Z>
 	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
 	{
@@ -398,7 +411,11 @@ public:
 	template <typename base>
 	base *InterfaceMock() {
 		mock<base> *m = new mock<base>(this);
-		mocks.push_back(m);
+		return reinterpret_cast<base *>(m);
+	}
+	template <typename base>
+	base *ClassMock() {
+		classMock<base> *m = new classMock<base>(this);
 		return reinterpret_cast<base *>(m);
 	}
 	void ReplayAll() {

@@ -183,6 +183,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_class_mock.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\test_except.cpp"
 			>
 		</File>
