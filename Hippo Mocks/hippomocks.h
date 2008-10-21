@@ -51,7 +51,7 @@ template <typename A = NullType, typename B = NullType, typename C = NullType, t
 		  typename M = NullType, typename N = NullType, typename O = NullType, typename P = NullType>
 class tuple : public base_tuple
 {
-private:
+public:
 	A a;
 	B b;
 	C c;
@@ -68,7 +68,6 @@ private:
 	N n;
 	O o;
 	P p;
-public:
 	tuple(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(),
 		  I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P())
 		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
@@ -1382,6 +1381,461 @@ public:
 	void rethrow() { throw exception; }
 };
 
+// Do() function wrapping
+
+template <typename Y>
+class TupleInvocable
+{
+public:
+	virtual Y operator()(base_tuple *tupl) = 0;
+};
+
+template <typename Y,
+		  typename A = NullType, typename B = NullType, typename C = NullType, typename D = NullType, 
+		  typename E = NullType, typename F = NullType, typename G = NullType, typename H = NullType, 
+		  typename I = NullType, typename J = NullType, typename K = NullType, typename L = NullType, 
+		  typename M = NullType, typename N = NullType, typename O = NullType, typename P = NullType>
+class Invocable : public TupleInvocable<Y>
+{
+public:
+	virtual Y operator()(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) = 0;
+	virtual Y operator()(base_tuple *tupl) {
+		tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *rTupl = reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl);
+		return (*this)(rTupl->a, rTupl->b, rTupl->c, rTupl->d, rTupl->e, rTupl->f, rTupl->g, rTupl->h, 
+			rTupl->i, rTupl->j, rTupl->k, rTupl->l, rTupl->m, rTupl->n, rTupl->o, rTupl->p);
+	}
+};
+template <typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N, typename O, typename P>
+class Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public TupleInvocable<void>
+{
+public:
+	virtual void operator()(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) = 0;
+	virtual void operator()(base_tuple *tupl) {
+		tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *rTupl = reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl);
+		(*this)(rTupl->a, rTupl->b, rTupl->c, rTupl->d, rTupl->e, rTupl->f, rTupl->g, rTupl->h, 
+			rTupl->i, rTupl->j, rTupl->k, rTupl->l, rTupl->m, rTupl->n, rTupl->o, rTupl->p);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N, typename O, typename P>
+class DoWrapper : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N, typename O>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k,l,m);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k,l);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j,k);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i,j);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>  : public Invocable<Y,A,B,C,D,E,F,G,H,I>{
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h,i);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g,h);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G>
+class DoWrapper<T,Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f,g);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F>
+class DoWrapper<T,Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, F f, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e,f);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D, 
+		  typename E>
+class DoWrapper<T,Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, E e, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d,e);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C, typename D>
+class DoWrapper<T,Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, D d, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c,d);
+	}
+};
+template <typename T, typename Y,
+		  typename A, typename B, typename C>
+class DoWrapper<T,Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, C c, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b,c);
+	}
+};
+template <typename T, typename Y, typename A, typename B>
+class DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, B b, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a,b);
+	}
+};
+template <typename T, typename Y, typename A>
+class DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(A a, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t(a);
+	}
+};
+template <typename T, typename Y>
+class DoWrapper<T,Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual Y operator()(NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		return t();
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N, typename O, typename P>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N, typename O>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M, typename N>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>: public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N>  {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L, 
+		  typename M>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>: public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M>  {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k,l,m);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K, typename L>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k,l);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J, typename K>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>  : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K>{
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j,k);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I, typename J>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i,j);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H, 
+		  typename I>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h,i);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H>
+class DoWrapper<T,void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g,h);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G>
+class DoWrapper<T,void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f,g);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F>
+class DoWrapper<T,void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, F f, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e,f);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D, 
+		  typename E>
+class DoWrapper<T,void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, E e, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d,e);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C, typename D>
+class DoWrapper<T,void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, D d, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c,d);
+	}
+};
+template <typename T,
+		  typename A, typename B, typename C>
+class DoWrapper<T,void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, C c, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b,c);
+	}
+};
+template <typename T, typename A, typename B>
+class DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, B b, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a,b);
+	}
+};
+template <typename T, typename A>
+class DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(A a, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t(a);
+	}
+};
+template <typename T>
+class DoWrapper<T,void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void> {
+	T t;
+public:
+	DoWrapper(T t) : t(t) {}
+	virtual void operator()(NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
+	{
+		t();
+	}
+};
+
 //Call wrapping
 class Call {
 public:
@@ -1390,6 +1844,7 @@ public:
 	void *retVal;
 	ExceptionHolder *eHolder;
 	base_mock *mock;
+	void *functor;
 	int funcIndex;
 protected:
 	bool expectation;
@@ -1418,9 +1873,11 @@ public:
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
 	}
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Return(Y obj) { retVal = new Y(obj); return *this; }
+	template <typename T>
+	void Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); }
+	void Return(Y obj) { retVal = new Y(obj); }
 	template <typename Ex>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+	void Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); }
 };
 
 template <typename A, typename B, typename C, typename D, 
@@ -1437,10 +1894,13 @@ public:
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
 	}
+	template <typename T>
+	void Do(T function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); }
 	template <typename Ex>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+	void Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); }
 };
 
+// Mock repository & interface
 class MockRepository {
 private:
 	std::list<base_mock *> mocks;
@@ -1458,7 +1918,10 @@ public:
 							funcIndex, 
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation0<X>,X);
 		TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else 
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, typename A>
@@ -1469,7 +1932,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation1<X,A>,X);
 		TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1481,7 +1947,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation2<X,A,B>,X);
 		TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1493,7 +1962,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation3<X,A,B,C>,X);
 		TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1505,7 +1977,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation4<X,A,B,C,D>,X);
 		TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1518,7 +1993,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation5<X,A,B,C,D,E>,X);
 		TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1531,7 +2009,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation6<X,A,B,C,D,E,F>,X);
 		TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1544,7 +2025,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation7<X,A,B,C,D,E,F,G>,X);
 		TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1557,7 +2041,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation8<X,A,B,C,D,E,F,G,H>,X);
 		TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1571,7 +2058,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation9<X,A,B,C,D,E,F,G,H,I>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1585,7 +2075,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation10<X,A,B,C,D,E,F,G,H,I,J>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1599,7 +2092,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation11<X,A,B,C,D,E,F,G,H,I,J,K>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1613,7 +2109,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1628,7 +2127,10 @@ public:
 							funcIndex,
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1643,7 +2145,10 @@ public:
 							funcIndex, 
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1658,7 +2163,10 @@ public:
 							funcIndex, 
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <int X, bool expect, typename Y, typename Z, 
@@ -1673,7 +2181,10 @@ public:
 							funcIndex 
 							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>,X);
 		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		expectations.push_back(call);
+		if (expect)
+			expectations.push_back(call);
+		else
+			optionals.push_back(call);
 		return *call;
 	}
 	template <typename Z, typename Y>
@@ -1694,12 +2205,18 @@ public:
 		if (call->retVal)
 			return *((Z *)call->retVal);
 
+		if (call->functor != NULL)
+			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+
 		throw NoResultSetUpException();
 	}
 	template <>
 	void DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
 	{
-		DoBasicExpectation(mock, funcno, tuple);
+		Call *call = DoBasicExpectation(mock, funcno, tuple);
+
+		if (call->functor != NULL)
+			(*(TupleInvocable<void> *)(call->functor))(tuple);
 	}
 	Call *DoBasicExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
 	{
@@ -1709,23 +2226,36 @@ public:
 		if (expectations.size() == 0)
 			throw ExpectationException();
 
-		//TODO: insert optional return stuff handling
-		Call *call = expectations.front(); 
-		expectations.pop_front(); 
+		if (expectations.front()->mock == mock &&
+			expectations.front()->funcIndex == funcno &&
+			expectations.front()->matchesArgs(tuple))
+		{
+			Call *call = expectations.front(); 
+			expectations.pop_front(); 
 
-		if (mock != call->mock) 
-			throw ExpectationException();
+			if (call->eHolder)
+				call->eHolder->rethrow();
 
-		if (funcno != call->funcIndex)
-			throw ExpectationException();
+			return call;
+		}
+		else
+		{
+			// match optionals
+			for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
+			{
+				Call *call = *i;
+				if (call->mock == mock &&
+					call->funcIndex == funcno &&
+					call->matchesArgs(tuple))
+				{
+					if (call->eHolder)
+						call->eHolder->rethrow();
 
-		if (!call->matchesArgs(tuple))
-			throw ExpectationException();
-
-		if (call->eHolder)
-			call->eHolder->rethrow();
-
-		return call;
+					return call;
+				}
+			}
+		}
+		throw ExpectationException();
 	}
 	MockRepository() 
 		: state(Record)
