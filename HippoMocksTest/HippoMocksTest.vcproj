@@ -51,7 +51,7 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				WarningLevel="3"
-				DebugInformationFormat="4"
+				DebugInformationFormat="3"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -188,6 +188,14 @@
 		</File>
 		<File
 			RelativePath=".\test_except.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_functors.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_optional.cpp"
 			>
 		</File>
 		<File

@@ -1852,6 +1852,7 @@ protected:
 		: retVal(0), 
 		eHolder(0), 
 		mock(mock), 
+		functor(0),
 		funcIndex(funcIndex), 
 		expectation(expectation) 
 	{
@@ -1908,8 +1909,8 @@ private:
 	std::list<Call *> optionals;
 	enum { Record, Playback, Verified } state;
 public:
-#define OnCall RegisterExpect_<__COUNTER__, false>
-#define ExpectCall RegisterExpect_<__COUNTER__, true>
+#define OnCall RegisterExpect_<__LINE__, false>
+#define ExpectCall RegisterExpect_<__LINE__, true>
 	template <int X, bool expect, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z *mck, Y (Z::*func)()) 
 	{
@@ -2223,10 +2224,8 @@ public:
 		if (state != Playback)
 			throw ExpectationException();
 
-		if (expectations.size() == 0)
-			throw ExpectationException();
-
-		if (expectations.front()->mock == mock &&
+		if (expectations.size() != 0 &&
+			expectations.front()->mock == mock &&
 			expectations.front()->funcIndex == funcno &&
 			expectations.front()->matchesArgs(tuple))
 		{
