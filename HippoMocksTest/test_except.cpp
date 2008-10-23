@@ -33,7 +33,7 @@ private:
 	const char *text;
 public:
 	SomeException(const char *txt) : text(txt) {}
-	const char *what() const { return text; }
+	const char *what() const throw() { return text; }
 };
 
 FUNC (checkClassTypeExceptionWithContent)

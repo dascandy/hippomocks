@@ -1174,194 +1174,12 @@ public:
 		: mock<T>(repo)
 	{
 		new(this)T();
-		backupVft = rewriteVft(*(void **)this, (void *)funcs);
+		backupVft = rewriteVft(*(void **)this, (void *)mock<T>::funcs);
 	}
 	~classMock()
 	{
-		rewriteVft((void *&)obj, backupVft);
-		((T *)this)::~T();
-	}
-};
-
-// mock function providers
-template <typename Z, typename Y>
-class mockFuncs : public mock<Z> 
-{
-public:
-	template <int X>
-	Y expectation0()
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<>());
-	}
-	template <int X, typename A>
-	Y expectation1(A a)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A>(a));
-	}
-	template <int X, typename A, typename B>
-	Y expectation2(A a, B b)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B>(a,b));
-	}
-	template <int X, typename A, typename B, typename C>
-	Y expectation3(A a, B b, C c)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C>(a,b,c));
-	}
-	template <int X, typename A, typename B, typename C, typename D>
-	Y expectation4(A a, B b, C c, D d)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D>(a,b,c,d));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E>
-	Y expectation5(A a, B b, C c, D d, E e)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
-	Y expectation6(A a, B b, C c, D d, E e, F f)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
-	Y expectation7(A a, B b, C c, D d, E e, F f, G g)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
-	Y expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
-	Y expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
-	Y expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
-	Y expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
-	Y expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
-	Y expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
-	Y expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
-	Y expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
-	Y expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
-	{
-		return repo->DoExpectation<Y>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
-	}
-};
-
-template <typename Z>
-class mockFuncs<Z, void> : public mock<Z> {
-public:
-	template <int X>
-	void expectation0()
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<>());
-	}
-	template <int X, typename A>
-	void expectation1(A a)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A>(a));
-	}
-	template <int X, typename A, typename B>
-	void expectation2(A a, B b)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B>(a,b));
-	}
-	template <int X, typename A, typename B, typename C>
-	void expectation3(A a, B b, C c)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C>(a,b,c));
-	}
-	template <int X, typename A, typename B, typename C, typename D>
-	void expectation4(A a, B b, C c, D d)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D>(a,b,c,d));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E>
-	void expectation5(A a, B b, C c, D d, E e)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
-	void expectation6(A a, B b, C c, D d, E e, F f)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
-	void expectation7(A a, B b, C c, D d, E e, F f, G g)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
-	void expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
-	void expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
-	void expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
-	void expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
-	void expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
-	void expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
-	void expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
-	void expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
-	}
-	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
-	void expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
-	{
-		repo->DoExpectation<void>(this, translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+		rewriteVft((void *&)mock<T>::obj, backupVft);
+		((T *)this)->~T();
 	}
 };
 
@@ -1901,7 +1719,6 @@ public:
 	void Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); }
 };
 
-// Mock repository & interface
 class MockRepository {
 private:
 	std::list<base_mock *> mocks;
@@ -1912,376 +1729,765 @@ public:
 #define OnCall RegisterExpect_<__LINE__, false>
 #define ExpectCall RegisterExpect_<__LINE__, true>
 	template <int X, bool expect, typename Y, typename Z>
-	TCall<Y> &RegisterExpect_(Z *mck, Y (Z::*func)()) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex, 
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation0<X>,X);
-		TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else 
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y> &RegisterExpect_(Z *mck, Y (Z::*func)());
 	template <int X, bool expect, typename Y, typename Z, typename A>
-	TCall<Y,A> &RegisterExpect_(Z *mck, Y (Z::*func)(A)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation1<X,A>,X);
-		TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A> &RegisterExpect_(Z *mck, Y (Z::*func)(A));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B>
-	TCall<Y,A,B> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation2<X,A,B>,X);
-		TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C>
-	TCall<Y,A,B,C> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation3<X,A,B,C>,X);
-		TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D>
-	TCall<Y,A,B,C,D> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation4<X,A,B,C,D>,X);
-		TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E>
-	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation5<X,A,B,C,D,E>,X);
-		TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F>
-	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation6<X,A,B,C,D,E,F>,X);
-		TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G>
-	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation7<X,A,B,C,D,E,F,G>,X);
-		TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H>
-	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation8<X,A,B,C,D,E,F,G,H>,X);
-		TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I>
-	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation9<X,A,B,C,D,E,F,G,H,I>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation10<X,A,B,C,D,E,F,G,H,I,J>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation11<X,A,B,C,D,E,F,G,H,I,J,K>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex,
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex, 
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex, 
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O));
 	template <int X, bool expect, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P)) 
-	{
-		int funcIndex = ((&func_index())->*reinterpret_cast<int (func_index::*)()>(func))();
-		BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
-							funcIndex 
-							(Y (base_mock::*)())&mockFuncs<Z, Y>::expectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>,X);
-		TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
-		if (expect)
-			expectations.push_back(call);
-		else
-			optionals.push_back(call);
-		return *call;
-	}
-	template <typename Z, typename Y>
-	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, Y (base_mock::*func)(), int X)
-	{
-		if (state != Record) throw ExpectationException();
-		if (zMock->funcMap[funcIndex] == -1)
-		{
-			zMock->funcs[funcIndex] = (void (base_mock::*)())func;
-			zMock->funcMap[funcIndex] = X;
-		}
-	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P));
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
-	{
-		Call *call = DoBasicExpectation(mock, funcno, tuple);
-
-		if (call->retVal)
-			return *((Z *)call->retVal);
-
-		if (call->functor != NULL)
-			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
-
-		throw NoResultSetUpException();
-	}
-	template <>
-	void DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
-	{
-		Call *call = DoBasicExpectation(mock, funcno, tuple);
-
-		if (call->functor != NULL)
-			(*(TupleInvocable<void> *)(call->functor))(tuple);
-	}
-	Call *DoBasicExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
-	{
-		if (state != Playback)
-			throw ExpectationException();
-
-		if (expectations.size() != 0 &&
-			expectations.front()->mock == mock &&
-			expectations.front()->funcIndex == funcno &&
-			expectations.front()->matchesArgs(tuple))
-		{
-			Call *call = expectations.front(); 
-			expectations.pop_front(); 
-
-			if (call->eHolder)
-				call->eHolder->rethrow();
-
-			return call;
-		}
-		else
-		{
-			// match optionals
-			for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
-			{
-				Call *call = *i;
-				if (call->mock == mock &&
-					call->funcIndex == funcno &&
-					call->matchesArgs(tuple))
-				{
-					if (call->eHolder)
-						call->eHolder->rethrow();
-
-					return call;
-				}
-			}
-		}
-		throw ExpectationException();
-	}
-	MockRepository() 
-		: state(Record)
-	{
-	}
-	~MockRepository() 
-	{
-	}
+	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
+	template <typename Z>
+	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple);
+    void MockRepository::DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+    {
+    	if (state != Playback)
+    		throw ExpectationException();
+    
+    	if (expectations.size() != 0 &&
+    		expectations.front()->mock == mock &&
+    		expectations.front()->funcIndex == funcno &&
+    		expectations.front()->matchesArgs(tuple))
+    	{
+    		Call *call = expectations.front(); 
+    		expectations.pop_front(); 
+    
+    		if (call->eHolder)
+    			call->eHolder->rethrow();
+    
+        	if (call->functor != NULL)
+        		(*(TupleInvocable<void> *)(call->functor))(tuple);
+    
+    		return;
+    	}
+    	else
+    	{
+    		// match optionals
+    		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
+    		{
+    			Call *call = *i;
+    			if (call->mock == mock &&
+    				call->funcIndex == funcno &&
+    				call->matchesArgs(tuple))
+    			{
+    				if (call->eHolder)
+    					call->eHolder->rethrow();
+    
+                	if (call->functor != NULL)
+                		(*(TupleInvocable<void> *)(call->functor))(tuple);
+    
+            		return;
+    			}
+    		}
+    	}
+    	throw ExpectationException();
+    }
+    MockRepository() 
+    	: state(Record)
+    {
+    }
+    ~MockRepository() 
+    {
+    }
+    void ReplayAll() {
+    	state = Playback;
+    }
+    void VerifyAll() {
+    	if (expectations.size() > 0)
+    		throw ExpectationException();
+    	state = Verified;
+    }
 	template <typename base>
-	base *InterfaceMock() {
-		mock<base> *m = new mock<base>(this);
-		return reinterpret_cast<base *>(m);
-	}
+	base *InterfaceMock();
 	template <typename base>
-	base *ClassMock() {
-		classMock<base> *m = new classMock<base>(this);
-		return reinterpret_cast<base *>(m);
+	base *ClassMock();
+};
+
+// mock function providers
+template <typename Z, typename Y>
+class mockFuncs : public mock<Z> 
+{
+private: 
+    mockFuncs();
+public:
+	template <int X>
+	Y expectation0()
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<>());
 	}
-	void ReplayAll() {
-		state = Playback;
+	template <int X, typename A>
+	Y expectation1(A a)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A>(a));
 	}
-	void VerifyAll() {
-		if (expectations.size() > 0)
-			throw ExpectationException();
-		state = Verified;
+	template <int X, typename A, typename B>
+	Y expectation2(A a, B b)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B>(a,b));
+	}
+	template <int X, typename A, typename B, typename C>
+	Y expectation3(A a, B b, C c)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C>(a,b,c));
+	}
+	template <int X, typename A, typename B, typename C, typename D>
+	Y expectation4(A a, B b, C c, D d)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D>(a,b,c,d));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E>
+	Y expectation5(A a, B b, C c, D d, E e)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
+	Y expectation6(A a, B b, C c, D d, E e, F f)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
+	Y expectation7(A a, B b, C c, D d, E e, F f, G g)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
+	Y expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
+	Y expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
+	Y expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
+	Y expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
+	Y expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
+	Y expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
+	Y expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
+	Y expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
+	Y expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
 };
+
+template <typename Z>
+class mockFuncs<Z, void> : public mock<Z> {
+private: 
+    mockFuncs();
+public:
+	template <int X>
+	void expectation0()
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<>());
+	}
+	template <int X, typename A>
+	void expectation1(A a)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A>(a));
+	}
+	template <int X, typename A, typename B>
+	void expectation2(A a, B b)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B>(a,b));
+	}
+	template <int X, typename A, typename B, typename C>
+	void expectation3(A a, B b, C c)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C>(a,b,c));
+	}
+	template <int X, typename A, typename B, typename C, typename D>
+	void expectation4(A a, B b, C c, D d)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D>(a,b,c,d));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E>
+	void expectation5(A a, B b, C c, D d, E e)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
+	void expectation6(A a, B b, C c, D d, E e, F f)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
+	void expectation7(A a, B b, C c, D d, E e, F f, G g)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
+	void expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
+	void expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
+	void expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
+	void expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
+	void expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
+	void expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
+	void expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
+	{
+        MockRepository *repo = mock<Z>::repo;
+        repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
+	void expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
+	void expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+	}
+};
+
+template <typename Z>
+void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X)
+{
+	if (state != Record) throw ExpectationException();
+	if (zMock->funcMap[funcIndex] == -1)
+	{
+		zMock->funcs[funcIndex] = func;
+		zMock->funcMap[funcIndex] = X;
+	}
+}
+// Mock repository implementation
+template <int X, bool expect, typename Y, typename Z>
+TCall<Y> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)()) 
+{
+    func_index idx;
+	int funcIndex = ((&idx)->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)();
+	mfp = &mockFuncs<Z, Y>::template expectation0<X>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex, 
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else 
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, typename A>
+TCall<Y,A> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A);
+	mfp = &mockFuncs<Z, Y>::template expectation1<X,A>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B>
+TCall<Y,A,B> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B);
+	mfp = &mockFuncs<Z, Y>::template expectation2<X,A,B>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C>
+TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C);
+	mfp = &mockFuncs<Z, Y>::template expectation3<X,A,B,C>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D>
+TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D);
+	mfp = &mockFuncs<Z, Y>::template expectation4<X,A,B,C,D>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E>
+TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E);
+	mfp = &mockFuncs<Z, Y>::template expectation5<X,A,B,C,D,E>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F>
+TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F);
+	mfp = &mockFuncs<Z, Y>::template expectation6<X,A,B,C,D,E,F>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G>
+TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G);
+	mfp = &mockFuncs<Z, Y>::template expectation7<X,A,B,C,D,E,F,G>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H>
+TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H);
+	mfp = &mockFuncs<Z, Y>::template expectation8<X,A,B,C,D,E,F,G,H>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I>
+TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I);
+	mfp = &mockFuncs<Z, Y>::template expectation9<X,A,B,C,D,E,F,G,H,I>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J>
+TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J);
+	mfp = &mockFuncs<Z, Y>::template expectation10<X,A,B,C,D,E,F,G,H,I,J>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K);
+	mfp = &mockFuncs<Z, Y>::template expectation11<X,A,B,C,D,E,F,G,H,I,J,K>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L);
+	mfp = &mockFuncs<Z, Y>::template expectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M);
+	mfp = &mockFuncs<Z, Y>::template expectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N);
+	mfp = &mockFuncs<Z, Y>::template expectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex, 
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N, typename O>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O);
+	mfp = &mockFuncs<Z, Y>::template expectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex, 
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <int X, bool expect, typename Y, typename Z, 
+		  typename A, typename B, typename C, typename D, 
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N, typename O, typename P>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P)) 
+{
+    func_index idx;
+	int funcIndex = (&idx->*reinterpret_cast<int (func_index::*)()>(func))();
+	Y (mockFuncs<Z, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
+	mfp = &mockFuncs<Z, Y>::template expectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+						funcIndex,
+						reinterpret_cast<void (base_mock::*)()>(mfp),X);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	if (expect)
+		expectations.push_back(call);
+	else
+		optionals.push_back(call);
+	return *call;
+}
+template <typename Z>
+Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+{
+	if (state != Playback)
+		throw ExpectationException();
+
+	if (expectations.size() != 0 &&
+		expectations.front()->mock == mock &&
+		expectations.front()->funcIndex == funcno &&
+		expectations.front()->matchesArgs(tuple))
+	{
+		Call *call = expectations.front(); 
+		expectations.pop_front(); 
+
+		if (call->eHolder)
+			call->eHolder->rethrow();
+
+    	if (call->retVal)
+    		return *((Z *)call->retVal);
+    
+    	if (call->functor != NULL)
+    		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+    
+    	throw NoResultSetUpException();
+	}
+	else
+	{
+		// match optionals
+		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno &&
+				call->matchesArgs(tuple))
+			{
+				if (call->eHolder)
+					call->eHolder->rethrow();
+
+            	if (call->retVal)
+            		return *((Z *)call->retVal);
+            
+            	if (call->functor != NULL)
+            		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+            
+            	throw NoResultSetUpException();
+			}
+		}
+	}
+	throw ExpectationException();
+}
+template <typename base>
+base *MockRepository::InterfaceMock() {
+	mock<base> *m = new mock<base>(this);
+	return reinterpret_cast<base *>(m);
+}
+template <typename base>
+base *MockRepository::ClassMock() {
+	classMock<base> *m = new classMock<base>(this);
+	return reinterpret_cast<base *>(m);
+}
 
 #endif
 

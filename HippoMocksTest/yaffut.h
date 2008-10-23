@@ -162,7 +162,7 @@ public:
       return 0;
     }
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(_WIN32)
     std::cout << "pid(" << getpid() << ")" << std::endl;
 #endif
 
