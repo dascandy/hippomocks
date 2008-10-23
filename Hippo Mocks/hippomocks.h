@@ -12,12 +12,12 @@ class base_mock {};
 // exception types
 class ExpectationException : public std::exception {
 public:
-	const char *what() const { return "Expectation was violated!"; }
+	const char *what() const throw() { return "Expectation was violated!"; }
 };
 
 class NotImplementedException : public std::exception {
 public:
-	const char *what() const { return "Function called with no expectations"; }
+	const char *what() const throw() { return "Function called with no expectations"; }
 };
 
 class NoResultSetUpException : public std::exception {};
