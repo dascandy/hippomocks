@@ -396,7 +396,6 @@ public:
 	virtual int f297() { return 297; }
 	virtual int f298() { return 298; }
 	virtual int f299() { return 299; }
-
 	virtual int f300() { return 300; }
 	virtual int f301() { return 301; }
 	virtual int f302() { return 302; }
@@ -1124,6 +1123,16 @@ public:
 	int index(int (func_index::*func)()) { return (this->*func)(); }
 };
 
+template <typename T, typename U>
+T horrible_cast(U u) {
+    union {
+        T t;
+        U u;
+    } conv;
+    conv.u = u;
+    return conv.t;
+}
+
 // mock types
 template <class T>
 class mock : public base_mock 
@@ -1134,7 +1143,7 @@ class mock : public base_mock
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(); }
 protected:
-	void (mock<T>::*funcs[VIRT_FUNC_LIMIT])();
+	void (*funcs[VIRT_FUNC_LIMIT])();
 	MockRepository *repo;
 public:
 	int funcMap[VIRT_FUNC_LIMIT];
@@ -1143,10 +1152,9 @@ public:
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++) 
 		{
-			funcs[i] = &mock<T>::NotImplemented;
+			funcs[i] = horrible_cast<void (*)()>(&mock<T>::NotImplemented);
 			funcMap[i] = -1;
 		}
-		//TODO: replace remaining with instance of T (somehow)
 		memset(remaining, 0, sizeof(remaining));
 	}
 	int translateX(int x) 
@@ -1664,6 +1672,8 @@ public:
 	base_mock *mock;
 	void *functor;
 	int funcIndex;
+	std::list<Call *> previousCalls;
+	bool satisfied;
 protected:
 	bool expectation;
 	Call(bool expectation, base_mock *mock, int funcIndex) 
@@ -1672,7 +1682,8 @@ protected:
 		mock(mock), 
 		functor(0),
 		funcIndex(funcIndex), 
-		expectation(expectation) 
+		expectation(expectation),
+		satisfied(false)
 	{
 	}
 };
@@ -1692,11 +1703,15 @@ public:
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
 	}
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &After(Call &call) { 
+		previousCalls.push_back(&call);
+		return *this; 
+	}
 	template <typename T>
-	void Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); }
-	void Return(Y obj) { retVal = new Y(obj); }
+	Call &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+	Call &Return(Y obj) { retVal = new Y(obj); return *this; }
 	template <typename Ex>
-	void Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); }
+	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
 
 template <typename A, typename B, typename C, typename D, 
@@ -1713,10 +1728,14 @@ public:
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
 	}
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &After(Call &call) { 
+		previousCalls.push_back(&call);
+		return *this; 
+	}
 	template <typename T>
-	void Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); }
+	Call &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	template <typename Ex>
-	void Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); }
+	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
 
 class MockRepository {
@@ -1726,6 +1745,7 @@ private:
 	std::list<Call *> optionals;
 	enum { Record, Playback, Verified } state;
 public:
+	bool autoExpect;
 #define OnCall RegisterExpect_<__LINE__, false>
 #define ExpectCall RegisterExpect_<__LINE__, true>
 	template <int X, bool expect, typename Y, typename Z>
@@ -1817,8 +1837,19 @@ public:
     	{
     		Call *call = expectations.front(); 
     		expectations.pop_front(); 
-    
-    		if (call->eHolder)
+			
+			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+				callsBefore != call->previousCalls.end(); ++callsBefore)
+			{
+				if (!(*callsBefore)->satisfied)
+				{
+					throw ExpectationException();
+				}
+			}
+
+			call->satisfied = true;
+				
+			if (call->eHolder)
     			call->eHolder->rethrow();
     
         	if (call->functor != NULL)
@@ -1835,8 +1866,19 @@ public:
     			if (call->mock == mock &&
     				call->funcIndex == funcno &&
     				call->matchesArgs(tuple))
-    			{
-    				if (call->eHolder)
+    			{			
+					for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+						callsBefore != call->previousCalls.end(); ++callsBefore)
+					{
+						if (!(*callsBefore)->satisfied)
+						{
+							throw ExpectationException();
+						}
+					}
+
+					call->satisfied = true;
+
+					if (call->eHolder)
     					call->eHolder->rethrow();
     
                 	if (call->functor != NULL)
@@ -1849,7 +1891,7 @@ public:
     	throw ExpectationException();
     }
     MockRepository() 
-    	: state(Record)
+    	: state(Record), autoExpect(true)
     {
     }
     ~MockRepository() 
@@ -2095,7 +2137,7 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (ba
 	if (state != Record) throw ExpectationException();
 	if (zMock->funcMap[funcIndex] == -1)
 	{
-		zMock->funcs[funcIndex] = func;
+		zMock->funcs[funcIndex] = horrible_cast<void (*)()>(func);
 		zMock->funcMap[funcIndex] = X;
 	}
 }
@@ -2112,7 +2154,13 @@ TCall<Y> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)())
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
+	}
 	else 
 		optionals.push_back(call);
 	return *call;
@@ -2442,6 +2490,17 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
 		Call *call = expectations.front(); 
 		expectations.pop_front(); 
 
+		for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+			callsBefore != call->previousCalls.end(); ++callsBefore)
+		{
+			if (!(*callsBefore)->satisfied)
+			{
+				throw ExpectationException();
+			}
+		}
+
+		call->satisfied = true;
+			
 		if (call->eHolder)
 			call->eHolder->rethrow();
 
@@ -2463,6 +2522,17 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
 				call->funcIndex == funcno &&
 				call->matchesArgs(tuple))
 			{
+				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+					callsBefore != call->previousCalls.end(); ++callsBefore)
+				{
+					if (!(*callsBefore)->satisfied)
+					{
+						throw ExpectationException();
+					}
+				}
+
+				call->satisfied = true;
+				
 				if (call->eHolder)
 					call->eHolder->rethrow();
 
