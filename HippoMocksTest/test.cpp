@@ -44,7 +44,7 @@ FUNC (checkMultiCallNotCalled)
 	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
-	bool exceptionCaught = true;
+	bool exceptionCaught = false;
 	try {
 		mocks.VerifyAll();
 	}
@@ -64,7 +64,7 @@ FUNC (checkMultiCallWrongOrder)
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ReplayAll();
 	iamock->f();
-	bool exceptionCaught = true;
+	bool exceptionCaught = false;
 	try {
 		iamock->f();
 	}
@@ -103,7 +103,7 @@ FUNC (checkOvercompleteExpectations)
 	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
-	bool exceptionCaught = true;
+	bool exceptionCaught = false;
 	try {
 		iamock->f();
 	}
@@ -121,7 +121,7 @@ FUNC (checkExpectationsAreInOrder)
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ReplayAll();
-	bool exceptionCaught = true;
+	bool exceptionCaught = false;
 	try {
 		iamock->g();
 	}
