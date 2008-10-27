@@ -1825,7 +1825,7 @@ public:
 	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
 	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple);
-    void MockRepository::DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+    void DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
     {
     	if (state != Playback)
     		throw ExpectationException();
