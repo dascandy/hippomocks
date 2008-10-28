@@ -7,7 +7,21 @@
 class MockRepository;
 
 // base types
-class base_mock {};
+class base_mock {
+public:
+	void destroy() { unwriteVft(); delete this; }
+	virtual ~base_mock() {}
+	void *rewriteVft(void *newVf) 
+	{
+		void *oldVf = *(void **)this;
+		*(void **)this = newVf;
+		return oldVf;
+	}
+	void unwriteVft() 
+	{
+		*(void **)this = (*(void ***)this)[-1];
+	}
+};
 
 // exception types
 class ExpectationException : public std::exception {
@@ -1139,16 +1153,16 @@ class mock : public base_mock
 {
 	friend class MockRepository;
 	static const int VIRT_FUNC_LIMIT = 1024;
-	void *vft;
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(); }
 protected:
+	void *oldVft;
 	void (*funcs[VIRT_FUNC_LIMIT])();
 	MockRepository *repo;
 public:
 	int funcMap[VIRT_FUNC_LIMIT];
 	mock(MockRepository *repo) 
-		: repo(repo), vft((void *)&funcs)
+		: repo(repo)
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++) 
 		{
@@ -1156,6 +1170,7 @@ public:
 			funcMap[i] = -1;
 		}
 		memset(remaining, 0, sizeof(remaining));
+		rewriteVft(funcs);
 	}
 	int translateX(int x) 
 	{
@@ -1172,21 +1187,16 @@ class classMock : public mock<T>
 {
 	void *backupVft;
 public:
-	void *rewriteVft(void *&addr, void *newVf) 
-	{
-		void *oldVf = addr;
-		addr = newVf;
-		return oldVf;
-	}
 	classMock(MockRepository *repo) 
 		: mock<T>(repo)
 	{
+		oldVft = rewriteVft((void *)mock<T>::funcs);
 		new(this)T();
-		backupVft = rewriteVft(*(void **)this, (void *)mock<T>::funcs);
+		backupVft = rewriteVft((void *)mock<T>::funcs);
 	}
 	~classMock()
 	{
-		rewriteVft((void *&)mock<T>::obj, backupVft);
+		rewriteVft(backupVft);
 		((T *)this)->~T();
 	}
 };
@@ -1208,9 +1218,10 @@ public:
 };
 
 // Do() function wrapping
+class VirtualDestructable { public: virtual ~VirtualDestructable() {} };
 
 template <typename Y>
-class TupleInvocable
+class TupleInvocable : public VirtualDestructable 
 {
 public:
 	virtual Y operator()(base_tuple *tupl) = 0;
@@ -1670,7 +1681,7 @@ public:
 	void *retVal;
 	ExceptionHolder *eHolder;
 	base_mock *mock;
-	void *functor;
+	VirtualDestructable *functor;
 	int funcIndex;
 	std::list<Call *> previousCalls;
 	bool satisfied;
@@ -1686,6 +1697,11 @@ protected:
 		satisfied(false)
 	{
 	}
+public:
+	virtual ~Call() {
+		delete eHolder;
+		delete functor;
+	}
 };
 
 template <typename Y, 
@@ -1698,6 +1714,7 @@ private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
 	TCall(bool expectation, base_mock *mock, int funcIndex) : Call(expectation, mock, funcIndex), args(0) {}
+	~TCall() { delete args; }
 	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl); }
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
@@ -1723,6 +1740,7 @@ private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
 	TCall(bool expectation, base_mock *mock, int funcIndex) : Call(expectation, mock, funcIndex), args(0) {}
+	~TCall() { delete args; }
 	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl); }
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
@@ -1835,7 +1853,7 @@ public:
     		expectations.front()->funcIndex == funcno &&
     		expectations.front()->matchesArgs(tuple))
     	{
-    		Call *call = expectations.front(); 
+			std::auto_ptr<Call> call(expectations.front()); 
     		expectations.pop_front(); 
 			
 			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
@@ -1896,6 +1914,15 @@ public:
     }
     ~MockRepository() 
     {
+		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++) {
+			(*i)->destroy();
+		}
+		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) {
+			delete *i;
+		}
+		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); i++) {
+			delete *i;
+		}
     }
     void ReplayAll() {
     	state = Playback;
@@ -2153,6 +2180,9 @@ TCall<Y> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)())
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+#ifdef _WIN32
+#pragma warning(disable: 4127)
+#endif
 	if (expect)
 	{
 		if (autoExpect && expectations.size() > 0) 
@@ -2176,6 +2206,9 @@ TCall<Y,A> &MockRepository::RegisterExpect_(Z *mck, Y (Z::*func)(A))
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+#ifdef _WIN32
+#pragma warning(disable: 4127)
+#endif
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2487,7 +2520,7 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
 		expectations.front()->funcIndex == funcno &&
 		expectations.front()->matchesArgs(tuple))
 	{
-		Call *call = expectations.front(); 
+		std::auto_ptr<Call> call(expectations.front()); 
 		expectations.pop_front(); 
 
 		for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
