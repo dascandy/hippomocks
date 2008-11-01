@@ -4,6 +4,10 @@
 // "volatile" prevents the compiler from eliminating the "CHECK(!hit)" code.
 static volatile bool hit = false;
 
+int ReplaceHelloWorld(int i);
+
+static void* somewhere = ReplaceHelloWorld;
+
 // The compiler will inline this function without this pragma.
 #pragma auto_inline(off)
 int HelloWorld(int i)
@@ -21,6 +25,8 @@ int ReplaceHelloWorld(int i)
 	hit = true;
 	return 42;
 }
+
+
 
 FUNC (checkInjection)
 {

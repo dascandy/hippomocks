@@ -4,6 +4,7 @@
 
 #define MAX_FUNCTION_SIZE 4096
 #define ORIGINAL_COPY_OFFSET 2048
+#define TRAMPOLINE_OFFSET 512
 
 struct SimpleInstruction
 {
@@ -15,11 +16,16 @@ struct SimpleInstruction
 // Disassembly example (HelloWorld in release mode):
 // 00401350 8B 44 24 04      mov         eax,dword ptr [esp+4] 
 // 00401354 85 C0            test        eax,eax 
+// Helloworld in x64 mode:
+// 0000000140001660 85 C9            test        ecx,ecx 
+// 0000000140001662 8D 04 09         lea         eax,[rcx+rcx] 
+
 static SimpleInstruction instructions[] =
 {
 	{    0x50,     0xF0, 1},  // push register
-	{0x24448B, 0xFFFFFF, 4},  // mov         eax,dword ptr [esp+4] 
-	{0x00C085, 0x00FFFF, 2},  // test        eax,eax
+	{0x24448B, 0xFFFFFF, 4},  // mov  eax,dword ptr [esp+4] 
+	{0x00C085, 0x00F0FF, 2},  // test reg,reg        (not 100% sure about the mask here)
+	{0x09048D, 0xFFFFFF, 3},  // lea  eax,[rcx+rcx]  (needs investigating)
 	{0, 0, 0}
 };
 
@@ -62,6 +68,7 @@ static size_t copy(void* fnDst, void* fnSrc, size_t count)
 			instructionSize = copyCorrected(fnDst, fnSrc);
 			if (instructionSize == 0)
 			{
+				OutputDebugString(_T("Some CPU instructions not understood, aborting\n"));
 				return 0;
 			}
 		}
@@ -76,11 +83,43 @@ static size_t copy(void* fnDst, void* fnSrc, size_t count)
 	return done;
 }
 
-// For Win32, this is good enough. For x64, find a spot near the current code.
-// Hint: VirtualQuery and GetSystemInfo
+#ifdef _WIN64
 static void* NearAllocate(void* fnNearMe)
 {
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+
+	// Step through all memory blocks and find a region marked as MEM_FREE
+	MEMORY_BASIC_INFORMATION memoryBlock;
+	while (VirtualQuery(fnNearMe, &memoryBlock, sizeof(memoryBlock)) != 0)
+	{
+		fnNearMe = memoryBlock.BaseAddress;
+		if (memoryBlock.State == MEM_FREE)
+		{
+            void* result = VirtualAlloc((char*)fnNearMe + systemInfo.dwAllocationGranularity - 1, MAX_FUNCTION_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+            if (result != NULL)
+			{
+				return result;
+			}
+		}
+		fnNearMe = (char*)fnNearMe + memoryBlock.RegionSize;
+	}
+
+	OutputDebugString(_T("Failed to find NEAR memory, cannot intercept\n"));
+	return NULL;
+}
+#else
+// For Win32, this is good enough
+static void* NearAllocate(void* /*fnNearMe*/)
+{
 	return VirtualAlloc(NULL, MAX_FUNCTION_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+}
+#endif
+
+static bool IsFarJump(void* fnDst, void* fnSrc)
+{
+	INT_PTR dist = (char*)fnDst - (char*)fnSrc;
+	return (dist > 0x7FFFFFF) || (dist < -0x7FFFFFF);
 }
 
 void* inject(void* fnOriginal, void* fnReplace)
@@ -106,7 +145,7 @@ void* inject(void* fnOriginal, void* fnReplace)
 	*(void**)((char*)fnInter + ORIGINAL_COPY_OFFSET) = fnOriginal;
 	*(WORD*)((char*)fnInter + ORIGINAL_COPY_OFFSET + sizeof(void*)) = (WORD)bytes;
 
-	// Append the JMP instruction to the intermediate
+	// Append the JMP instruction to the intermediate (which is always a near jump)
 	unsigned char* jmpInstruction;
 	jmpInstruction = (unsigned char*)fnInter + bytes;
 	jmpInstruction[0] = 0xE9; // jmp
@@ -125,8 +164,42 @@ void* inject(void* fnOriginal, void* fnReplace)
 	
 	// Insert jump to replacement
 	jmpInstruction = (unsigned char*)fnOriginal;
-	jmpInstruction[0] = 0xE9; // jmp
-	*(DWORD*)(jmpInstruction + 1) = (DWORD)((unsigned char*)fnReplace - ((unsigned char*)fnOriginal + 5));
+
+	if (IsFarJump(fnOriginal, fnReplace))
+	{
+		// jump to a location in the intermediate, where we'll encode a jump to the actual
+		// replacement. We'll call it the trampoline for obvious reasons :)
+
+		// TODO: Make this a 64-bit indirect jump!
+		unsigned char* fnTrampoline = (unsigned char*)fnInter + TRAMPOLINE_OFFSET;
+		//fnTrampoline[0] = 0xE9;
+		//*(DWORD*)(fnTrampoline + 1) = (DWORD)((unsigned char*)fnReplace - (fnTrampoline + 5));
+	
+		fnTrampoline[0] = 0xFF; // JMP
+		fnTrampoline[1] = 0x25; // mem32
+
+		// This ifdef will be incredibly silly because you can only get here in x64 mode anyway.
+		// But it's really convenient for testing whether the trampoline just works.
+#ifdef _WIN64
+		//x64 uses relative addressing
+		*(DWORD*)(fnTrampoline + 2) = 0;
+		*(void**)(fnTrampoline + 6) = fnReplace;
+#else
+		// x86 uses absolute addressing
+		*(DWORD*)(fnTrampoline + 2) = (DWORD)(UINT_PTR)(fnTrampoline + 16);
+		*(void**)(fnTrampoline + 16) = fnReplace;
+#endif
+
+		// Jump to trampoline
+		jmpInstruction[0] = 0xE9; // jmp
+		*(DWORD*)(jmpInstruction + 1) = (DWORD)(fnTrampoline - ((unsigned char*)fnOriginal + 5));
+	}
+	else
+	{
+		// Jump directly to replacement, it's a near jump
+		jmpInstruction[0] = 0xE9; // jmp
+		*(DWORD*)(jmpInstruction + 1) = (DWORD)((unsigned char*)fnReplace - ((unsigned char*)fnOriginal + 5));
+	}
 	// Fill remainder with NOP to help the disassembly viewer.
 	jmpInstruction += 5;
 	for (int i = (int)(bytes-5); i != 0; --i)
