@@ -45,12 +45,13 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/vmg"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\Hippo Mocks&quot;"
+				AdditionalIncludeDirectories=""
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
-				WarningLevel="3"
+				WarningLevel="4"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -117,6 +118,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/vmg"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				RuntimeLibrary="2"
@@ -167,7 +169,11 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\Hippo Mocks\hippomocks.h"
+			RelativePath=".\hippomocks.h"
+			>
+		</File>
+		<File
+			RelativePath=".\is_virtual.cpp"
 			>
 		</File>
 		<File
