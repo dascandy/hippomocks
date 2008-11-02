@@ -16,12 +16,11 @@ bool is_virtual_func(unsigned char *func) {
 	}
 	else
 	{
-		func += 2;
-		switch(*(unsigned short *)func)
-		{
-		case 0x20ff:
-		case 0x60ff:
-		case 0xA0ff: return true;
+		switch(*(unsigned int *)func)
+		{ // mov ecx, this; jump [eax + v/Ib/Iw]
+		case 0x20ff018b:
+		case 0x60ff018b:
+		case 0xA0ff018b: return true;
 		default: return false;
 		}
 	}
