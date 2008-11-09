@@ -23,8 +23,9 @@ struct SimpleInstruction
 static SimpleInstruction instructions[] =
 {
 	{    0x50,     0xF0, 1},  // push register
-	{0x24448B, 0xFFFFFF, 4},  // mov  eax,dword ptr [esp+4] 
-	{0x00C085, 0x00F0FF, 2},  // test reg,reg        (not 100% sure about the mask here)
+	{0x24448B, 0xFFFFFF, 4},  // mov  eax,dword ptr [esp+4]
+	{  0xC08B,   0xC0FF, 2},  // mov  reg,reg
+	{  0xC085,   0xF0FF, 2},  // test reg,reg        (not 100% sure about the mask here)
 	{0x09048D, 0xFFFFFF, 3},  // lea  eax,[rcx+rcx]  (needs investigating)
 	{0, 0, 0}
 };
