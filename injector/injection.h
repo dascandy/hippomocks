@@ -49,7 +49,7 @@ public:
 	 */
 	bool install(HMODULE hModule, UINT_PTR offset, T fnReplacement)
 	{
-		if ( offset == NULL)
+		if ((offset == NULL) || (hModule == NULL))
 		{
 			return false;
 		}
@@ -67,7 +67,7 @@ public:
 		{
 			return false;
 		}
-		fnOriginal = (T)InjectFunction(fnOriginalFunc, fnReplacement);
+		fnOriginal = (T)inject(fnOriginalFunc, fnReplacement);
 		return (fnOriginal != NULL);
 	}
 
