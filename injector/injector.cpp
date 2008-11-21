@@ -19,6 +19,8 @@ struct SimpleInstruction
 // Helloworld in x64 mode:
 // 0000000140001660 85 C9            test        ecx,ecx 
 // 0000000140001662 8D 04 09         lea         eax,[rcx+rcx] 
+// 000007FF798A80E0 4C 8B DC         mov         r11,rsp 
+// 000007FF798A80E3 48 83 EC 58      sub         rsp,58h 
 
 static SimpleInstruction instructions[] =
 {
@@ -27,6 +29,11 @@ static SimpleInstruction instructions[] =
 	{  0xC08B,   0xC0FF, 2},  // mov  reg,reg
 	{  0xC085,   0xF0FF, 2},  // test reg,reg        (not 100% sure about the mask here)
 	{0x09048D, 0xFFFFFF, 3},  // lea  eax,[rcx+rcx]  (needs investigating)
+#ifdef _WIN64
+	{  0xEC8348,   0xFFFFFF, 4},		// sub rsp, ?
+	{0x24448948, 0xFF44FFFB, 5},		// mov qword ptr [rsp+?h],r64 (denk ik)
+	{  0xC08B4C,   0xC0FFFF, 3},    // mov  r64,r64
+#endif
 	{0, 0, 0}
 };
 
@@ -56,6 +63,7 @@ static size_t copyCorrected(void* fnDst, void* fnSrc)
 	}
 	return 0;
 }
+#include <stdio.h>
 
 static size_t copy(void* fnDst, void* fnSrc, size_t count)
 {
@@ -70,6 +78,10 @@ static size_t copy(void* fnDst, void* fnSrc, size_t count)
 			if (instructionSize == 0)
 			{
 				OutputDebugString(_T("Some CPU instructions not understood, aborting\n"));
+				char d[128];
+				unsigned char* b = (unsigned char*)fnSrc;
+				sprintf(d, "Instruction dump: %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x\n", (int)b[0], (int)b[1], (int)b[2], (int)b[3], (int)b[4], (int)b[5], (int)b[6], (int)b[7]);
+				OutputDebugStringA(d);
 				return 0;
 			}
 		}
