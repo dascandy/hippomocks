@@ -1704,16 +1704,18 @@ public:
 	int funcIndex;
 	std::list<Call *> previousCalls;
 	bool satisfied;
+	int lineno;
 protected:
 	bool expectation;
-	Call(bool expectation, base_mock *mock, int funcIndex) 
+	Call(bool expectation, base_mock *mock, int funcIndex, int X) 
 		: retVal(0), 
 		eHolder(0), 
 		mock(mock), 
 		functor(0),
 		funcIndex(funcIndex), 
 		expectation(expectation),
-		satisfied(false)
+		satisfied(false),
+		lineno(X)
 	{
 	}
 public:
@@ -1732,7 +1734,7 @@ class TCall : public Call {
 private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex) : Call(expectation, mock, funcIndex), args(0) {}
+	TCall(bool expectation, base_mock *mock, int funcIndex, int X) : Call(expectation, mock, funcIndex, X), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl); }
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
@@ -1758,7 +1760,7 @@ class TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public Call {
 private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex) : Call(expectation, mock, funcIndex), args(0) {}
+	TCall(bool expectation, base_mock *mock, int funcIndex, int X) : Call(expectation, mock, funcIndex, X), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl); }
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
@@ -2086,64 +2088,66 @@ public:
     	if (state != Playback)
     		throw ExpectationException();
     
-    	if (expectations.size() != 0 &&
-    		expectations.front()->mock == mock &&
-    		expectations.front()->funcIndex == funcno &&
-    		expectations.front()->matchesArgs(tuple))
-    	{
-			std::auto_ptr<Call> call(expectations.front()); 
-    		expectations.pop_front(); 
-			
-			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
-				callsBefore != call->previousCalls.end(); ++callsBefore)
+		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno &&
+				call->matchesArgs(tuple))
 			{
-				if (!(*callsBefore)->satisfied)
+				bool allSatisfy = true;
+				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+					callsBefore != call->previousCalls.end(); ++callsBefore)
 				{
-					throw ExpectationException();
-				}
-			}
-
-			call->satisfied = true;
-				
-			if (call->eHolder)
-    			call->eHolder->rethrow();
-    
-        	if (call->functor != NULL)
-        		(*(TupleInvocable<void> *)(call->functor))(tuple);
-    
-    		return;
-    	}
-    	else
-    	{
-    		// match optionals
-    		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
-    		{
-    			Call *call = *i;
-    			if (call->mock == mock &&
-    				call->funcIndex == funcno &&
-    				call->matchesArgs(tuple))
-    			{			
-					for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
-						callsBefore != call->previousCalls.end(); ++callsBefore)
+					if (!(*callsBefore)->satisfied)
 					{
-						if (!(*callsBefore)->satisfied)
-						{
-							throw ExpectationException();
-						}
+						allSatisfy = false;
 					}
+				}
+				if (!allSatisfy) continue;
 
-					call->satisfied = true;
+    			expectations.erase(i); 
+			
+				call->satisfied = true;
+					
+				if (call->eHolder)
+					call->eHolder->rethrow();
 
-					if (call->eHolder)
-    					call->eHolder->rethrow();
-    
-                	if (call->functor != NULL)
-                		(*(TupleInvocable<void> *)(call->functor))(tuple);
-    
-            		return;
-    			}
-    		}
-    	}
+    			if (call->functor != NULL)
+    				(*(TupleInvocable<void> *)(call->functor))(tuple);
+
+				return;
+	    	}
+		}
+		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno &&
+				call->matchesArgs(tuple))
+			{			
+				bool allSatisfy = true;
+				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+					callsBefore != call->previousCalls.end(); ++callsBefore)
+				{
+					if (!(*callsBefore)->satisfied)
+					{
+						allSatisfy = false;
+					}
+				}
+				if (!allSatisfy) continue;
+
+				call->satisfied = true;
+
+				if (call->eHolder)
+					call->eHolder->rethrow();
+
+            	if (call->functor != NULL)
+            		(*(TupleInvocable<void> *)(call->functor))(tuple);
+
+        		return;
+			}
+		}
     	throw ExpectationException();
     }
     MockRepository() 
@@ -2417,7 +2421,7 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)())
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 #ifdef _WIN32
 #pragma warning(disable: 4127)
 #endif
@@ -2443,7 +2447,7 @@ TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A))
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 #ifdef _WIN32
 #pragma warning(disable: 4127)
 #endif
@@ -2464,7 +2468,7 @@ TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B))
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2482,7 +2486,7 @@ TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C))
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2500,7 +2504,7 @@ TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D)
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2519,7 +2523,7 @@ TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2538,7 +2542,7 @@ TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2557,7 +2561,7 @@ TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2576,7 +2580,7 @@ TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2596,7 +2600,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2616,7 +2620,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*fu
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2636,7 +2640,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2656,7 +2660,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z:
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2677,7 +2681,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2698,7 +2702,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2719,7 +2723,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck,
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2740,7 +2744,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex);
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
 		expectations.push_back(call);
 	else
@@ -2753,68 +2757,70 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
 	if (state != Playback)
 		throw ExpectationException();
 
-	if (expectations.size() != 0 &&
-		expectations.front()->mock == mock &&
-		expectations.front()->funcIndex == funcno &&
-		expectations.front()->matchesArgs(tuple))
+	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 	{
-		std::auto_ptr<Call> call(expectations.front()); 
-		expectations.pop_front(); 
-
-		for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
-			callsBefore != call->previousCalls.end(); ++callsBefore)
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno &&
+			call->matchesArgs(tuple))
 		{
-			if (!(*callsBefore)->satisfied)
+			bool allSatisfy = true;
+			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+				callsBefore != call->previousCalls.end(); ++callsBefore)
 			{
-				throw ExpectationException();
-			}
-		}
-
-		call->satisfied = true;
-			
-		if (call->eHolder)
-			call->eHolder->rethrow();
-
-    	if (call->retVal)
-    		return *((Z *)call->retVal);
-    
-    	if (call->functor != NULL)
-    		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
-    
-    	throw NoResultSetUpException();
-	}
-	else
-	{
-		// match optionals
-		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
-		{
-			Call *call = *i;
-			if (call->mock == mock &&
-				call->funcIndex == funcno &&
-				call->matchesArgs(tuple))
-			{
-				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
-					callsBefore != call->previousCalls.end(); ++callsBefore)
+				if (!(*callsBefore)->satisfied)
 				{
-					if (!(*callsBefore)->satisfied)
-					{
-						throw ExpectationException();
-					}
+					allSatisfy = false;
 				}
-
-				call->satisfied = true;
-				
-				if (call->eHolder)
-					call->eHolder->rethrow();
-
-            	if (call->retVal)
-            		return *((Z *)call->retVal);
-            
-            	if (call->functor != NULL)
-            		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
-            
-            	throw NoResultSetUpException();
 			}
+			if (!allSatisfy) continue;
+
+			expectations.erase(i);
+
+			call->satisfied = true;
+
+			if (call->eHolder)
+				call->eHolder->rethrow();
+
+    		if (call->retVal)
+    			return *((Z *)call->retVal);
+
+    		if (call->functor != NULL)
+    			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+
+    		throw NoResultSetUpException();
+		}
+	}
+	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno &&
+			call->matchesArgs(tuple))
+		{
+			bool allSatisfy = true;
+			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+				callsBefore != call->previousCalls.end(); ++callsBefore)
+			{
+				if (!(*callsBefore)->satisfied)
+				{
+					allSatisfy = false;
+				}
+			}
+			if (!allSatisfy) continue;
+
+			call->satisfied = true;
+			
+			if (call->eHolder)
+				call->eHolder->rethrow();
+
+        	if (call->retVal)
+        		return *((Z *)call->retVal);
+        
+        	if (call->functor != NULL)
+        		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+        
+        	throw NoResultSetUpException();
 		}
 	}
 	throw ExpectationException();

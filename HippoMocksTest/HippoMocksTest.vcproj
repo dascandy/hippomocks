@@ -222,6 +222,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_transaction.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\yaffut.cpp"
 			>
 		</File>
