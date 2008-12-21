@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="HippoMocksTest"
 	ProjectGUID="{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
 	RootNamespace="HippoMocksTest"
@@ -47,7 +47,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/vmg"
 				Optimization="0"
-				AdditionalIncludeDirectories=""
+				AdditionalIncludeDirectories="../Hippo Mocks/"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -121,9 +121,10 @@
 				AdditionalOptions="/vmg"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="../hippo mocks"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
-				WarningLevel="3"
+				WarningLevel="4"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -169,7 +170,7 @@
 	</References>
 	<Files>
 		<File
-			RelativePath=".\hippomocks.h"
+			RelativePath="..\Hippo Mocks\hippomocks.h"
 			>
 		</File>
 		<File
@@ -190,6 +191,14 @@
 		</File>
 		<File
 			RelativePath=".\test_class_mock.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_constref_params.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_cv_funcs.cpp"
 			>
 		</File>
 		<File
