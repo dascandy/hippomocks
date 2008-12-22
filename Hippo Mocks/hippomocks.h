@@ -7,6 +7,8 @@
 
 #ifdef _WIN32
 #pragma warning(disable: 4512)
+#pragma warning(disable: 4121)
+#pragma warning(disable: 4127)
 #endif
 
 class MockRepository;
@@ -1156,9 +1158,6 @@ public:
 
 template <typename T, typename U>
 T horrible_cast(U u) {
-#ifdef _WIN32
-#pragma warning(disable: 4121)
-#endif
 	union {
         T t;
         U u;
@@ -1190,7 +1189,7 @@ public:
 			funcMap[i] = -1;
 		}
 		memset(remaining, 0, sizeof(remaining));
-		oldVft = rewriteVft(funcs);
+		oldVft = base_mock::rewriteVft(funcs);
 	}
 	int translateX(int x) 
 	{
@@ -1210,13 +1209,13 @@ public:
 	classMock(MockRepository *repo) 
 		: mock<T>(repo)
 	{
-		mock<T>::oldVft = rewriteVft((void *)mock<T>::funcs);
+		mock<T>::oldVft = base_mock::rewriteVft((void *)mock<T>::funcs);
 		new(this)T();
-		backupVft = rewriteVft((void *)mock<T>::funcs);
+		backupVft = base_mock::rewriteVft((void *)mock<T>::funcs);
 	}
 	~classMock()
 	{
-		rewriteVft(backupVft);
+		base_mock::rewriteVft(backupVft);
 		((T *)this)->~T();
 	}
 };
@@ -1289,6 +1288,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1303,6 +1303,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1317,6 +1318,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1331,6 +1333,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1344,6 +1347,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1357,6 +1361,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J,K>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1370,6 +1375,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i,j);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I,J>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1383,6 +1389,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h,i);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H,I>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1395,6 +1402,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g,h);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G,H>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1407,6 +1415,7 @@ public:
 	{
 		return t(a,b,c,d,e,f,g);
 	}
+	using Invocable<Y,A,B,C,D,E,F,G>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1419,6 +1428,7 @@ public:
 	{
 		return t(a,b,c,d,e,f);
 	}
+	using Invocable<Y,A,B,C,D,E,F>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D, 
@@ -1431,6 +1441,7 @@ public:
 	{
 		return t(a,b,c,d,e);
 	}
+	using Invocable<Y,A,B,C,D,E>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C, typename D>
@@ -1442,6 +1453,7 @@ public:
 	{
 		return t(a,b,c,d);
 	}
+	using Invocable<Y,A,B,C,D>::operator();
 };
 template <typename T, typename Y,
 		  typename A, typename B, typename C>
@@ -1453,6 +1465,7 @@ public:
 	{
 		return t(a,b,c);
 	}
+	using Invocable<Y,A,B,C>::operator();
 };
 template <typename T, typename Y, typename A, typename B>
 class DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B> {
@@ -1463,6 +1476,7 @@ public:
 	{
 		return t(a,b);
 	}
+	using Invocable<Y,A,B>::operator();
 };
 template <typename T, typename Y, typename A>
 class DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A> {
@@ -1473,6 +1487,7 @@ public:
 	{
 		return t(a);
 	}
+	using Invocable<Y,A>::operator();
 };
 template <typename T, typename Y>
 class DoWrapper<T,Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y> {
@@ -1483,6 +1498,7 @@ public:
 	{
 		return t();
 	}
+	using Invocable<Y>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1497,6 +1513,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1511,6 +1528,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1525,6 +1543,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1539,6 +1558,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k,l,m);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1552,6 +1572,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k,l);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1565,6 +1586,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j,k);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1578,6 +1600,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i,j);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I,J>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1591,6 +1614,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h,i);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H,I>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1603,6 +1627,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g,h);
 	}
+	using Invocable<void,A,B,C,D,E,F,G,H>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1615,6 +1640,7 @@ public:
 	{
 		t(a,b,c,d,e,f,g);
 	}
+	using Invocable<void,A,B,C,D,E,F,G>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1627,6 +1653,7 @@ public:
 	{
 		t(a,b,c,d,e,f);
 	}
+	using Invocable<void,A,B,C,D,E,F>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D, 
@@ -1639,6 +1666,7 @@ public:
 	{
 		t(a,b,c,d,e);
 	}
+	using Invocable<void,A,B,C,D,E>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C, typename D>
@@ -1650,6 +1678,7 @@ public:
 	{
 		t(a,b,c,d);
 	}
+	using Invocable<void,A,B,C,D>::operator();
 };
 template <typename T,
 		  typename A, typename B, typename C>
@@ -1661,6 +1690,7 @@ public:
 	{
 		t(a,b,c);
 	}
+	using Invocable<void,A,B,C>::operator();
 };
 template <typename T, typename A, typename B>
 class DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B> {
@@ -1671,6 +1701,7 @@ public:
 	{
 		t(a,b);
 	}
+	using Invocable<void,A,B>::operator();
 };
 template <typename T, typename A>
 class DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A> {
@@ -1681,6 +1712,7 @@ public:
 	{
 		t(a);
 	}
+	using Invocable<void,A>::operator();
 };
 template <typename T>
 class DoWrapper<T,void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void> {
@@ -1691,6 +1723,7 @@ public:
 	{
 		t();
 	}
+	using Invocable<void>::operator();
 };
 
 //Call wrapping
@@ -2423,9 +2456,6 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)())
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
-#ifdef _WIN32
-#pragma warning(disable: 4127)
-#endif
 	if (expect)
 	{
 		if (autoExpect && expectations.size() > 0) 
@@ -2449,12 +2479,15 @@ TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A))
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
-#ifdef _WIN32
-#pragma warning(disable: 4127)
-#endif
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2471,8 +2504,14 @@ TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B))
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2489,8 +2528,14 @@ TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C))
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2507,8 +2552,14 @@ TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D)
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2526,8 +2577,14 @@ TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2545,8 +2602,14 @@ TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2564,8 +2627,14 @@ TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2583,8 +2652,14 @@ TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2603,8 +2678,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2623,8 +2704,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*fu
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2643,8 +2730,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2663,8 +2756,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z:
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2684,8 +2783,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2705,8 +2810,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2726,8 +2837,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
@@ -2747,8 +2864,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X);
 	if (expect)
+	{
+		if (autoExpect && expectations.size() > 0) 
+		{
+			call->previousCalls.push_back(expectations.back());
+		}
 		expectations.push_back(call);
-	else
+	}
+	else 
 		optionals.push_back(call);
 	return *call;
 }
