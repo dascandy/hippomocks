@@ -31,7 +31,7 @@ template <typename T>
 bool is_virtual(T t)
 {
 	unsigned int target = *horrible_cast<unsigned int *>(&t);
-#ifdef __GCC__
+#ifdef __GNUG__
 	// simple implementation
 	return target & 1;
 #else

@@ -3,6 +3,7 @@
 
 #include <list>
 #include <map>
+#include <memory>
 
 #ifdef _WIN32
 #pragma warning(disable: 4512)
@@ -1209,7 +1210,7 @@ public:
 	classMock(MockRepository *repo) 
 		: mock<T>(repo)
 	{
-		oldVft = rewriteVft((void *)mock<T>::funcs);
+		mock<T>::oldVft = rewriteVft((void *)mock<T>::funcs);
 		new(this)T();
 		backupVft = rewriteVft((void *)mock<T>::funcs);
 	}
