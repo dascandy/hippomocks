@@ -1,5 +1,3 @@
-// if you can't understand this file of code by itself, editing it probably won't get you anywhere
-
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
