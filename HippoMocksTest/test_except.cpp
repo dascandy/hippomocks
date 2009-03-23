@@ -13,7 +13,6 @@ FUNC (checkPrimitiveExceptionAcceptedAndThrown)
 	MockRepository mocks;
 	IE *iamock = mocks.InterfaceMock<IE>();
 	mocks.ExpectCall(iamock, &IE::f).Throw(42);
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
 	{
@@ -42,7 +41,6 @@ FUNC (checkClassTypeExceptionWithContent)
 	MockRepository mocks;
 	IE *iamock = mocks.InterfaceMock<IE>();
 	mocks.ExpectCall(iamock, &IE::f).Throw(SomeException(sText));
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
 	{

@@ -14,7 +14,6 @@ FUNC (checkArgumentsAccepted)
 	IB *iamock = mocks.InterfaceMock<IB>();
 	mocks.ExpectCall(iamock, &IB::f).With(1);
 	mocks.ExpectCall(iamock, &IB::g).With(2);
-	mocks.ReplayAll();
 	iamock->f(1);
 	iamock->g(2);
 	mocks.VerifyAll();
@@ -26,7 +25,6 @@ FUNC (checkArgumentsChecked)
 	IB *iamock = mocks.InterfaceMock<IB>();
 	mocks.ExpectCall(iamock, &IB::f).With(1);
 	mocks.ExpectCall(iamock, &IB::g).With(1);
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
 	{

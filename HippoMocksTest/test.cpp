@@ -14,7 +14,6 @@ FUNC (checkBaseCase)
 	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
 	mocks.VerifyAll();
@@ -27,7 +26,6 @@ FUNC (checkMultiCall)
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
 	iamock->f();
@@ -41,7 +39,6 @@ FUNC (checkMultiCallNotCalled)
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
 	bool exceptionCaught = false;
@@ -62,7 +59,6 @@ FUNC (checkMultiCallWrongOrder)
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
 	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ReplayAll();
 	iamock->f();
 	bool exceptionCaught = false;
 	try {
@@ -82,7 +78,6 @@ FUNC (checkExpectationsNotCompleted)
 	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ReplayAll();
 	iamock->f();
 	try {
 		mocks.VerifyAll();
@@ -100,7 +95,6 @@ FUNC (checkOvercompleteExpectations)
 	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ReplayAll();
 	iamock->f();
 	iamock->g();
 	bool exceptionCaught = false;
@@ -120,7 +114,6 @@ FUNC (checkExpectationsAreInOrder)
 	IA *iamock = mocks.InterfaceMock<IA>();
 	mocks.ExpectCall(iamock, &IA::f);
 	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try {
 		iamock->g();

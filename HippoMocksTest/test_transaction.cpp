@@ -19,7 +19,6 @@ FUNC (checkTransactionStyleWorks)
 	Call &aCall = mocks.ExpectCall(iamock, &IM::a).After(beginCall);
 	Call &bCall = mocks.ExpectCall(iamock, &IM::b).After(beginCall);
 	mocks.ExpectCall(iamock, &IM::end).After(aCall).After(bCall);
-	mocks.ReplayAll();
 	iamock->begin();
 	iamock->b();
 	iamock->a();
@@ -36,7 +35,6 @@ FUNC (checkTransactionStyleFailIfOneSkipped)
 	Call &aCall = mocks.ExpectCall(iamock, &IM::a).After(beginCall);
 	Call &bCall = mocks.ExpectCall(iamock, &IM::b).After(beginCall);
 	mocks.ExpectCall(iamock, &IM::end).After(aCall).After(bCall);
-	mocks.ReplayAll();
 	iamock->begin();
 	iamock->b();
 	bool exceptionCaught = false;

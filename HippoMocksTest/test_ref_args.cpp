@@ -15,7 +15,6 @@ FUNC (checkArgumentsAccepted)
 	int x;
 	mocks.ExpectCall(iamock, &IK::f).With(x);
 	mocks.ExpectCall(iamock, &IK::g).With(x);
-	mocks.ReplayAll();
 	iamock->f(x);
 	iamock->g(x);
 	mocks.VerifyAll();
@@ -28,7 +27,6 @@ FUNC (checkArgumentsChecked)
 	int x = 1, y = 2;
 	mocks.ExpectCall(iamock, &IK::f).With(x);
 	mocks.ExpectCall(iamock, &IK::g).With(y);
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
 	{
@@ -51,7 +49,6 @@ FUNC (checkRefArgumentsPassedAsRef)
 	int x = 1, y = 2;
 	mocks.ExpectCall(iamock, &IK::f).Do(plusplus);
 	mocks.ExpectCall(iamock, &IK::g).Do(plusequals2);
-	mocks.ReplayAll();
 	iamock->f(x);
 	iamock->g(y);
 	CHECK(x == 2);

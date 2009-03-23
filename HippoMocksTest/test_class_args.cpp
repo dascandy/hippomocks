@@ -16,7 +16,6 @@ FUNC (checkClassArgumentsAccepted)
 	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f).With("hi");
 	mocks.OnCall(iamock, &IC::g).With("bye");
-	mocks.ReplayAll();
 	iamock->f("hi");
 	iamock->g("bye");
 	mocks.VerifyAll();
@@ -28,7 +27,6 @@ FUNC (checkClassArgumentsChecked)
 	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f).With("hi");
 	mocks.OnCall(iamock, &IC::g).With("bye");
-	mocks.ReplayAll();
 	bool exceptionCaught = false;
 	try 
 	{
@@ -46,7 +44,6 @@ FUNC (checkClassArgumentsIgnored)
 	MockRepository mocks;
 	IC *iamock = mocks.InterfaceMock<IC>();
 	mocks.OnCall(iamock, &IC::f);
-	mocks.ReplayAll();
 	iamock->f("bye");
 }
 

@@ -18,7 +18,6 @@ FUNC (checkCVQualifiedMemberFunctions)
 	mocks.ExpectCall(iamock, &IM::f);
 	mocks.ExpectCall(iamock, &IM::g);
 	mocks.ExpectCall(iamock, &IM::h);
-	mocks.ReplayAll();
 	iamock->e();
 	iamock->f();
 	iamock->g();

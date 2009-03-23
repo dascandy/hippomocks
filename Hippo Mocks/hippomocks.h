@@ -1064,7 +1064,6 @@ private:
 	std::list<base_mock *> mocks;
 	std::list<Call *> expectations;
 	std::list<Call *> optionals;
-	enum { Record, Playback, Verified } state;
 public:
 	bool autoExpect;
 #define OnCall(obj, func) RegisterExpect_<__LINE__, false>(obj, func, #func, __FILE__)
@@ -1367,9 +1366,6 @@ public:
 	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple);
     void DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
     {
-    	if (state != Playback)
-    		throw ExpectationException(this);
-    
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 		{
 			Call *call = *i;
@@ -1432,7 +1428,7 @@ public:
     	throw ExpectationException(this);
     }
     MockRepository() 
-    	: state(Record), autoExpect(true)
+    	: autoExpect(true)
     {
     }
     ~MockRepository() 
@@ -1447,15 +1443,11 @@ public:
 			delete *i;
 		}
     }
-    void ReplayAll() {
-    	state = Playback;
-    }
     void VerifyAll() {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) {
 			if (!(*i)->satisfied)
 	    		throw ExpectationException(this);
 		}
-    	state = Verified;
     }
 	template <typename base>
 	base *InterfaceMock();
@@ -1686,7 +1678,6 @@ public:
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X)
 {
-	if (state != Record) throw ExpectationException(this);
 	if (zMock->funcMap[funcIndex] == -1)
 	{
 		zMock->funcs[funcIndex] = horrible_cast<void (*)()>(func);
@@ -2128,9 +2119,6 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 template <typename Z>
 Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
 {
-	if (state != Playback)
-		throw ExpectationException(this);
-
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 	{
 		Call *call = *i;

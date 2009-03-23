@@ -24,7 +24,6 @@ FUNC (checkFunctorsCalled)
 	II *iamock = mocks.InterfaceMock<II>();
 	mocks.ExpectCall(iamock, &II::f).Do(setChecked);
 	mocks.OnCall(iamock, &II::g).Do(setChecked);
-	mocks.ReplayAll();
 	checked = false;
 	iamock->g();
 	CHECK(checked == true);
@@ -44,7 +43,6 @@ FUNC (checkFunctorObjectCalled)
 	functorClass obj;
 	mocks.ExpectCall(iamock, &II::f).Do(obj);
 	mocks.OnCall(iamock, &II::g).Do(obj);
-	mocks.ReplayAll();
 	CHECK(obj.calls == 0);
 	iamock->g();
 	CHECK(obj.calls == 1);

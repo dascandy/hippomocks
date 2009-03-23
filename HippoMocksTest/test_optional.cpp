@@ -14,7 +14,6 @@ FUNC (checkBaseCaseOptionalOk)
 	II *iamock = mocks.InterfaceMock<II>();
 	mocks.ExpectCall(iamock, &II::f);
 	mocks.OnCall(iamock, &II::g);
-	mocks.ReplayAll();
 	iamock->g();
 	iamock->f();
 	mocks.VerifyAll();
@@ -26,7 +25,6 @@ FUNC (checkBaseCaseOptionalNotRequired)
 	II *iamock = mocks.InterfaceMock<II>();
 	mocks.ExpectCall(iamock, &II::f);
 	mocks.OnCall(iamock, &II::g);
-	mocks.ReplayAll();
 	iamock->f();
 	mocks.VerifyAll();
 }
@@ -37,7 +35,6 @@ FUNC (checkBaseCaseOptionalTwiceIsOK)
 	II *iamock = mocks.InterfaceMock<II>();
 	mocks.ExpectCall(iamock, &II::f);
 	mocks.OnCall(iamock, &II::g);
-	mocks.ReplayAll();
 	iamock->g();
 	iamock->f();
 	iamock->g();

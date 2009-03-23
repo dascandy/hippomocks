@@ -13,7 +13,6 @@ FUNC (checkConstRefClassParam)
 	MockRepository mocks;
 	IM *iamock = mocks.InterfaceMock<IM>();
 	mocks.ExpectCall(iamock, &IM::e).With("Hello");
-	mocks.ReplayAll();
 	iamock->e("Hello");
 	mocks.VerifyAll();
 }
