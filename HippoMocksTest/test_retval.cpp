@@ -16,7 +16,6 @@ FUNC (checkRetvalAccepted)
 	mocks.ExpectCall(iamock, &ID::g).Return("fsck");
 	iamock->f();
 	iamock->g();
-	mocks.VerifyAll();
 }
 
 FUNC (checkRetvalProper)

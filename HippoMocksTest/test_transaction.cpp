@@ -23,7 +23,6 @@ FUNC (checkTransactionStyleWorks)
 	iamock->b();
 	iamock->a();
 	iamock->end();
-	mocks.VerifyAll();
 }
 
 FUNC (checkTransactionStyleFailIfOneSkipped)
@@ -46,5 +45,6 @@ FUNC (checkTransactionStyleFailIfOneSkipped)
 		exceptionCaught = true;
 	}
 	CHECK(exceptionCaught);
+	mocks.reset();
 }
 

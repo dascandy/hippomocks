@@ -17,7 +17,6 @@ FUNC (checkArgumentsAccepted)
 	mocks.ExpectCall(iamock, &IK::g).With(x);
 	iamock->f(x);
 	iamock->g(x);
-	mocks.VerifyAll();
 }
 
 FUNC (checkArgumentsChecked)
@@ -37,6 +36,7 @@ FUNC (checkArgumentsChecked)
 		exceptionCaught = true;
 	}
 	CHECK(exceptionCaught);
+	mocks.reset();
 }
 
 void plusplus(int &x) { x++; }

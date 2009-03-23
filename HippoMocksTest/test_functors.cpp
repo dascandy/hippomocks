@@ -33,7 +33,6 @@ FUNC (checkFunctorsCalled)
 	checked = false;
 	iamock->g();
 	CHECK(checked == true);
-	mocks.VerifyAll();
 }
 
 FUNC (checkFunctorObjectCalled)
@@ -50,6 +49,5 @@ FUNC (checkFunctorObjectCalled)
 	CHECK(obj.calls == 2);
 	iamock->g();
 	CHECK(obj.calls == 3);
-	mocks.VerifyAll();
 }
 

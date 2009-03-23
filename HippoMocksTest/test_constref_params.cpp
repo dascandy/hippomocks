@@ -14,6 +14,5 @@ FUNC (checkConstRefClassParam)
 	IM *iamock = mocks.InterfaceMock<IM>();
 	mocks.ExpectCall(iamock, &IM::e).With("Hello");
 	iamock->e("Hello");
-	mocks.VerifyAll();
 }
 

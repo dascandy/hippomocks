@@ -1433,18 +1433,32 @@ public:
     }
     ~MockRepository() 
     {
-		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++) {
+		if (!std::uncaught_exception())
+			VerifyAll();
+		reset();
+    }
+	void reset() 
+	{
+		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++) 
+		{
 			(*i)->destroy();
 		}
-		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) {
+		mocks.clear();
+		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
+		{
 			delete *i;
 		}
-		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); i++) {
+		expectations.clear();
+		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); i++) 
+		{
 			delete *i;
 		}
-    }
-    void VerifyAll() {
-		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) {
+		optionals.clear();
+	}
+    void VerifyAll() 
+	{
+		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
+		{
 			if (!(*i)->satisfied)
 	    		throw ExpectationException(this);
 		}

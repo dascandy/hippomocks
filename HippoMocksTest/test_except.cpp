@@ -24,7 +24,6 @@ FUNC (checkPrimitiveExceptionAcceptedAndThrown)
 		exceptionCaught = true;
 	}
 	CHECK(exceptionCaught);
-	mocks.VerifyAll();
 }
 
 class SomeException : public std::exception {
@@ -52,6 +51,34 @@ FUNC (checkClassTypeExceptionWithContent)
 		exceptionCaught = true;
 	}
 	CHECK(exceptionCaught);
-	mocks.VerifyAll();
+}
+
+FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
+{
+	bool exceptionCaught = false;
+	try
+	{
+		MockRepository mocks;
+		IE *iamock = mocks.InterfaceMock<IE>();
+		mocks.ExpectCall(iamock, &IE::f);
+	}
+	catch (ExpectationException &)
+	{
+		exceptionCaught = true;
+	}
+	CHECK(exceptionCaught);
+	exceptionCaught = false;
+	try
+	{
+		MockRepository mocks;
+		IE *iamock = mocks.InterfaceMock<IE>();
+		mocks.ExpectCall(iamock, &IE::f);
+		throw 42;
+	}
+	catch (int)
+	{
+		exceptionCaught = true;
+	}
+	CHECK(exceptionCaught);
 }
 

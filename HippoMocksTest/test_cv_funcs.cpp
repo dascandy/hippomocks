@@ -22,6 +22,5 @@ FUNC (checkCVQualifiedMemberFunctions)
 	iamock->f();
 	iamock->g();
 	iamock->h();
-	mocks.VerifyAll();
 }
 

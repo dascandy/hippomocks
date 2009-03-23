@@ -19,7 +19,6 @@ FUNC (checkClassMockBasicallyWorks)
 	iamock->f(1);
 	iamock->g(2);
 	CHECK(iamock->name == "hey");
-	mocks.VerifyAll();
 }
 
 class IG { 

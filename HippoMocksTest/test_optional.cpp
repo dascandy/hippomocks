@@ -16,7 +16,6 @@ FUNC (checkBaseCaseOptionalOk)
 	mocks.OnCall(iamock, &II::g);
 	iamock->g();
 	iamock->f();
-	mocks.VerifyAll();
 }
 
 FUNC (checkBaseCaseOptionalNotRequired)
@@ -26,7 +25,6 @@ FUNC (checkBaseCaseOptionalNotRequired)
 	mocks.ExpectCall(iamock, &II::f);
 	mocks.OnCall(iamock, &II::g);
 	iamock->f();
-	mocks.VerifyAll();
 }
 
 FUNC (checkBaseCaseOptionalTwiceIsOK)
@@ -38,6 +36,5 @@ FUNC (checkBaseCaseOptionalTwiceIsOK)
 	iamock->g();
 	iamock->f();
 	iamock->g();
-	mocks.VerifyAll();
 }
 

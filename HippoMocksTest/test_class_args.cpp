@@ -18,7 +18,6 @@ FUNC (checkClassArgumentsAccepted)
 	mocks.OnCall(iamock, &IC::g).With("bye");
 	iamock->f("hi");
 	iamock->g("bye");
-	mocks.VerifyAll();
 }
 
 FUNC (checkClassArgumentsChecked)
@@ -37,6 +36,7 @@ FUNC (checkClassArgumentsChecked)
 		exceptionCaught = true;
 	}
 	CHECK(exceptionCaught);
+	mocks.reset();
 }
 
 FUNC (checkClassArgumentsIgnored)
