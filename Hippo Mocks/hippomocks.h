@@ -6,6 +6,7 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
+#include <cstring>
 
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users. 
@@ -393,7 +394,6 @@ public:
 	virtual int f1012() { return 1012; }	virtual int f1013() { return 1013; }	virtual int f1014() { return 1014; }	virtual int f1015() { return 1015; }
 	virtual int f1016() { return 1016; }	virtual int f1017() { return 1017; }	virtual int f1018() { return 1018; }	virtual int f1019() { return 1019; }
 	virtual int f1020() { return 1020; }	virtual int f1021() { return 1021; }	virtual int f1022() { return 1022; }	virtual int f1023() { return 1023; }
-	int index(int (func_index::*func)()) { return (this->*func)(); }
 };
 
 template <typename T, typename U>
@@ -498,20 +498,6 @@ public:
 	virtual Y operator()(base_tuple *tupl) {
 		tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *rTupl = reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl);
 		return (*this)(rTupl->a, rTupl->b, rTupl->c, rTupl->d, rTupl->e, rTupl->f, rTupl->g, rTupl->h, 
-			rTupl->i, rTupl->j, rTupl->k, rTupl->l, rTupl->m, rTupl->n, rTupl->o, rTupl->p);
-	}
-};
-template <typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L, 
-		  typename M, typename N, typename O, typename P>
-class Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public TupleInvocable<void>
-{
-public:
-	virtual void operator()(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) = 0;
-	virtual void operator()(base_tuple *tupl) {
-		tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *rTupl = reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl);
-		(*this)(rTupl->a, rTupl->b, rTupl->c, rTupl->d, rTupl->e, rTupl->f, rTupl->g, rTupl->h, 
 			rTupl->i, rTupl->j, rTupl->k, rTupl->l, rTupl->m, rTupl->n, rTupl->o, rTupl->p);
 	}
 };
@@ -739,231 +725,6 @@ public:
 		return t();
 	}
 	using Invocable<Y>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L, 
-		  typename M, typename N, typename O, typename P>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L, 
-		  typename M, typename N, typename O>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L, 
-		  typename M, typename N>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>: public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N>  {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L, 
-		  typename M>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>: public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M>  {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k,l,m);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L,M>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K, typename L>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k,l);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K,L>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J, typename K>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>  : public Invocable<void,A,B,C,D,E,F,G,H,I,J,K>{
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j,k);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J,K>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I, typename J>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I,J> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i,j);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I,J>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H, 
-		  typename I>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H,I> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h,i);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H,I>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G, typename H>
-class DoWrapper<T,void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G,H> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, H h, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g,h);
-	}
-	using Invocable<void,A,B,C,D,E,F,G,H>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F, typename G>
-class DoWrapper<T,void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F,G> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, G g, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f,g);
-	}
-	using Invocable<void,A,B,C,D,E,F,G>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E, typename F>
-class DoWrapper<T,void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E,F> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, F f, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e,f);
-	}
-	using Invocable<void,A,B,C,D,E,F>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D, 
-		  typename E>
-class DoWrapper<T,void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D,E> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, E e, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d,e);
-	}
-	using Invocable<void,A,B,C,D,E>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C, typename D>
-class DoWrapper<T,void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C,D> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, D d, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c,d);
-	}
-	using Invocable<void,A,B,C,D>::operator();
-};
-template <typename T,
-		  typename A, typename B, typename C>
-class DoWrapper<T,void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B,C> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, C c, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b,c);
-	}
-	using Invocable<void,A,B,C>::operator();
-};
-template <typename T, typename A, typename B>
-class DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A,B> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, B b, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a,b);
-	}
-	using Invocable<void,A,B>::operator();
-};
-template <typename T, typename A>
-class DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void,A> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(A a, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t(a);
-	}
-	using Invocable<void,A>::operator();
-};
-template <typename T>
-class DoWrapper<T,void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<void> {
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
-	{
-		t();
-	}
-	using Invocable<void>::operator();
 };
 
 //Call wrapping
@@ -2102,6 +1863,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck,
 		optionals.push_back(call);
 	return *call;
 }
+
 template <int X, bool expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
@@ -2248,7 +2010,7 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 inline ExpectationException::ExpectationException(MockRepository *repo) 
 {
 	std::stringstream text;
-	text << "Function called while no expectation was set up!" << std::endl;
+	text << "Function with expectation called, with mismatching expectation!" << std::endl;
 	text << *repo;
 	std::string result = text.str();
 	strncpy(buffer, result.c_str(), sizeof(buffer)-1);
@@ -2257,7 +2019,7 @@ inline ExpectationException::ExpectationException(MockRepository *repo)
 inline NotImplementedException::NotImplementedException(MockRepository *repo) 
 {
 	std::stringstream text;
-	text << "Expectation was violated!" << std::endl;
+	text << "Function called without expectation!" << std::endl;
 	text << *repo;
 	std::string result = text.str();
 	strncpy(buffer, result.c_str(), sizeof(buffer)-1);

@@ -13,11 +13,16 @@
 #endif
 
 #include <cmath>
+#include <cstring>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#if defined(__GNUC__) && !defined(_WIN32)
+#include <unistd.h>
+#endif
 
 namespace yaffut {
 
