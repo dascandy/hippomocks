@@ -76,11 +76,11 @@ template <>
 class tuple<> : public base_tuple 
 {
 public:
-	bool operator==(const base_tuple &bo) const 
+	bool operator==(const base_tuple &) const 
 	{
 		return true;
 	}
-	bool operator==(const tuple<> &bo) const
+	bool operator==(const tuple<> &) const
 	{
 		return true;
 	}
@@ -98,7 +98,7 @@ public:
 	typename no_cref<Arg>::type head;
 	tuple<Args...> tail;
 	tuple(Arg arg, Args... args)
-		  : tail(args...), head(arg)
+		  : head(arg), tail(args...)
 	{
 	}
 	bool operator==(const base_tuple &bo) const 
@@ -525,11 +525,11 @@ public:
 	VirtualDestructable *functor;
 	int funcIndex;
 	std::list<Call *> previousCalls;
+	bool expectation;
 	bool satisfied;
 	int lineno;
 	const char *funcName;
 	const char *fileName;
-	bool expectation;
 protected:
 	Call(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
 		: retVal(0), 

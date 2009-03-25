@@ -1,5 +1,6 @@
-CXXOPTS0X = -std=c++0x -I../HippoMocks0x/
-CXXOPTS = -std=c++98 -I../HippoMocks/
+WARNFLAGS = -Wall -Wextra -Werror -pedantic -pedantic-errors
+CXXOPTS0X = -std=c++0x -I../HippoMocks0x/ $(WARNFLAGS)
+CXXOPTS = -std=c++98 -I../HippoMocks/ $(WARNFLAGS) -ansi
 CXX = g++ $(CXXOPTS)
 CXX0X = g++ $(CXXOPTS0X)
 

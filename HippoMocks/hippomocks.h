@@ -738,11 +738,11 @@ public:
 	VirtualDestructable *functor;
 	int funcIndex;
 	std::list<Call *> previousCalls;
+	bool expectation;
 	bool satisfied;
 	int lineno;
 	const char *funcName;
 	const char *fileName;
-	bool expectation;
 protected:
 	Call(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
 		: retVal(0), 

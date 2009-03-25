@@ -457,7 +457,7 @@ void assert_throw(T* pt, void(T::*mf)(), const char* at = "")
 int main(int argc, const char* argv[])
 {
   return yaffut::Factory::Instance().Main (argc, argv);
-};
+}
 #endif /* YAFFUT_MAIN */
 
 #endif
