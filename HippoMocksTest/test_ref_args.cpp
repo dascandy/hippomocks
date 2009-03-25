@@ -39,8 +39,14 @@ FUNC (checkArgumentsChecked)
 	mocks.reset();
 }
 
-void plusplus(int &x) { x++; }
-void plusequals2(int &x) { x+=2; }
+void plusplus(int &x) 
+{ 
+	x++; 
+}
+void plusequals2(int &x) 
+{
+	x+=2; 
+}
 
 FUNC (checkRefArgumentsPassedAsRef)
 {

@@ -1,9 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+# Visual C++ Express 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HippoMocksTest", "..\HippoMocksTest\HippoMocksTest.vcproj", "{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "injector", "..\injector\injector.vcproj", "{F7F0A0A0-DFAB-4B45-834B-F06F82E4598D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +13,6 @@ Global
 		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Debug|Win32.Build.0 = Debug|Win32
 		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Release|Win32.ActiveCfg = Release|Win32
 		{231F5EB2-1F1D-4C41-9FC1-59118049524F}.Release|Win32.Build.0 = Release|Win32
-		{F7F0A0A0-DFAB-4B45-834B-F06F82E4598D}.Debug|Win32.ActiveCfg = Debug|Win32
-		{F7F0A0A0-DFAB-4B45-834B-F06F82E4598D}.Debug|Win32.Build.0 = Debug|Win32
-		{F7F0A0A0-DFAB-4B45-834B-F06F82E4598D}.Release|Win32.ActiveCfg = Release|Win32
-		{F7F0A0A0-DFAB-4B45-834B-F06F82E4598D}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
