@@ -10,6 +10,12 @@
 
 class MockRepository;
 
+enum RegistrationType {
+	Never,
+	Once,
+	DontCare
+};
+
 // base type
 class base_mock {
 public:
@@ -27,23 +33,6 @@ public:
 	}
 };
 
-// exception types
-class ExpectationException : public std::exception {
-	char buffer[65536];
-public:
-	ExpectationException(MockRepository *repo);
-	const char *what() const throw() { return buffer; }
-};
-
-class NotImplementedException : public std::exception {
-	char buffer[65536];
-public:
-	NotImplementedException(MockRepository *repo);
-	const char *what() const throw() { return buffer; }
-};
-
-class NoResultSetUpException : public std::exception {};
-
 // structural types (to be removed for C++0x
 class NullType 
 {
@@ -54,6 +43,24 @@ public:
 	}
 };
 
+template <typename T>
+struct printArg 
+{
+	static inline void print(std::ostream &os, T arg, bool withComma)
+	{
+		if (withComma) os << ",";
+		os << arg;
+	}
+};
+
+template <>
+struct printArg<NullType>
+{
+	static void print(std::ostream &, NullType , bool)
+	{
+	}
+};
+
 class base_tuple 
 {
 protected:
@@ -61,6 +68,7 @@ protected:
 public: 
 	virtual ~base_tuple() {}
 	virtual bool operator==(const base_tuple &) const = 0;
+	virtual void printTo(std::ostream &os, bool printComma = false) const = 0;
 };
 
 template <typename X>
@@ -68,6 +76,15 @@ struct no_cref { typedef X type; };
 
 template <typename X>
 struct no_cref<const X &> { typedef X type; };
+
+template <typename T>
+struct comparer
+{
+	static bool compare(T a, T b)
+	{
+		return a == b;
+	}
+};
 
 template <typename... Args>
 class tuple;
@@ -85,9 +102,15 @@ public:
 		return true;
 	}
 	template <typename RV, typename T, typename... N>
-	RV invoke(T thing, N... n)
+	RV invoke(T thing, N... n) const
 	{
 		return thing(n...);
+	}
+	virtual void printTo(std::ostream &os, bool printComma = false) const
+	{
+		if (!printComma)
+			os << "(";
+		os << ")";
 	}
 };
 
@@ -108,12 +131,19 @@ public:
 	}
 	bool operator==(const tuple<Arg, Args...> &to) const
 	{
-		return (head == to.head && tail == to.tail);
+		return (comparer<Arg>::compare(head, to.head) && tail == to.tail);
 	}
 	template <typename RV, typename T, typename... N>
-	RV invoke(T thing, N... n)
+	RV invoke(T thing, N... n) const
 	{
 		return tail.template invoke<RV, T, N..., Arg>(thing, n..., head);
+	}
+	virtual void printTo(std::ostream &os, bool printComma = false) const
+	{
+		if (!printComma)
+			os << "(";
+		printArg<Arg>::print(os, head, printComma);
+		tail.printTo(os, true);
 	}
 };
 
@@ -126,6 +156,66 @@ T horrible_cast(U u) {
     conv.u = u;
     return conv.t;
 }
+
+class BaseException : public std::exception {
+	char buffer[65536];
+public:
+	void setException(const char *description, MockRepository *repo);
+	const char *what() const throw() { return buffer; }
+};
+
+// exception types
+class ExpectationException : public BaseException {
+public:
+	ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
+	{
+		std::stringstream text;
+		text << "Function called: ";
+		text << funcName;
+		if (tuple)
+			tuple->printTo(text);
+		else
+			text << "(...)";
+		text << " with mismatching expectation!" << std::endl;
+		std::string description = text.str();
+		setException(description.c_str(), repo);
+	}
+};
+
+class NotImplementedException : public BaseException {
+public:
+	NotImplementedException(MockRepository *repo)
+	{
+		setException("Function called without expectation!", repo);
+	}
+};
+
+class CallMissingException : public BaseException {
+public:
+	CallMissingException(MockRepository *repo)
+	{
+		setException("Function with expectation not called!", repo);
+	}
+};
+
+class NoResultSetUpException : public std::exception {
+	char buffer[65536];
+public:
+	const char *what() const throw() { return buffer; }
+	NoResultSetUpException(const base_tuple *tuple, const char *funcName)
+	{
+		std::stringstream text;
+		text << "No result set up on call to ";
+		text << funcName;
+		if (tuple)
+			tuple->printTo(text);
+		else
+			text << "(...)";
+		text << std::endl;
+		std::string result = text.str();
+		strncpy(buffer, result.c_str(), sizeof(buffer)-1);
+	}
+};
 
 class func_index {
 public:
@@ -484,10 +574,9 @@ template <typename Y>
 class TupleInvocable : public VirtualDestructable 
 {
 public:
-	virtual Y operator()(base_tuple *tupl) = 0;
+	virtual Y operator()(const base_tuple &tupl) = 0;
 };
 
-//TODO: make the tuple unwrap
 template <typename T, typename Y,
 		  typename... Args>
 class DoWrapper : public TupleInvocable<Y>
@@ -495,43 +584,30 @@ class DoWrapper : public TupleInvocable<Y>
 	T &t;
 public:
 	DoWrapper(T &t) : t(t) {}
-	virtual Y operator()(base_tuple *tupl) {
-		tuple<Args...> *rTupl = reinterpret_cast<tuple<Args...> *>(tupl);
-		return rTupl->template invoke<Y, T&>(t);
-	}
-};
-
-template <typename T,
-		  typename... Args>
-class DoWrapper<T, void, Args...> : public TupleInvocable<void>
-{
-	T &t;
-public:
-	DoWrapper(T &t) : t(t) {}
-	virtual void operator()(base_tuple *tupl) {
-		tuple<Args...> *rTupl = reinterpret_cast<tuple<Args...> *>(tupl);
-		rTupl->template invoke<void, T&>(t);
+	virtual Y operator()(const base_tuple &tupl) {
+		const tuple<Args...> &rTupl = reinterpret_cast<const tuple<Args...> &>(tupl);
+		return rTupl.template invoke<Y, T&>(t);
 	}
 };
 
 //Call wrapping
 class Call {
 public:
-	virtual bool matchesArgs(base_tuple *tuple) = 0;
-	bool isExpectation() { return expectation; }
+	virtual bool matchesArgs(const base_tuple &tuple) = 0;
 	void *retVal;
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
 	int funcIndex;
 	std::list<Call *> previousCalls;
-	bool expectation;
+	RegistrationType expectation;
 	bool satisfied;
 	int lineno;
 	const char *funcName;
 	const char *fileName;
+	virtual const base_tuple *getArgs() const = 0;
 protected:
-	Call(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
+	Call(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
 		: retVal(0), 
 		eHolder(0), 
 		mock(mock), 
@@ -560,9 +636,10 @@ class TCall : public Call {
 private:
 	tuple<Args...> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
-	~TCall() { delete args; }
-	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<Args...> *>(tupl); }
+	const base_tuple *getArgs() const { return args; }
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	~TCall() { delete args; delete (Y*)retVal; }
+	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const tuple<Args...> &>(tupl); }
 	TCall<Y,Args...> &With(Args... args) { 
 		this->args = new tuple<Args...>(args...); 
 		return *this; 
@@ -583,9 +660,10 @@ class TCall<void, Args...> : public Call {
 private:
 	tuple<Args...> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	const base_tuple *getArgs() const { return args; }
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<Args...> *>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const tuple<Args...> &>(tupl); }
 	TCall<void,Args...> &With(Args... args) { 
 		this->args = new tuple<Args...>(args...); 
 		return *this; 
@@ -605,24 +683,26 @@ private:
 	friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 	std::list<base_mock *> mocks;
 	std::list<Call *> expectations;
+	std::list<Call *> neverCalls;
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
-#define OnCall(obj, func) RegisterExpect_<__LINE__, false>(obj, func, #func, __FILE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, true>(obj, func, #func, __FILE__)
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename... Args>
+#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename... Args>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...) const, const char *funcName, const char *fileName) 
 	{
 		return RegisterExpect_<X,expect>(mck, (Y(Z::*)(Args...))(func), funcName, fileName);
 	}
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename... Args>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...) volatile, const char *funcName, const char *fileName)
 	{
 		return RegisterExpect_<X,expect>(mck, (Y(Z::*)(Args...))(func), funcName, fileName); 
 	}
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename... Args>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...) const volatile, const char *funcName, const char *fileName)
 	{ 
 		return RegisterExpect_<X,expect>(mck, (Y(Z::*)(Args...))(func), funcName, fileName); 
@@ -630,8 +710,8 @@ public:
 	template <typename Z>
 	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple);
-    void DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+	Z DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple);
+    void DoVoidExpectation(base_mock *mock, int funcno, const base_tuple &tuple) 
     {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 		{
@@ -663,6 +743,29 @@ public:
 				return;
 	    	}
 		}
+		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno &&
+				call->matchesArgs(tuple))
+			{
+				bool allSatisfy = true;
+				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+					callsBefore != call->previousCalls.end(); ++callsBefore)
+				{
+					if (!(*callsBefore)->satisfied)
+					{
+						allSatisfy = false;
+					}
+				}
+				if (!allSatisfy) continue;
+
+				call->satisfied = true;
+
+				throw ExpectationException(this, call->getArgs(), call->funcName);
+			}
+		}
 		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
 		{
 			Call *call = *i;
@@ -692,7 +795,29 @@ public:
         		return;
 			}
 		}
-    	throw ExpectationException(this);
+		const char *funcName = NULL;
+  		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end() && !funcName; ++i) 
+	  	{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+			funcName = call->funcName;
+		}
+  		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end() && !funcName; ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+			funcName = call->funcName;
+		}
+  		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !funcName; ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+            funcName = call->funcName;
+	    }
+        throw ExpectationException(this, &tuple, funcName);
     }
     MockRepository() 
     	: autoExpect(true)
@@ -703,19 +828,24 @@ public:
 		if (!std::uncaught_exception())
 			VerifyAll();
 		reset();
-    }
-	void reset() 
-	{
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++) 
 		{
 			(*i)->destroy();
 		}
 		mocks.clear();
+    }
+	void reset() 
+	{
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
 		{
 			delete *i;
 		}
 		expectations.clear();
+		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); i++) 
+		{
+			delete *i;
+		}
+		neverCalls.clear();
 		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); i++) 
 		{
 			delete *i;
@@ -727,7 +857,7 @@ public:
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
 		{
 			if (!(*i)->satisfied)
-	    		throw ExpectationException(this);
+	    		throw CallMissingException(this);
 		}
     }
 	template <typename base>
@@ -738,8 +868,7 @@ public:
 
 // mock function providers
 template <typename Z, typename Y>
-class mockFuncs : public mock<Z> 
-{
+class mockFuncs : public mock<Z> {
 private: 
     mockFuncs();
 public:
@@ -747,7 +876,7 @@ public:
 	Y expectation(Args... args)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<Args...>(args...));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<Args...>(args...));
 	}
 };
 
@@ -760,7 +889,7 @@ public:
 	void expectation(Args... args)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<Args...>(args...));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<Args...>(args...));
 	}
 };
 
@@ -774,7 +903,7 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (ba
 	}
 }
 // Mock repository implementation
-template <int X, bool expect, typename Z2, typename Y, typename Z, typename... Args>
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName) 
 {
 	int funcIndex = virt_index(func);
@@ -784,21 +913,23 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...)
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch (expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+		break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
 
 template <typename Z>
-Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple) 
 {
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 	{
@@ -830,7 +961,30 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
     		if (call->functor != NULL)
     			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
 
-    		throw NoResultSetUpException();
+    		throw NoResultSetUpException(call->getArgs(), call->funcName);
+		}
+	}
+	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i) 
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno &&
+			call->matchesArgs(tuple))
+		{
+			bool allSatisfy = true;
+			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+				callsBefore != call->previousCalls.end(); ++callsBefore)
+			{
+				if (!(*callsBefore)->satisfied)
+				{
+					allSatisfy = false;
+				}
+			}
+			if (!allSatisfy) continue;
+
+			call->satisfied = true;
+
+			throw ExpectationException(this, call->getArgs(), call->funcName);
 		}
 	}
 	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
@@ -862,69 +1016,108 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
         	if (call->functor != NULL)
         		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
         
-        	throw NoResultSetUpException();
+        	throw NoResultSetUpException(call->getArgs(), call->funcName);
 		}
 	}
-	throw ExpectationException(this);
+	const char *funcName = NULL;
+	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end() && !funcName; ++i) 
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno)
+			funcName = call->funcName;
+	}
+	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !funcName; ++i) 
+    {
+	    Call *call = *i;
+	    if (call->mock == mock &&
+		    call->funcIndex == funcno)
+        funcName = call->funcName;
+    }
+	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end() && !funcName; ++i) 
+    {
+	    Call *call = *i;
+	    if (call->mock == mock &&
+		    call->funcIndex == funcno)
+        funcName = call->funcName;
+    }
+	throw ExpectationException(this, &tuple, funcName);
 }
 template <typename base>
 base *MockRepository::InterfaceMock() {
 	mock<base> *m = new mock<base>(this);
+    mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
 template <typename base>
 base *MockRepository::ClassMock() {
 	classMock<base> *m = new classMock<base>(this);
+    mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
 
 inline std::ostream &operator<<(std::ostream &os, const Call &call)
 {
-	if (call.expectation)
-	{
-		os << call.fileName << "(" << call.lineno << ") Expectation for " << call.funcName << " on the mock at 0x" << call.mock << " was ";
-		if (!call.satisfied)
-			os << "not ";
-		os << "satisfied." << std::endl;
-	}
+	os << call.fileName << "(" << call.lineno << ") ";
+
+	if (call.expectation == Once)
+		os << "Expectation for ";
 	else
-	{
-		os << call.fileName << "(" << call.lineno << ") Result set for " << call.funcName << " on the mock at 0x" << call.mock << " was ";
-		if (!call.satisfied)
-			os << "not ";
-		os << "used." << std::endl;
-	}
+		os << "Result set for ";
+
+	os << call.funcName;
+
+    if (call.getArgs())
+        call.getArgs()->printTo(os);
+    else
+        os << "(...)";
+
+    os << " on the mock at 0x" << call.mock << " was ";
+
+	if (!call.satisfied)
+		os << "not ";
+
+	if (call.expectation == Once)
+ 		os << "satisfied." << std::endl;
+ 	else
+ 		os << "used." << std::endl;
+
 	return os;
 }
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 {
-	os << "Expections set:" << std::endl;
-	for (std::list<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
-		os << **exp;
-	os << std::endl;
-
-	os << "Call results set up:" << std::endl;
-	for (std::list<Call *>::const_iterator exp = repo.optionals.begin(); exp != repo.optionals.end(); ++exp)
-		os << **exp;
-	os << std::endl;
+	if (repo.expectations.size())
+	{
+		os << "Expections set:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
+ 
+	if (repo.neverCalls.size())
+	{
+		os << "Functions explicitly expected to not be called:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.neverCalls.begin(); exp != repo.neverCalls.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
+ 
+	if (repo.optionals.size())
+	{
+		os << "Optional results set up:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.optionals.begin(); exp != repo.optionals.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
 
 	return os;
 }
 
-inline ExpectationException::ExpectationException(MockRepository *repo) 
+inline void BaseException::setException(const char *description, MockRepository *repo) 
 {
 	std::stringstream text;
-	text << "Function with expectation called, with mismatching expectation!" << std::endl;
-	text << *repo;
-	std::string result = text.str();
-	strncpy(buffer, result.c_str(), sizeof(buffer)-1);
-}
-
-inline NotImplementedException::NotImplementedException(MockRepository *repo) 
-{
-	std::stringstream text;
-	text << "Function called without expectation!" << std::endl;
+	text << description;
 	text << *repo;
 	std::string result = text.str();
 	strncpy(buffer, result.c_str(), sizeof(buffer)-1);

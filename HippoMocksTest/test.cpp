@@ -42,7 +42,7 @@ FUNC (checkMultiCallNotCalled)
 		iamock->f();
 		iamock->g();
 	}
-	catch (ExpectationException &) 
+	catch (CallMissingException &) 
 	{
 		exceptionCaught = true;
 	}
@@ -79,7 +79,7 @@ FUNC (checkExpectationsNotCompleted)
 		mocks.ExpectCall(iamock, &IA::g);
 		iamock->f();
 	}
-	catch (ExpectationException &) 
+	catch (CallMissingException &) 
 	{
 		exceptionCaught = true;
 	}

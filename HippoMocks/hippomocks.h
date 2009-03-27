@@ -11,12 +11,22 @@
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users. 
 #pragma warning(push)
+// If you can't generate an assignment operator the least you can do is shut up.
 #pragma warning(disable: 4512)
+// Alignment not right in a union?
 #pragma warning(disable: 4121)
+// Template parameters have the tendency not to change between executions.
 #pragma warning(disable: 4127)
+// No deprecated warnings on functions that really aren't deprecated at all.
 #pragma warning(disable: 4996)
 #endif
 class MockRepository;
+
+enum RegistrationType {
+  Never,
+  Once,
+  DontCare
+};
 
 // base type
 class base_mock {
@@ -35,24 +45,6 @@ public:
 	}
 };
 
-// exception types
-class ExpectationException : public std::exception {
-	char buffer[65536];
-public:
-	ExpectationException(MockRepository *repo);
-	const char *what() const throw() { return buffer; }
-};
-
-class NotImplementedException : public std::exception {
-	char buffer[65536];
-public:
-	NotImplementedException(MockRepository *repo);
-	const char *what() const throw() { return buffer; }
-};
-
-class NoResultSetUpException : public std::exception {};
-
-// structural types (to be removed for C++0x
 class NullType 
 {
 public: 
@@ -60,6 +52,24 @@ public:
 	{
 		return true; 
 	}
+};
+
+template <typename T>
+struct printArg 
+{
+  static inline void print(std::ostream &os, T arg, bool withComma)
+  {
+    if (withComma) os << ",";
+    os << arg;
+  }
+};
+
+template <>
+struct printArg<NullType>
+{
+  static void print(std::ostream &, NullType , bool)
+  {
+  }
 };
 
 class base_tuple 
@@ -73,6 +83,7 @@ public:
 	{
 	}
 	virtual bool operator==(const base_tuple &) const = 0;
+  virtual void printTo(std::ostream &os) const = 0;
 };
 
 template <typename X>
@@ -80,6 +91,15 @@ struct no_cref { typedef X type; };
 
 template <typename X>
 struct no_cref<const X &> { typedef X type; };
+
+template <typename T>
+struct comparer
+{
+  static bool compare(T a, T b)
+  {
+    return a == b;
+  }
+};
 
 template <typename A = NullType, typename B = NullType, typename C = NullType, typename D = NullType, 
 		  typename E = NullType, typename F = NullType, typename G = NullType, typename H = NullType, 
@@ -116,23 +136,104 @@ public:
 	{}
 	bool operator==(const base_tuple &bo) const {
 		const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to = (const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &)bo;
-		return (a == to.a &&
-				b == to.b &&
-				c == to.c &&
-				d == to.d &&
-				e == to.e &&
-				f == to.f &&
-				g == to.g &&
-				h == to.h &&
-				i == to.i &&
-				j == to.j &&
-				k == to.k &&
-				l == to.l &&
-				m == to.m &&
-				n == to.n &&
-				o == to.o &&
-				p == to.p);
+    return (comparer<A>::compare(a, to.a) &&
+            comparer<B>::compare(b, to.b) &&
+            comparer<C>::compare(c, to.c) &&
+            comparer<D>::compare(d, to.d) &&
+            comparer<E>::compare(e, to.e) &&
+            comparer<F>::compare(f, to.f) &&
+            comparer<G>::compare(g, to.g) &&
+            comparer<H>::compare(h, to.h) &&
+            comparer<I>::compare(i, to.i) &&
+            comparer<J>::compare(j, to.j) &&
+            comparer<K>::compare(k, to.k) &&
+            comparer<L>::compare(l, to.l) &&
+            comparer<M>::compare(m, to.m) &&
+            comparer<N>::compare(n, to.n) &&
+            comparer<O>::compare(o, to.o) &&
+				    comparer<P>::compare(p, to.p));
 	}
+  virtual void printTo(std::ostream &os) const
+  {
+    os << "(";
+    printArg<A>::print(os, a, false);
+    printArg<B>::print(os, b, true);
+    printArg<C>::print(os, c, true);
+    printArg<D>::print(os, d, true);
+    printArg<E>::print(os, e, true);
+    printArg<F>::print(os, f, true);
+    printArg<G>::print(os, g, true);
+    printArg<H>::print(os, h, true);
+    printArg<I>::print(os, i, true);
+    printArg<J>::print(os, j, true);
+    printArg<K>::print(os, k, true);
+    printArg<L>::print(os, l, true);
+    printArg<M>::print(os, m, true);
+    printArg<N>::print(os, n, true);
+    printArg<O>::print(os, o, true);
+    printArg<P>::print(os, p, true);
+    os << ")";
+  }
+};
+
+class BaseException : public std::exception {
+	char buffer[65536];
+public:
+	void setException(const char *description, MockRepository *repo);
+	const char *what() const throw() { return buffer; }
+};
+
+// exception types
+class ExpectationException : public BaseException {
+public:
+  ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
+  {
+  	std::stringstream text;
+    text << "Function called: ";
+    text << funcName;
+    if (tuple)
+      tuple->printTo(text);
+    else
+      text << "(...)";
+    text << " with mismatching expectation!" << std::endl;
+    std::string description = text.str();
+    setException(description.c_str(), repo);
+  }
+};
+
+class NotImplementedException : public BaseException {
+public:
+	NotImplementedException(MockRepository *repo)
+  {
+    setException("Function called without expectation!", repo);
+  }
+};
+
+class CallMissingException : public BaseException {
+public:
+	CallMissingException(MockRepository *repo)
+  {
+  	setException("Function with expectation not called!", repo);
+  }
+};
+
+class NoResultSetUpException : public std::exception {
+	char buffer[65536];
+public:
+	const char *what() const throw() { return buffer; }
+  NoResultSetUpException(const base_tuple *tuple, const char *funcName)
+  {
+	  std::stringstream text;
+    text << "No result set up on call to ";
+    text << funcName;
+    if (tuple)
+      tuple->printTo(text);
+    else
+      text << "(...)";
+    text << std::endl;
+	  std::string result = text.str();
+	  strncpy(buffer, result.c_str(), sizeof(buffer)-1);
+  }
 };
 
 // function-index-of-type
@@ -483,7 +584,7 @@ template <typename Y>
 class TupleInvocable : public VirtualDestructable 
 {
 public:
-	virtual Y operator()(base_tuple *tupl) = 0;
+	virtual Y operator()(const base_tuple &tupl) = 0;
 };
 
 template <typename Y,
@@ -495,10 +596,10 @@ class Invocable : public TupleInvocable<Y>
 {
 public:
 	virtual Y operator()(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) = 0;
-	virtual Y operator()(base_tuple *tupl) {
-		tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *rTupl = reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl);
-		return (*this)(rTupl->a, rTupl->b, rTupl->c, rTupl->d, rTupl->e, rTupl->f, rTupl->g, rTupl->h, 
-			rTupl->i, rTupl->j, rTupl->k, rTupl->l, rTupl->m, rTupl->n, rTupl->o, rTupl->p);
+	virtual Y operator()(const base_tuple &tupl) {
+		const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &rTupl = reinterpret_cast<const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl);
+		return (*this)(rTupl.a, rTupl.b, rTupl.c, rTupl.d, rTupl.e, rTupl.f, rTupl.g, rTupl.h, 
+			rTupl.i, rTupl.j, rTupl.k, rTupl.l, rTupl.m, rTupl.n, rTupl.o, rTupl.p);
 	}
 };
 template <typename T, typename Y,
@@ -730,21 +831,20 @@ public:
 //Call wrapping
 class Call {
 public:
-	virtual bool matchesArgs(base_tuple *tuple) = 0;
-	bool isExpectation() { return expectation; }
+	virtual bool matchesArgs(const base_tuple &tuple) = 0;
 	void *retVal;
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
 	int funcIndex;
 	std::list<Call *> previousCalls;
-	bool expectation;
+	RegistrationType expectation;
 	bool satisfied;
 	int lineno;
 	const char *funcName;
 	const char *fileName;
 protected:
-	Call(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
+	Call(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) 
 		: retVal(0), 
 		eHolder(0), 
 		mock(mock), 
@@ -758,6 +858,7 @@ protected:
 	{
 	}
 public:
+  virtual const base_tuple *getArgs() const = 0;
 	virtual ~Call() 
 	{
 		delete eHolder;
@@ -776,9 +877,10 @@ class TCall : public Call {
 private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
-	~TCall() { delete args; }
-	bool matchesArgs(base_tuple *tupl) { return !args || *args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl); }
+    const base_tuple *getArgs() const { return args; }
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	~TCall() { delete args; delete (Y*)retVal; }
+	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl); }
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
@@ -802,9 +904,10 @@ class TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> : public Call {
 private:
 	tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
-	TCall(bool expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+  const base_tuple *getArgs() const { return args; }
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(base_tuple *tupl) { return (!args) || (*args == *reinterpret_cast<tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *>(tupl)); }
+	bool matchesArgs(const base_tuple &tupl) { return (!args) || (*args == reinterpret_cast<const tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl)); }
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P()) { 
 		args = new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p); 
 		return *this; 
@@ -823,299 +926,301 @@ class MockRepository {
 private:
 	friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 	std::list<base_mock *> mocks;
-	std::list<Call *> expectations;
+	std::list<Call *> neverCalls;
+  std::list<Call *> expectations;
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
-#define OnCall(obj, func) RegisterExpect_<__LINE__, false>(obj, func, #func, __FILE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, true>(obj, func, #func, __FILE__)
-	template <int X, bool expect, typename Z2, typename Y, typename Z>
+#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
+    template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)() const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)())(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)() volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)())(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)() const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)())(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename A>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 	TCall<Y,A> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename A>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 	TCall<Y,A> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename A>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 	TCall<Y,A> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, typename A>
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 	TCall<Y,A> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B>
 	TCall<Y,A,B> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B>
 	TCall<Y,A,B> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B>
 	TCall<Y,A,B> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B>
 	TCall<Y,A,B> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C>
 	TCall<Y,A,B,C> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C>
 	TCall<Y,A,B,C> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C>
 	TCall<Y,A,B,C> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C>
 	TCall<Y,A,B,C> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D>
 	TCall<Y,A,B,C,D> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D>
 	TCall<Y,A,B,C,D> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D>
 	TCall<Y,A,B,C,D> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D>
 	TCall<Y,A,B,C,D> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E>
 	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E>
 	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E>
 	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E>
 	TCall<Y,A,B,C,D,E> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F>
 	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F>
 	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F>
 	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F>
 	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G>
 	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G>
 	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G>
 	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G>
 	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H>
 	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H>
 	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H>
 	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H>
 	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I>
 	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I>
 	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I>
 	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I>
 	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M))(func), funcName, fileName); }	
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N))(func), funcName, fileName); }	
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O) const volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O))(func), funcName, fileName); }	
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), const char *funcName, const char *fileName);
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P) const, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P) volatile, const char *funcName, const char *fileName) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P))(func), funcName, fileName); }
-	template <int X, bool expect, typename Z2, typename Y, typename Z, 
+	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 			  typename A, typename B, typename C, typename D, 
 			  typename E, typename F, typename G, typename H,
 			  typename I, typename J, typename K, typename L,
@@ -1124,8 +1229,8 @@ public:
 	template <typename Z>
 	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, int funcno, base_tuple *tuple);
-    void DoVoidExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+	Z DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple);
+    void DoVoidExpectation(base_mock *mock, int funcno, const base_tuple &tuple) 
     {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 		{
@@ -1157,6 +1262,29 @@ public:
 				return;
 	    	}
 		}
+		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno &&
+				call->matchesArgs(tuple))
+			{
+				bool allSatisfy = true;
+				for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+					callsBefore != call->previousCalls.end(); ++callsBefore)
+				{
+					if (!(*callsBefore)->satisfied)
+					{
+						allSatisfy = false;
+					}
+				}
+				if (!allSatisfy) continue;
+
+				call->satisfied = true;
+
+				throw ExpectationException(this, call->getArgs(), call->funcName);
+			}
+		}
 		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
 		{
 			Call *call = *i;
@@ -1186,7 +1314,29 @@ public:
         		return;
 			}
 		}
-    	throw ExpectationException(this);
+		const char *funcName = NULL;
+  		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end() && !funcName; ++i) 
+	  	{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+			funcName = call->funcName;
+		}
+  		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end() && !funcName; ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+			funcName = call->funcName;
+		}
+  		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !funcName; ++i) 
+		{
+			Call *call = *i;
+			if (call->mock == mock &&
+				call->funcIndex == funcno)
+            funcName = call->funcName;
+	    }
+        throw ExpectationException(this, &tuple, funcName);
     }
     MockRepository() 
     	: autoExpect(true)
@@ -1197,19 +1347,24 @@ public:
 		if (!std::uncaught_exception())
 			VerifyAll();
 		reset();
-    }
-	void reset() 
-	{
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++) 
 		{
 			(*i)->destroy();
 		}
 		mocks.clear();
+    }
+	void reset() 
+	{
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
 		{
 			delete *i;
 		}
 		expectations.clear();
+		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); i++) 
+		{
+			delete *i;
+		}
+		neverCalls.clear();
 		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); i++) 
 		{
 			delete *i;
@@ -1221,7 +1376,7 @@ public:
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++) 
 		{
 			if (!(*i)->satisfied)
-	    		throw ExpectationException(this);
+	    		throw CallMissingException(this);
 		}
     }
 	template <typename base>
@@ -1232,8 +1387,7 @@ public:
 
 // mock function providers
 template <typename Z, typename Y>
-class mockFuncs : public mock<Z> 
-{
+class mockFuncs : public mock<Z> {
 private: 
     mockFuncs();
 public:
@@ -1241,49 +1395,49 @@ public:
 	Y expectation0()
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<>());
+        return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<>());
 	}
 	template <int X, typename A>
 	Y expectation1(A a)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A>(a));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A>(a));
 	}
 	template <int X, typename A, typename B>
 	Y expectation2(A a, B b)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B>(a,b));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B>(a,b));
 	}
 	template <int X, typename A, typename B, typename C>
 	Y expectation3(A a, B b, C c)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C>(a,b,c));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C>(a,b,c));
 	}
 	template <int X, typename A, typename B, typename C, typename D>
 	Y expectation4(A a, B b, C c, D d)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D>(a,b,c,d));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D>(a,b,c,d));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E>
 	Y expectation5(A a, B b, C c, D d, E e)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
 	Y expectation6(A a, B b, C c, D d, E e, F f)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
 	Y expectation7(A a, B b, C c, D d, E e, F f, G g)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
 	Y expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
@@ -1295,49 +1449,49 @@ public:
 	Y expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
 	Y expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
 	Y expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
 	Y expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
 	Y expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
 	Y expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+        return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
 	Y expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
 	Y expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
 	{
         MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
 };
 
@@ -1350,103 +1504,103 @@ public:
 	void expectation0()
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<>());
+        repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<>());
 	}
 	template <int X, typename A>
 	void expectation1(A a)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A>(a));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A>(a));
 	}
 	template <int X, typename A, typename B>
 	void expectation2(A a, B b)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B>(a,b));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B>(a,b));
 	}
 	template <int X, typename A, typename B, typename C>
 	void expectation3(A a, B b, C c)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C>(a,b,c));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C>(a,b,c));
 	}
 	template <int X, typename A, typename B, typename C, typename D>
 	void expectation4(A a, B b, C c, D d)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D>(a,b,c,d));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D>(a,b,c,d));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E>
 	void expectation5(A a, B b, C c, D d, E e)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E>(a,b,c,d,e));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
 	void expectation6(A a, B b, C c, D d, E e, F f)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
 	void expectation7(A a, B b, C c, D d, E e, F f, G g)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
 	void expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
 	void expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
 	void expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
 	void expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
 	void expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
 	void expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
 	void expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
 	{
         MockRepository *repo = mock<Z>::repo;
-        repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+        repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
 	void expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
 	void expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
 	{
         MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), new tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
 };
 
@@ -1459,8 +1613,9 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (ba
 		zMock->funcMap[funcIndex] = X;
 	}
 }
+
 // Mock repository implementation
-template <int X, bool expect, typename Z2, typename Y, typename Z>
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName) 
 {
     func_index idx;
@@ -1471,19 +1626,21 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *f
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, typename A>
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A), const char *funcName, const char *fileName) 
 {
     func_index idx;
@@ -1494,19 +1651,21 @@ TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A), const char
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B>
 TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B), const char *funcName, const char *fileName) 
 {
@@ -1518,19 +1677,21 @@ TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B), const 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C>
 TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C), const char *funcName, const char *fileName) 
 {
@@ -1542,19 +1703,21 @@ TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C), co
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+		break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D>
 TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D), const char *funcName, const char *fileName) 
 {
@@ -1566,19 +1729,21 @@ TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D)
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E>
 TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E), const char *funcName, const char *fileName) 
@@ -1591,19 +1756,21 @@ TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+		break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F>
 TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F), const char *funcName, const char *fileName) 
@@ -1616,19 +1783,21 @@ TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+		break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G>
 TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G), const char *funcName, const char *fileName) 
@@ -1641,19 +1810,21 @@ TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H>
 TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H), const char *funcName, const char *fileName) 
@@ -1666,19 +1837,21 @@ TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I>
@@ -1692,19 +1865,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J>
@@ -1718,19 +1893,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*fu
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+		break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K>
@@ -1744,19 +1921,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L>
@@ -1770,19 +1949,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z:
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L,
@@ -1797,19 +1978,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L,
@@ -1824,19 +2007,21 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L,
@@ -1851,20 +2036,22 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck,
 						funcIndex, 
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
 
-template <int X, bool expect, typename Z2, typename Y, typename Z, 
+template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, 
 		  typename A, typename B, typename C, typename D, 
 		  typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L,
@@ -1879,21 +2066,23 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
-	if (expect)
+	switch(expect)
 	{
+	case Never: neverCalls.push_back(call); break;
+	case DontCare: optionals.push_back(call); break;
+	case Once:
 		if (autoExpect && expectations.size() > 0) 
 		{
 			call->previousCalls.push_back(expectations.back());
 		}
 		expectations.push_back(call);
+	    break;
 	}
-	else 
-		optionals.push_back(call);
 	return *call;
 }
 
 template <typename Z>
-Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple) 
+Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple) 
 {
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i) 
 	{
@@ -1925,7 +2114,30 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
     		if (call->functor != NULL)
     			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
 
-    		throw NoResultSetUpException();
+        throw NoResultSetUpException(call->getArgs(), call->funcName);
+		}
+	}
+	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i) 
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno &&
+			call->matchesArgs(tuple))
+		{
+			bool allSatisfy = true;
+			for (std::list<Call *>::iterator callsBefore = call->previousCalls.begin();
+				callsBefore != call->previousCalls.end(); ++callsBefore)
+			{
+				if (!(*callsBefore)->satisfied)
+				{
+					allSatisfy = false;
+				}
+			}
+			if (!allSatisfy) continue;
+
+      call->satisfied = true;
+
+      throw ExpectationException(this, call->getArgs(), call->funcName);
 		}
 	}
 	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i) 
@@ -1957,69 +2169,107 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, base_tuple *tuple)
         	if (call->functor != NULL)
         		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
         
-        	throw NoResultSetUpException();
+        throw NoResultSetUpException(call->getArgs(), call->funcName);
 		}
 	}
-	throw ExpectationException(this);
+	const char *funcName = NULL;
+	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end() && !funcName; ++i) 
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno)
+			funcName = call->funcName;
+	}
+	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !funcName; ++i) 
+    {
+	    Call *call = *i;
+	    if (call->mock == mock &&
+		    call->funcIndex == funcno)
+        funcName = call->funcName;
+    }
+	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end() && !funcName; ++i) 
+    {
+	    Call *call = *i;
+	    if (call->mock == mock &&
+		    call->funcIndex == funcno)
+        funcName = call->funcName;
+    }
+	throw ExpectationException(this, &tuple, funcName);
 }
 template <typename base>
 base *MockRepository::InterfaceMock() {
 	mock<base> *m = new mock<base>(this);
+    mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
 template <typename base>
 base *MockRepository::ClassMock() {
 	classMock<base> *m = new classMock<base>(this);
+    mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
 
 inline std::ostream &operator<<(std::ostream &os, const Call &call)
 {
-	if (call.expectation)
-	{
-		os << call.fileName << "(" << call.lineno << ") Expectation for " << call.funcName << " on the mock at 0x" << call.mock << " was ";
-		if (!call.satisfied)
-			os << "not ";
-		os << "satisfied." << std::endl;
-	}
+	os << call.fileName << "(" << call.lineno << ") ";
+	if (call.expectation == Once)
+		os << "Expectation for ";
 	else
-	{
-		os << call.fileName << "(" << call.lineno << ") Result set for " << call.funcName << " on the mock at 0x" << call.mock << " was ";
-		if (!call.satisfied)
-			os << "not ";
+		os << "Result set for ";
+
+	os << call.funcName;
+
+    if (call.getArgs())
+        call.getArgs()->printTo(os);
+    else
+        os << "(...)";
+
+    os << " on the mock at 0x" << call.mock << " was ";
+
+	if (!call.satisfied)
+		os << "not ";
+
+	if (call.expectation == Once)
+		os << "satisfied." << std::endl;
+	else
 		os << "used." << std::endl;
-	}
+
 	return os;
 }
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 {
-	os << "Expections set:" << std::endl;
-	for (std::list<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
-		os << **exp;
-	os << std::endl;
+	if (repo.expectations.size())
+	{
+		os << "Expections set:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
 
-	os << "Call results set up:" << std::endl;
-	for (std::list<Call *>::const_iterator exp = repo.optionals.begin(); exp != repo.optionals.end(); ++exp)
-		os << **exp;
-	os << std::endl;
+	if (repo.neverCalls.size())
+	{
+		os << "Functions explicitly expected to not be called:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.neverCalls.begin(); exp != repo.neverCalls.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
+
+	if (repo.optionals.size())
+	{
+		os << "Optional results set up:" << std::endl;
+		for (std::list<Call *>::const_iterator exp = repo.optionals.begin(); exp != repo.optionals.end(); ++exp)
+			os << **exp;
+		os << std::endl;
+	}
 
 	return os;
 }
 
-inline ExpectationException::ExpectationException(MockRepository *repo) 
+inline void BaseException::setException(const char *description, MockRepository *repo) 
 {
 	std::stringstream text;
-	text << "Function with expectation called, with mismatching expectation!" << std::endl;
-	text << *repo;
-	std::string result = text.str();
-	strncpy(buffer, result.c_str(), sizeof(buffer)-1);
-}
-
-inline NotImplementedException::NotImplementedException(MockRepository *repo) 
-{
-	std::stringstream text;
-	text << "Function called without expectation!" << std::endl;
+	text << description;
 	text << *repo;
 	std::string result = text.str();
 	strncpy(buffer, result.c_str(), sizeof(buffer)-1);

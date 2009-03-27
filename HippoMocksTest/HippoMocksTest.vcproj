@@ -51,6 +51,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
+				EnableEnhancedInstructionSet="2"
 				WarningLevel="4"
 				DebugInformationFormat="3"
 			/>
