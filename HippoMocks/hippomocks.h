@@ -189,13 +189,13 @@ public:
   ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
   {
   	std::stringstream text;
-    text << "Function called: ";
+    text << "Function ";
     text << funcName;
     if (tuple)
       tuple->printTo(text);
     else
       text << "(...)";
-    text << " with mismatching expectation!" << std::endl;
+    text << " called with mismatching expectation!" << std::endl;
     std::string description = text.str();
     setException(description.c_str(), repo);
   }
@@ -853,7 +853,7 @@ protected:
 		expectation(expectation),
 		satisfied(false),
 		lineno(X),
-		funcName(funcName),
+		funcName(funcName+1),
 		fileName(fileName)
 	{
 	}

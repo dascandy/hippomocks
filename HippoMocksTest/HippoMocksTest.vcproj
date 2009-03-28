@@ -203,7 +203,15 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_exception_quality.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\test_functors.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_nevercall.cpp"
 			>
 		</File>
 		<File
@@ -212,6 +220,10 @@
 		</File>
 		<File
 			RelativePath=".\test_ref_args.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_regression_arg_count.cpp"
 			>
 		</File>
 		<File
