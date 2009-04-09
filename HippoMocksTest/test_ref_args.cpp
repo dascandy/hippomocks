@@ -6,6 +6,8 @@ public:
 	virtual ~IK() {}
 	virtual void f(int &);
 	virtual void g(int &) = 0;
+	virtual int &h() = 0;
+	virtual const std::string &k() = 0;
 };
 
 FUNC (checkArgumentsAccepted)
@@ -59,5 +61,17 @@ FUNC (checkRefArgumentsPassedAsRef)
 	iamock->g(y);
 	CHECK(x == 2);
 	CHECK(y == 4);
+}
+
+FUNC (checkRefReturnValues)
+{
+	MockRepository mocks;
+	IK *iamock = mocks.InterfaceMock<IK>();
+	int x = 0;
+	mocks.ExpectCall(iamock, &IK::h).Return(x);
+	mocks.ExpectCall(iamock, &IK::k).Return("Hello World");
+	iamock->h() = 1;
+	EQUAL(iamock->k(), std::string("Hello World"));
+	EQUAL(x, 1);
 }
 
