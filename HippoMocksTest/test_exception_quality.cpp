@@ -1,12 +1,15 @@
 #include "yaffut.h"
 #include "hippomocks.h"
 
+struct X {};
+
 class IS {
 public:
 	virtual ~IS() {}
 	virtual int f() { return 1; }
 	virtual int g(int, int) { return 2; }
 	virtual void h() = 0;
+	virtual void i(int, const X &) = 0;
 };
 
 FUNC (checkNoResultContainsFuncName)
@@ -58,6 +61,22 @@ FUNC (checkNoResultContainsActualArgSpec)
 		CHECK(strstr(ex.what(), "IS::g") != NULL);
 		CHECK(strstr(ex.what(), "(1,2)") != NULL);
 		CHECK(strlen(ex.what()) < strlen(__FILE__) + 80);
+	}
+	CHECK(exceptionCaught);
+}
+
+FUNC (checkNoResultContainsActualUnprintableArgSpec)
+{
+	bool exceptionCaught = false;
+	MockRepository mocks;
+	IS *iamock = mocks.InterfaceMock<IS>();
+	mocks.NeverCall(iamock, &IS::i).With(42, X());
+	try {
+		iamock->h();
+	} catch(NotImplementedException &ex) {
+		exceptionCaught = true;
+		CHECK(strstr(ex.what(), "IS::i") != NULL);
+		CHECK(strstr(ex.what(), "(42,??\?)") != NULL);
 	}
 	CHECK(exceptionCaught);
 }

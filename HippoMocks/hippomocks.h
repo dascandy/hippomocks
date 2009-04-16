@@ -54,6 +54,14 @@ public:
 	}
 };
 
+struct NotPrintable { template <typename T> NotPrintable(T) {} };
+
+inline std::ostream &operator<<(std::ostream &os, NotPrintable)
+{
+	os << "???";
+	return os;
+}
+
 template <typename T>
 struct printArg 
 {
@@ -91,6 +99,13 @@ struct no_cref { typedef X type; };
 
 template <typename X>
 struct no_cref<const X &> { typedef X type; };
+
+struct NotComparable { template <typename T> NotComparable(const T&) {} };
+
+inline bool operator==(NotComparable, NotComparable)
+{
+	return false;
+}
 
 template <typename T>
 struct comparer
