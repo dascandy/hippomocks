@@ -54,9 +54,9 @@ public:
 	}
 };
 
-struct NotPrintable { template <typename T> NotPrintable(T) {} };
+struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
 
-inline std::ostream &operator<<(std::ostream &os, NotPrintable)
+inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
 {
 	os << "???";
 	return os;
