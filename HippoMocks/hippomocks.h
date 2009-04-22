@@ -880,7 +880,7 @@ protected:
 		expectation(expectation),
 		satisfied(false),
 		lineno(X),
-		funcName(funcName+1),
+		funcName(funcName),
 		fileName(fileName)
 	{
 	}
@@ -959,9 +959,9 @@ private:
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
-#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
-#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
+#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, &func, #func, __FILE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__)
     template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName);
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>

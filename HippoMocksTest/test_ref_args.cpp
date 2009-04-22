@@ -15,8 +15,8 @@ FUNC (checkArgumentsAccepted)
 	MockRepository mocks;
 	IK *iamock = mocks.InterfaceMock<IK>();
 	int x;
-	mocks.ExpectCall(iamock, &IK::f).With(x);
-	mocks.ExpectCall(iamock, &IK::g).With(x);
+	mocks.ExpectCall(iamock, IK::f).With(x);
+	mocks.ExpectCall(iamock, IK::g).With(x);
 	iamock->f(x);
 	iamock->g(x);
 }
@@ -26,8 +26,8 @@ FUNC (checkArgumentsChecked)
 	MockRepository mocks;
 	IK *iamock = mocks.InterfaceMock<IK>();
 	int x = 1, y = 2;
-	mocks.ExpectCall(iamock, &IK::f).With(x);
-	mocks.ExpectCall(iamock, &IK::g).With(y);
+	mocks.ExpectCall(iamock, IK::f).With(x);
+	mocks.ExpectCall(iamock, IK::g).With(y);
 	bool exceptionCaught = false;
 	try 
 	{
@@ -55,8 +55,8 @@ FUNC (checkRefArgumentsPassedAsRef)
 	MockRepository mocks;
 	IK *iamock = mocks.InterfaceMock<IK>();
 	int x = 1, y = 2;
-	mocks.ExpectCall(iamock, &IK::f).Do(plusplus);
-	mocks.ExpectCall(iamock, &IK::g).Do(plusequals2);
+	mocks.ExpectCall(iamock, IK::f).Do(plusplus);
+	mocks.ExpectCall(iamock, IK::g).Do(plusequals2);
 	iamock->f(x);
 	iamock->g(y);
 	CHECK(x == 2);
@@ -68,8 +68,8 @@ FUNC (checkRefReturnValues)
 	MockRepository mocks;
 	IK *iamock = mocks.InterfaceMock<IK>();
 	int x = 0;
-	mocks.ExpectCall(iamock, &IK::h).Return(x);
-	mocks.ExpectCall(iamock, &IK::k).Return("Hello World");
+	mocks.ExpectCall(iamock, IK::h).Return(x);
+	mocks.ExpectCall(iamock, IK::k).Return("Hello World");
 	iamock->h() = 1;
 	EQUAL(iamock->k(), std::string("Hello World"));
 	EQUAL(x, 1);

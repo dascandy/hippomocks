@@ -12,8 +12,8 @@ FUNC (checkBaseCase)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.InterfaceMock<IA>();
-	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ExpectCall(iamock, &IA::g);
+	mocks.ExpectCall(iamock, IA::f);
+	mocks.ExpectCall(iamock, IA::g);
 	iamock->f();
 	iamock->g();
 }
@@ -22,9 +22,9 @@ FUNC (checkMultiCall)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.InterfaceMock<IA>();
-	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ExpectCall(iamock, &IA::f);
+	mocks.ExpectCall(iamock, IA::f);
+	mocks.ExpectCall(iamock, IA::g);
+	mocks.ExpectCall(iamock, IA::f);
 	iamock->f();
 	iamock->g();
 	iamock->f();
@@ -36,9 +36,9 @@ FUNC (checkMultiCallNotCalled)
 	try {
 		MockRepository mocks;
 		IA *iamock = mocks.InterfaceMock<IA>();
-		mocks.ExpectCall(iamock, &IA::f);
-		mocks.ExpectCall(iamock, &IA::g);
-		mocks.ExpectCall(iamock, &IA::f);
+		mocks.ExpectCall(iamock, IA::f);
+		mocks.ExpectCall(iamock, IA::g);
+		mocks.ExpectCall(iamock, IA::f);
 		iamock->f();
 		iamock->g();
 	}
@@ -53,9 +53,9 @@ FUNC (checkMultiCallWrongOrder)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.InterfaceMock<IA>();
-	mocks.ExpectCall(iamock, &IA::f);
-	mocks.ExpectCall(iamock, &IA::g);
-	mocks.ExpectCall(iamock, &IA::f);
+	mocks.ExpectCall(iamock, IA::f);
+	mocks.ExpectCall(iamock, IA::g);
+	mocks.ExpectCall(iamock, IA::f);
 	iamock->f();
 	bool exceptionCaught = false;
 	try {
@@ -75,8 +75,8 @@ FUNC (checkExpectationsNotCompleted)
 	try {
 		MockRepository mocks;
 		IA *iamock = mocks.InterfaceMock<IA>();
-		mocks.ExpectCall(iamock, &IA::f);
-		mocks.ExpectCall(iamock, &IA::g);
+		mocks.ExpectCall(iamock, IA::f);
+		mocks.ExpectCall(iamock, IA::g);
 		iamock->f();
 	}
 	catch (CallMissingException &) 
@@ -92,8 +92,8 @@ FUNC (checkOvercompleteExpectations)
 	try {
 		MockRepository mocks;
 		IA *iamock = mocks.InterfaceMock<IA>();
-		mocks.ExpectCall(iamock, &IA::f);
-		mocks.ExpectCall(iamock, &IA::g);
+		mocks.ExpectCall(iamock, IA::f);
+		mocks.ExpectCall(iamock, IA::g);
 		iamock->f();
 		iamock->g();
 		iamock->f();
@@ -111,8 +111,8 @@ FUNC (checkExpectationsAreInOrder)
 	try {
 		MockRepository mocks;
 		IA *iamock = mocks.InterfaceMock<IA>();
-		mocks.ExpectCall(iamock, &IA::f);
-		mocks.ExpectCall(iamock, &IA::g);
+		mocks.ExpectCall(iamock, IA::f);
+		mocks.ExpectCall(iamock, IA::g);
 		iamock->g();
 	}
 	catch (ExpectationException &) 

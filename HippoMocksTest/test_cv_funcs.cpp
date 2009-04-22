@@ -14,10 +14,10 @@ FUNC (checkCVQualifiedMemberFunctions)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.InterfaceMock<IM>();
-	mocks.ExpectCall(iamock, &IM::e);
-	mocks.ExpectCall(iamock, &IM::f);
-	mocks.ExpectCall(iamock, &IM::g);
-	mocks.ExpectCall(iamock, &IM::h);
+	mocks.ExpectCall(iamock, IM::e);
+	mocks.ExpectCall(iamock, IM::f);
+	mocks.ExpectCall(iamock, IM::g);
+	mocks.ExpectCall(iamock, IM::h);
 	iamock->e();
 	iamock->f();
 	iamock->g();

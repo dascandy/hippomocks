@@ -12,7 +12,7 @@ FUNC (checkPrimitiveExceptionAcceptedAndThrown)
 {
 	MockRepository mocks;
 	IE *iamock = mocks.InterfaceMock<IE>();
-	mocks.ExpectCall(iamock, &IE::f).Throw(42);
+	mocks.ExpectCall(iamock, IE::f).Throw(42);
 	bool exceptionCaught = false;
 	try 
 	{
@@ -39,7 +39,7 @@ FUNC (checkClassTypeExceptionWithContent)
 	const char *sText = "someText";
 	MockRepository mocks;
 	IE *iamock = mocks.InterfaceMock<IE>();
-	mocks.ExpectCall(iamock, &IE::f).Throw(SomeException(sText));
+	mocks.ExpectCall(iamock, IE::f).Throw(SomeException(sText));
 	bool exceptionCaught = false;
 	try 
 	{
@@ -60,7 +60,7 @@ FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
 	{
 		MockRepository mocks;
 		IE *iamock = mocks.InterfaceMock<IE>();
-		mocks.ExpectCall(iamock, &IE::f);
+		mocks.ExpectCall(iamock, IE::f);
 	}
 	catch (CallMissingException &)
 	{
@@ -72,7 +72,7 @@ FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
 	{
 		MockRepository mocks;
 		IE *iamock = mocks.InterfaceMock<IE>();
-		mocks.ExpectCall(iamock, &IE::f);
+		mocks.ExpectCall(iamock, IE::f);
 		throw 42;
 	}
 	catch (int)
