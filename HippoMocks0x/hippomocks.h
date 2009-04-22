@@ -43,6 +43,14 @@ public:
 	}
 };
 
+struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
+
+inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
+{
+       os << "???";
+       return os;
+}
+
 template <typename T>
 struct printArg 
 {
@@ -77,10 +85,17 @@ struct no_cref { typedef X type; };
 template <typename X>
 struct no_cref<const X &> { typedef X type; };
 
+struct NotComparable { template <typename T> NotComparable(const T&) {} };
+
+inline bool operator==(NotComparable, NotComparable)
+{
+       return false;
+}
+
 template <typename T>
 struct comparer
 {
-	static bool compare(T a, T b)
+	static inline bool compare(T a, T b)
 	{
 		return a == b;
 	}
@@ -590,11 +605,23 @@ public:
 	}
 };
 
+class ReturnValueHolder {
+public:
+       virtual ~ReturnValueHolder() {}
+};
+
+template <class T>
+class ReturnValueWrapper : public ReturnValueHolder {
+public:
+       typename no_cref<T>::type rv;
+       ReturnValueWrapper(T rv) : rv(rv) {}
+};
+
 //Call wrapping
 class Call {
 public:
 	virtual bool matchesArgs(const base_tuple &tuple) = 0;
-	void *retVal;
+	ReturnValueHolder *retVal;
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
@@ -616,7 +643,7 @@ protected:
 		expectation(expectation),
 		satisfied(false),
 		lineno(X),
-		funcName(funcName+1),
+		funcName(funcName),
 		fileName(fileName)
 	{
 	}
@@ -625,6 +652,7 @@ public:
 	{
 		delete eHolder;
 		delete functor;
+		delete retVal;
 	}
 };
 
@@ -638,7 +666,7 @@ private:
 public:
 	const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
-	~TCall() { delete args; delete (Y*)retVal; }
+	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const tuple<Args...> &>(tupl); }
 	TCall<Y,Args...> &With(Args... args) { 
 		this->args = new tuple<Args...>(args...); 
@@ -650,7 +678,7 @@ public:
 	}
 	template <typename T>
 	Call &Do(T &function) { functor = new DoWrapper<T,Y,Args...>(function); return *this; }
-	Call &Return(Y obj) { retVal = new Y(obj); return *this; }
+	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -687,9 +715,9 @@ private:
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
-#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
-#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
+#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, &func, #func, __FILE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__)
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName);
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
@@ -907,9 +935,9 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, t
 TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName) 
 {
 	int funcIndex = virt_index(func);
-	Y (mockFuncs<Z, Y>::*mfp)(Args...);
-	mfp = &mockFuncs<Z, Y>::template expectation<X,Args...>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z> *>(mck), 
+	Y (mockFuncs<Z2, Y>::*mfp)(Args...);
+	mfp = &mockFuncs<Z2, Y>::template expectation<X,Args...>;
+	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck), 
 						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
@@ -956,7 +984,7 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 				call->eHolder->rethrow();
 
     		if (call->retVal)
-    			return *((Z *)call->retVal);
+    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
     		if (call->functor != NULL)
     			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
@@ -1011,7 +1039,7 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 				call->eHolder->rethrow();
 
         	if (call->retVal)
-        		return *((Z *)call->retVal);
+    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
         
         	if (call->functor != NULL)
         		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
