@@ -53,7 +53,7 @@
 				RuntimeLibrary="3"
 				EnableEnhancedInstructionSet="2"
 				WarningLevel="4"
-				DebugInformationFormat="3"
+				DebugInformationFormat="4"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"

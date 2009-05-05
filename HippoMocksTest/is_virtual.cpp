@@ -30,12 +30,16 @@ bool is_virtual_func(unsigned char *func) {
 template <typename T>
 bool is_virtual(T t)
 {
-	unsigned int target = *horrible_cast<unsigned int *>(&t);
+	union {
+		T t;
+		unsigned long value;
+	} conv;
+	conv.t = t;
 #ifdef __GNUG__
 	// simple implementation
-	return target & 1;
+	return conv.value & 1;
 #else
-	return is_virtual_func<0>((unsigned char *)target);
+	return is_virtual_func<0>((unsigned char *)conv.value);
 #endif
 }
 

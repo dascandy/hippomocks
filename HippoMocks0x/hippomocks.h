@@ -1,7 +1,15 @@
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
-#define EXCEPTION_BUFFER_SIZE 1024
+#ifndef EXCEPTION_BUFFER_SIZE
+#define EXCEPTION_BUFFER_SIZE 65536
+#endif
+
+#ifndef VIRT_FUNC_LIMIT 
+#define VIRT_FUNC_LIMIT 1024
+#elif VIRT_FUNC_LIMIT > 1024
+#error Adjust the code to support more than 1024 virtual functions before setting the VIRT_FUNC_LIMIT above 1024
+#endif
 
 #ifdef __EDG__
 #define FUNCTION_BASE 3
