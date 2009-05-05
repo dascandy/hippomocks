@@ -219,6 +219,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_overload.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\test_ref_args.cpp"
 			>
 		</File>

@@ -1,6 +1,16 @@
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
+#define EXCEPTION_BUFFER_SIZE 1024
+
+#ifdef __EDG__
+#define FUNCTION_BASE 3
+#define FUNCTION_STRIDE 2
+#else
+#define FUNCTION_BASE 0
+#define FUNCTION_STRIDE 1
+#endif
+
 #include <list>
 #include <map>
 #include <memory>
@@ -173,7 +183,7 @@ T horrible_cast(U u) {
 }
 
 class BaseException : public std::exception {
-	char buffer[65536];
+	char buffer[EXCEPTION_BUFFER_SIZE];
 public:
 	void setException(const char *description, MockRepository *repo);
 	const char *what() const throw() { return buffer; }
@@ -214,7 +224,7 @@ public:
 };
 
 class NoResultSetUpException : public std::exception {
-	char buffer[65536];
+	char buffer[EXCEPTION_BUFFER_SIZE];
 public:
 	const char *what() const throw() { return buffer; }
 	NoResultSetUpException(const base_tuple *tuple, const char *funcName)
@@ -492,25 +502,37 @@ public:
 	virtual int f1020() { return 1020; }	virtual int f1021() { return 1021; }	virtual int f1022() { return 1022; }	virtual int f1023() { return 1023; }
 };
 
-#ifdef SUSPECT
-//TODO: why did this stop working on c++0x?
-template <typename T>
-int virt_index(T t)
+template <typename T, typename U>
+T getNonvirtualMemberFunctionAddress(U u)
 {
-	unsigned int target = *horrible_cast<unsigned int *>(&t);
-	if (target & 1)
-		return target >> 1;
-	return -1;
-}
+#ifdef __EDG__
+  // Edison Design Group C++ frontend (Comeau, Portland Group, Greenhills, etc)
+  union {
+    struct {
+      short delta;
+      short vindex;
+      T t;
+    } mfp_structure;
+    U u;
+  } conv;
 #else
-template <typename T>
-int virt_index(T t)
-{
-	func_index idx;
-	int (func_index::*f)() = (int (func_index::*)())t;
-	return (idx.*f)();
-}
+  // Visual Studio, GCC, others
+  union {
+    struct {
+      T t;
+    } mfp_structure;
+    U u;
+  } conv;
 #endif
+  conv.u = u;
+  return conv.mfp_structure.t;
+}
+
+template <typename T>
+int getFunctionIndex(T func) {
+	func_index idx;
+	return ((&idx)->*reinterpret_cast<int (func_index::*)()>(func))() * FUNCTION_STRIDE + FUNCTION_BASE;
+}
 
 // mock types
 template <class T>
@@ -531,7 +553,7 @@ public:
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++) 
 		{
-			funcs[i] = horrible_cast<void (*)()>(&mock<T>::NotImplemented);
+			funcs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
 			funcMap[i] = -1;
 		}
 		memset(remaining, 0, sizeof(remaining));
@@ -718,6 +740,9 @@ public:
 #define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, &func, #func, __FILE__)
 #define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__)
 #define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
+#define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
+#define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 	TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName);
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
@@ -926,15 +951,16 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (ba
 {
 	if (zMock->funcMap[funcIndex] == -1)
 	{
-		zMock->funcs[funcIndex] = horrible_cast<void (*)()>(func);
+		zMock->funcs[funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
 		zMock->funcMap[funcIndex] = X;
 	}
 }
+
 // Mock repository implementation
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName) 
 {
-	int funcIndex = virt_index(func);
+	int funcIndex = getFunctionIndex(func);
 	Y (mockFuncs<Z2, Y>::*mfp)(Args...);
 	mfp = &mockFuncs<Z2, Y>::template expectation<X,Args...>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck), 
@@ -1149,6 +1175,7 @@ inline void BaseException::setException(const char *description, MockRepository 
 	text << *repo;
 	std::string result = text.str();
 	strncpy(buffer, result.c_str(), sizeof(buffer)-1);
+	buffer[sizeof(buffer)-1] = '\0';
 }
 
 #endif
