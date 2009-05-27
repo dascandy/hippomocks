@@ -957,7 +957,7 @@ public:
 		return *this; 
 	}
 	template <typename T>
-	Call &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -984,7 +984,7 @@ public:
 		return *this; 
 	}
 	template <typename T>
-	Call &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -2176,13 +2176,22 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 			if (call->eHolder)
 				call->eHolder->rethrow();
 
-    		if (call->retVal)
+			if (call->functor != NULL)
+			{
+				if(call->retVal == NULL)
+				{
+					return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+				}
+				else
+				{
+					(*(TupleInvocable<Z> *)(call->functor))(tuple);
+				}
+			}
+
+			if (call->retVal)
 				return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
-    		if (call->functor != NULL)
-    			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
-
-        throw NoResultSetUpException(call->getArgs(), call->funcName);
+			throw NoResultSetUpException(call->getArgs(), call->funcName);
 		}
 	}
 	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i) 
@@ -2231,12 +2240,21 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 			if (call->eHolder)
 				call->eHolder->rethrow();
 
-    		if (call->retVal)
+			if (call->functor != NULL)
+			{
+				if(call->retVal == NULL)
+				{
+					return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+				}
+				else
+				{
+					(*(TupleInvocable<Z> *)(call->functor))(tuple);
+				}
+			}
+
+			if (call->retVal)
 				return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
-        
-        	if (call->functor != NULL)
-        		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
-        
+
 			throw NoResultSetUpException(call->getArgs(), call->funcName);
 		}
 	}
