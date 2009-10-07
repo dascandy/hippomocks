@@ -183,6 +183,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_autoptr.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\test_class_args.cpp"
 			>
 		</File>
