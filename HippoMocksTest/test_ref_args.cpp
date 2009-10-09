@@ -14,12 +14,13 @@ FUNC (checkArgumentsAccepted)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.InterfaceMock<IK>();
-	int x;
+	int x = 42;
 	mocks.ExpectCall(iamock, IK::f).With(x);
 	mocks.ExpectCall(iamock, IK::g).With(x);
 	iamock->f(x);
 	iamock->g(x);
 }
+
 
 FUNC (checkArgumentsChecked)
 {
@@ -74,4 +75,3 @@ FUNC (checkRefReturnValues)
 	EQUAL(iamock->k(), std::string("Hello World"));
 	EQUAL(x, 1);
 }
-

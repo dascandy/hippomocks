@@ -95,7 +95,7 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 	MockRepository mocks;
 	mocks.autoExpect = false;
 	IS *ismock = mocks.InterfaceMock<IS>();
-	mocks.ExpectCall(ismock, IS::f).With().Return(1);
+	mocks.ExpectCall(ismock, IS::f).Return(1);
 	mocks.OnCall(ismock, IS::f).Return(2);
 	mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);
 	mocks.OnCall(ismock, IS::g).Return(3);
@@ -108,7 +108,7 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 	catch (NotImplementedException &ex)
 	{
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f(...)") != NULL);
+		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
 		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
@@ -122,12 +122,12 @@ FUNC(checkExpectationExceptionToContainInfo)
 	MockRepository mocks;
 	mocks.autoExpect = false;
 	IS *ismock = mocks.InterfaceMock<IS>();
-	mocks.ExpectCall(ismock, IS::f).With().Return(1);
+	mocks.ExpectCall(ismock, IS::f).Return(1);
 	mocks.OnCall(ismock, IS::f).Return(2);
 	mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);
 	mocks.OnCall(ismock, IS::g).With(2,3).Return(3);
 	mocks.NeverCall(ismock, IS::g).With(3,4);
-	mocks.NeverCall(ismock, IS::h).With();
+	mocks.NeverCall(ismock, IS::h);
 
 	try
 	{
@@ -137,7 +137,7 @@ FUNC(checkExpectationExceptionToContainInfo)
 	{
 		CHECK(strstr(ex.what(), "Function IS::g(0,1) called") != NULL);
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f(...)") != NULL);
+		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
 		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(2,3)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
@@ -154,7 +154,7 @@ FUNC(checkCallMissingExceptionToContainInfo)
 		MockRepository mocks;
 		mocks.autoExpect = false;
 		IS *ismock = mocks.InterfaceMock<IS>();
-		mocks.ExpectCall(ismock, IS::f).With().Return(1);
+		mocks.ExpectCall(ismock, IS::f).Return(1);
 		mocks.OnCall(ismock, IS::f).Return(2);
 		mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);
 		mocks.OnCall(ismock, IS::g).Return(3);
@@ -163,7 +163,7 @@ FUNC(checkCallMissingExceptionToContainInfo)
 	catch (CallMissingException &ex)
 	{
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f(...)") != NULL);
+		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
 		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
