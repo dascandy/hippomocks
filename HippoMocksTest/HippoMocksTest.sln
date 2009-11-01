@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual C++ Express 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HippoMocksTest", "..\HippoMocksTest\HippoMocksTest.vcproj", "{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HippoMocksTest", "HippoMocksTest.vcproj", "{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

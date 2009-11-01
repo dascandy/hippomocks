@@ -1,50 +1,65 @@
 #include "yaffut.h"
+#include <iostream>
 #include "hippomocks.h"
 
 class IL { 
 public:
-	void f() {}
-	virtual void g() {}
+	void f() { std::cout << "0" << std::endl; }
+	virtual void g() { std::cout << "1" << std::endl; }
+	virtual void h() { std::cout << "2" << std::endl; }
 };
 
-#ifndef __GCC__
-template <int s>
-bool is_virtual_func(unsigned char *func) {
-	if (*func == 0xE9)
-	{
-		return is_virtual_func<0>(func + 5 + *(unsigned int *)(func+1));
-	}
-	else
-	{
-		switch(*(unsigned int *)func)
-		{ // mov ecx, this; jump [eax + v/Ib/Iw]
-		case 0x20ff018b:
-		case 0x60ff018b:
-		case 0xA0ff018b: return true;
-		default: return false;
-		}
-	}
-}
-#endif
-
-template <typename T>
-bool is_virtual(T t)
+class SecondBase
 {
-	union {
-		T t;
-		unsigned long value;
-	} conv;
-	conv.t = t;
-#ifdef __GNUG__
-	// simple implementation
-	return conv.value & 1;
-#else
-	return is_virtual_func<0>((unsigned char *)conv.value);
-#endif
+public:
+	virtual void k() { std::cout << "3" << std::endl; }
+	int x;
+};
+
+class ThirdBase
+{
+public:
+	virtual void l() { std::cout << "4" << std::endl; }
+	virtual void m() { std::cout << "4" << std::endl; }
+};
+
+class ILD : public IL, public SecondBase, public ThirdBase
+{
+};
+
+FUNC(checkNonVirtual) 
+{
+	CHECK(virtual_index(&ILD::f).first == -1);
 }
 
-FUNC(testVirtualIsVirtual) 
+FUNC(checkFirstVirtual) 
 {
-	CHECK(is_virtual(&IL::g));
-	CHECK(!is_virtual(&IL::f));
+	CHECK(virtual_index(&ILD::g).first == 0);
+	CHECK(virtual_index(&ILD::g).second == 0);
 }
+
+FUNC(checkSecondVirtual) 
+{
+	CHECK(virtual_index(&ILD::h).first == 0);
+	CHECK(virtual_index(&ILD::h).second == 1);
+}
+
+FUNC(checkSecondBaseFirstVirtual) 
+{
+	CHECK(virtual_index((void (ILD::*)())&ILD::k).first == 1);
+	CHECK(virtual_index((void (ILD::*)())&ILD::k).second == 0);
+}
+
+FUNC(checkThirdBaseSecondVirtualAfterInt) 
+{
+	CHECK(virtual_index((void (ILD::*)())&ILD::m).first == 3);
+	CHECK(virtual_index((void (ILD::*)())&ILD::m).second == 1);
+}
+
+FUNC(checkPointerConversionIsOk) 
+{
+	void (ThirdBase::*f)() = &ThirdBase::m;
+	CHECK(virtual_index((void (ILD::*)())f).first == 3);
+	CHECK(virtual_index((void (ILD::*)())f).second == 1);
+}
+

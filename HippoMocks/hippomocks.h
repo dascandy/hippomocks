@@ -11,16 +11,16 @@
 #error Adjust the code to support more than 1024 virtual functions before setting the VIRT_FUNC_LIMIT above 1024
 #endif
 
+#ifdef __GNUC__
+#define EXTRA_DESTRUCTOR
+#endif
+
 #ifdef __EDG__
 #define FUNCTION_BASE 3
 #define FUNCTION_STRIDE 2
 #else
 #define FUNCTION_BASE 0
 #define FUNCTION_STRIDE 1
-#endif
-
-#ifdef __GNUC__
-#define EXTRA_DESTRUCTOR
 #endif
 
 #include <list>
@@ -64,7 +64,7 @@ public:
 	}
 	void unwriteVft()
 	{
-		*(void **)this = (*(void ***)this)[-1];
+		*(void **)this = (*(void ***)this)[VIRT_FUNC_LIMIT+1];
 	}
 };
 
@@ -587,6 +587,69 @@ public:
 	virtual int f1020(int) { return lci=1020; }	virtual int f1021(int) { return lci=1021; }	virtual int f1022(int) { return lci=1022; }	virtual int f1023(int) { return lci=1023; }
 };
 
+#ifdef _MSC_VER
+template <int s>
+int virtual_function_index(unsigned char *func) {
+	if (*func == 0xE9)
+	{
+		return virtual_function_index<0>(func + 5 + *(unsigned int *)(func+1));
+	}
+	else
+	{
+		switch(*(unsigned int *)func)
+		{ // mov ecx, this; jump [eax + v/Ib/Iw]
+		case 0x20ff018b: return 0;
+		case 0x60ff018b: return *(unsigned char *)(func + 4) / 4;
+		case 0xA0ff018b: return *(unsigned long *)(func + 4) / 4;
+		default: return -1;
+		}
+	}
+}
+#endif
+
+template <typename T>
+std::pair<int, int> virtual_index(T t)
+{
+#if defined(__GNUG__) || defined(_MSC_VER)
+	union {
+		T t;
+		struct
+		{
+			unsigned long value;
+			unsigned long baseoffs;
+		} u;
+	} conv;
+	conv.t = t;
+
+#if defined(__GNUG__)
+	// simple implementation
+	if (conv.u.value & 1)
+		return std::pair<int, int>(conv.u.baseoffs / 4, conv.u.value >> 2);
+#else
+	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
+	if (value != -1)
+		return std::pair<int, int>(conv.u.baseoffs/4, value);
+#endif
+#elif defined(__EDG__)
+	union {
+		T t;
+		struct {
+			short delta;
+			short vindex;
+			long vtordisp;
+		} u;
+	} conv;
+	conv.t = t;
+
+	if (conv.u.vindex != 0)
+		return std::pair<int, int>((conv.u.delta + conv.u.vtordisp)/4, conv.u.vindex * 2 + 1);
+#else
+#error No virtual indexing found for this compiler! Please contact the maintainers of HippoMocks
+#endif
+
+	return std::pair<int, int>(-1, 0);
+}
+
 template <typename T, typename U>
 T getNonvirtualMemberFunctionAddress(U u)
 {
@@ -613,65 +676,82 @@ T getNonvirtualMemberFunctionAddress(U u)
   return conv.mfp_structure.t;
 }
 
-template <typename T>
-int getFunctionIndex(T func) {
-	func_index idx;
-	return ((&idx)->*reinterpret_cast<int (func_index::*)(int)>(func))(0) * FUNCTION_STRIDE + FUNCTION_BASE;
-}
+class TypeDestructable {
+public:
+	virtual ~TypeDestructable() {}
+};
+
+template <typename A>
+class MemberWrap : public TypeDestructable {
+private:
+	A *member;
+public:
+	MemberWrap(A *member)
+		: member(member)
+	{
+		new (member) A();
+	}
+	~MemberWrap()
+	{
+		member->~A();
+	}
+};
 
 // mock types
 template <class T>
 class mock : public base_mock
 {
+	typedef void (*funcptr)();
 	friend class MockRepository;
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(repo); }
 protected:
-	void *oldVft;
-	void (*funcs[VIRT_FUNC_LIMIT])();
-	MockRepository *repo;
+	std::map<int, void (**)()> funcTables;
+	void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
 public:
-	int funcMap[VIRT_FUNC_LIMIT];
+	std::list<TypeDestructable *> members;
+	MockRepository *repo;
+	std::map<std::pair<int, int>, int> funcMap;
 	mock(MockRepository *repo)
 		: repo(repo)
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
 		{
-			funcs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
-			funcMap[i] = -1;
+			notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
 		}
-		memset(remaining, 0, sizeof(remaining));
-		oldVft = base_mock::rewriteVft(funcs);
-	}
-	int translateX(int x)
-	{
-		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
+		funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+2];
+		memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
+		((void **)funcTable)[VIRT_FUNC_LIMIT] = this;
+		((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
+		funcTables[0] = funcTable;
+		*(void **)this = funcTable;
+		for (unsigned int i = 1; i < sizeof(remaining) / 4; i++)
 		{
-			if (funcMap[i] == x) return i;
+			((void **)this)[i] = (void *)notimplementedfuncs;
 		}
-		return -1;
+	}
+	~mock() 
+	{
+		for (std::list<TypeDestructable *>::iterator i = members.begin(); i != members.end(); ++i)
+		{
+			delete *i;
+		}
+	}
+	mock<T> *getRealThis() 
+	{
+		void ***base = (void ***)this;
+		return (mock<T> *)((*base)[VIRT_FUNC_LIMIT]);
+	}
+	std::pair<int, int> translateX(int x)
+	{
+		for (std::map<std::pair<int, int>, int>::iterator i = funcMap.begin(); i != funcMap.end(); ++i)
+		{
+			if (i->second == x+1) return i->first;
+		}
+		return std::pair<int, int>(-1, 0);
 	}
 	template <int X>
 	void mockedDestructor(int);
-};
-
-template <class T>
-class classMock : public mock<T>
-{
-	void *backupVft;
-public:
-	classMock(MockRepository *repo)
-		: mock<T>(repo)
-	{
-		mock<T>::oldVft = base_mock::rewriteVft((void *)mock<T>::funcs);
-		new(this)T();
-		backupVft = base_mock::rewriteVft((void *)mock<T>::funcs);
-	}
-	~classMock()
-	{
-		base_mock::rewriteVft(backupVft);
-		((T *)this)->~T();
-	}
 };
 
 //Type-safe exception wrapping
@@ -961,7 +1041,7 @@ public:
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
-	int funcIndex;
+	std::pair<int, int> funcIndex;
 	std::list<Call *> previousCalls;
 	RegistrationType expectation;
 	bool satisfied;
@@ -969,7 +1049,7 @@ public:
 	const char *funcName;
 	const char *fileName;
 protected:
-	Call(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName)
+	Call(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName)
 		: retVal(0),
 		eHolder(0),
 		mock(mock),
@@ -1004,7 +1084,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1035,7 +1115,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1067,7 +1147,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1098,7 +1178,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1130,7 +1210,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1161,7 +1241,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1193,7 +1273,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1224,7 +1304,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1255,7 +1335,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1284,7 +1364,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1314,7 +1394,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1343,7 +1423,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1373,7 +1453,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1402,7 +1482,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1432,7 +1512,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1461,7 +1541,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1490,7 +1570,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1517,7 +1597,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1545,7 +1625,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1572,7 +1652,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1600,7 +1680,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1627,7 +1707,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1655,7 +1735,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1682,7 +1762,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD,
@@ -1709,7 +1789,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD>
@@ -1734,7 +1814,7 @@ private:
 	ref_comparable_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC, typename CD>
@@ -1760,7 +1840,7 @@ private:
 	ref_comparable_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC>
@@ -1785,7 +1865,7 @@ private:
 	ref_comparable_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB, typename CC>
@@ -1811,7 +1891,7 @@ private:
 	ref_comparable_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB>
@@ -1836,7 +1916,7 @@ private:
 	ref_comparable_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA, typename CB>
@@ -1862,7 +1942,7 @@ private:
 	ref_comparable_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA>
@@ -1887,7 +1967,7 @@ private:
 	ref_comparable_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
 	template <typename CA>
@@ -1912,7 +1992,7 @@ private:
 	ref_comparable_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName) {
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName) {
 		args = new copy_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
 							  NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 							  (NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
@@ -1934,7 +2014,7 @@ private:
 	ref_comparable_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
     const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName) {
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName) {
 		args = new copy_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
 						  NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 						  (NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
@@ -1955,7 +2035,7 @@ private:
 	friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 	std::list<base_mock *> mocks;
 	std::list<Call *> neverCalls;
-  std::list<Call *> expectations;
+	std::list<Call *> expectations;
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
@@ -1976,6 +2056,14 @@ public:
 #define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__, __LINE__)
 #define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, __FILE__, __LINE__)
 #endif
+	template <typename A, class B, typename C>
+	void Member(A *mck, C B::*member)
+	{
+		C A::*realMember = (C A::*)member;
+		C *realRealMember = &(mck->*realMember);
+		mock<A> *realMock = (mock<A> *)mck;
+		realMock->members.push_back(new MemberWrap<C>(realRealMember));
+	}
 	template <int X, typename Z2>
 	Call &RegisterExpectDestructor(Z2 *mck, const char *fileName, unsigned long lineNo);
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
@@ -2277,10 +2365,10 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P) const, const char *funcName, const char *fileName, unsigned long lineNo) { return RegisterExpect_<X,expect>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P))(func), funcName, fileName, lineNo); }
 #endif
 	template <typename Z>
-	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
+	void BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple);
-    void DoVoidExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
+	Z DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple);
+    void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
     {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 		{
@@ -2441,8 +2529,6 @@ public:
 	}
 	template <typename base>
 	base *InterfaceMock();
-	template <typename base>
-	base *ClassMock();
 };
 
 // mock function providers
@@ -2454,104 +2540,121 @@ public:
 	template <int X>
 	Y expectation0()
 	{
-        MockRepository *repo = mock<Z>::repo;
-        return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<>());
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+        return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<>());
 	}
 	template <int X, typename A>
 	Y expectation1(A a)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A>(a));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A>(a));
 	}
 	template <int X, typename A, typename B>
 	Y expectation2(A a, B b)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B>(a,b));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B>(a,b));
 	}
 	template <int X, typename A, typename B, typename C>
 	Y expectation3(A a, B b, C c)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C>(a,b,c));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C>(a,b,c));
 	}
 	template <int X, typename A, typename B, typename C, typename D>
 	Y expectation4(A a, B b, C c, D d)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E>
 	Y expectation5(A a, B b, C c, D d, E e)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
 	Y expectation6(A a, B b, C c, D d, E e, F f)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
 	Y expectation7(A a, B b, C c, D d, E e, F f, G g)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
 	Y expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
 	Y expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
 	Y expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
 	Y expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
 	Y expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
 	Y expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
 	Y expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
 	{
-        MockRepository *repo = mock<Z>::repo;
-        return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+        return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
 	Y expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
 	Y expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
 };
 
@@ -2563,104 +2666,121 @@ public:
 	template <int X>
 	void expectation0()
 	{
-        MockRepository *repo = mock<Z>::repo;
-        repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<>());
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+        repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<>());
 	}
 	template <int X, typename A>
 	void expectation1(A a)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A>(a));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A>(a));
 	}
 	template <int X, typename A, typename B>
 	void expectation2(A a, B b)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B>(a,b));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B>(a,b));
 	}
 	template <int X, typename A, typename B, typename C>
 	void expectation3(A a, B b, C c)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C>(a,b,c));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C>(a,b,c));
 	}
 	template <int X, typename A, typename B, typename C, typename D>
 	void expectation4(A a, B b, C c, D d)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E>
 	void expectation5(A a, B b, C c, D d, E e)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
 	void expectation6(A a, B b, C c, D d, E e, F f)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
 	void expectation7(A a, B b, C c, D d, E e, F f, G g)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
 	void expectation8(A a, B b, C c, D d, E e, F f, G g, H h)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
 	void expectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
 	void expectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
 	void expectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
 	void expectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
 	void expectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
 	void expectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
 	{
-        MockRepository *repo = mock<Z>::repo;
-        repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+        repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
 	void expectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
 	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
 	void expectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+		mock<Z> *realMock = mock<Z>::getRealThis();
+        MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
 };
 
@@ -2675,12 +2795,23 @@ void mock<T>::mockedDestructor(int)
 }
 
 template <typename Z>
-void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X)
+void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
 {
-	if (zMock->funcMap[funcIndex] == -1)
+	if (funcIndex > VIRT_FUNC_LIMIT) throw NotImplementedException(this);
+	if ((unsigned int)baseOffset * 4 + 3 > sizeof(Z)) throw NotImplementedException(this);
+	if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
 	{
-		zMock->funcs[funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
-		zMock->funcMap[funcIndex] = X;
+		if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
+		{
+			typedef void (*funcptr)();
+			funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+1];
+			memcpy(funcTable, zMock->notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
+			((void **)funcTable)[VIRT_FUNC_LIMIT] = zMock;
+			zMock->funcTables[baseOffset] = funcTable;
+			((void **)zMock)[baseOffset] = funcTable;
+		}
+		zMock->funcMap[std::make_pair(baseOffset, funcIndex)] = X+1;
+		zMock->funcTables[baseOffset][funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
 	}
 }
 
@@ -2688,20 +2819,19 @@ template <int X, typename Z2>
 Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, unsigned long lineNo)
 {
 	func_index idx;
-	idx.lci = -40;
 	((Z2 *)&idx)->~Z2();
 	int funcIndex = idx.lci * FUNCTION_STRIDE + FUNCTION_BASE;
 	void (mock<Z2>::*member)(int);
 	member = &mock<Z2>::template mockedDestructor<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						0, funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #ifdef EXTRA_DESTRUCTOR
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex+1,
+						0, funcIndex+1,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #endif
-	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, "destructor", fileName);
+	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), std::pair<int, int>(0, funcIndex), lineNo, "destructor", fileName);
 	if (autoExpect && expectations.size() > 0)
 	{
 		call->previousCalls.push_back(expectations.back());
@@ -2714,11 +2844,11 @@ Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, un
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y (Z2::*)())func);
 	Y (mockFuncs<Z2, Y>::*mfp)();
 	mfp = &mockFuncs<Z2, Y>::template expectation0<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2738,11 +2868,11 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *f
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename A>
 TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A);
 	mfp = &mockFuncs<Z2, Y>::template expectation1<X,A>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2763,11 +2893,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename A, typename B>
 TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B);
 	mfp = &mockFuncs<Z2, Y>::template expectation2<X,A,B>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2788,11 +2918,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename A, typename B, typename C>
 TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C);
 	mfp = &mockFuncs<Z2, Y>::template expectation3<X,A,B,C>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2813,11 +2943,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename A, typename B, typename C, typename D>
 TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D);
 	mfp = &mockFuncs<Z2, Y>::template expectation4<X,A,B,C,D>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2839,11 +2969,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename E>
 TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E);
 	mfp = &mockFuncs<Z2, Y>::template expectation5<X,A,B,C,D,E>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2865,11 +2995,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename E, typename F>
 TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F);
 	mfp = &mockFuncs<Z2, Y>::template expectation6<X,A,B,C,D,E,F>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2891,11 +3021,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename E, typename F, typename G>
 TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G);
 	mfp = &mockFuncs<Z2, Y>::template expectation7<X,A,B,C,D,E,F,G>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2917,11 +3047,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename E, typename F, typename G, typename H>
 TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H);
 	mfp = &mockFuncs<Z2, Y>::template expectation8<X,A,B,C,D,E,F,G,H>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2944,11 +3074,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename I>
 TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I);
 	mfp = &mockFuncs<Z2, Y>::template expectation9<X,A,B,C,D,E,F,G,H,I>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2971,11 +3101,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename I, typename J>
 TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J);
 	mfp = &mockFuncs<Z2, Y>::template expectation10<X,A,B,C,D,E,F,G,H,I,J>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -2998,11 +3128,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename I, typename J, typename K>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K);
 	mfp = &mockFuncs<Z2, Y>::template expectation11<X,A,B,C,D,E,F,G,H,I,J,K>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3025,11 +3155,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename I, typename J, typename K, typename L>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K,L))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L);
 	mfp = &mockFuncs<Z2, Y>::template expectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3053,11 +3183,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename M>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K,L,M))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M);
 	mfp = &mockFuncs<Z2, Y>::template expectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3081,11 +3211,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename M, typename N>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N);
 	mfp = &mockFuncs<Z2, Y>::template expectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3109,11 +3239,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename M, typename N, typename O>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O);
 	mfp = &mockFuncs<Z2, Y>::template expectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3138,11 +3268,11 @@ template <int X, RegistrationType expect, typename Z2, typename Y, typename Z,
 		  typename M, typename N, typename O, typename P>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
 	mfp = &mockFuncs<Z2, Y>::template expectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	switch(expect)
@@ -3161,7 +3291,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 }
 
 template <typename Z>
-Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
+Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
 {
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 	{
@@ -3299,13 +3429,6 @@ base *MockRepository::InterfaceMock() {
     mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
-template <typename base>
-base *MockRepository::ClassMock() {
-	classMock<base> *m = new classMock<base>(this);
-    mocks.push_back(m);
-	return reinterpret_cast<base *>(m);
-}
-
 inline std::ostream &operator<<(std::ostream &os, const Call &call)
 {
 	os << call.fileName << "(" << call.lineno << ") ";
