@@ -11,7 +11,7 @@ public:
 FUNC (checkArgumentsAccepted)
 {
 	MockRepository mocks;
-	IB *iamock = mocks.InterfaceMock<IB>();
+	IB *iamock = mocks.Mock<IB>();
 	mocks.ExpectCall(iamock, IB::f).With(1);
 	mocks.ExpectCall(iamock, IB::g).With(2);
 	iamock->f(1);
@@ -21,7 +21,7 @@ FUNC (checkArgumentsAccepted)
 FUNC (checkArgumentsChecked)
 {
 	MockRepository mocks;
-	IB *iamock = mocks.InterfaceMock<IB>();
+	IB *iamock = mocks.Mock<IB>();
 	mocks.ExpectCall(iamock, IB::f).With(1);
 	mocks.ExpectCall(iamock, IB::g).With(1);
 	bool exceptionCaught = false;

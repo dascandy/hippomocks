@@ -13,7 +13,7 @@ typedef void (IA::*mf)();
 FUNC (checkOverloadWithCastWorks)
 {
 	MockRepository mocks;
-	IA *iamock = mocks.InterfaceMock<IA>();
+	IA *iamock = mocks.Mock<IA>();
 	mocks.ExpectCallOverload(iamock, (mf)&IA::f);
 	iamock->f();
 }

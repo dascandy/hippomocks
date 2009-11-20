@@ -13,7 +13,7 @@ FUNC (checkNeverCallWorks)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IR *iamock = mocks.InterfaceMock<IR>();
+	IR *iamock = mocks.Mock<IR>();
 	Call &callF = mocks.ExpectCall(iamock, IR::f);
 	mocks.OnCall(iamock, IR::g);
 	mocks.NeverCall(iamock, IR::g).After(callF);
@@ -35,7 +35,7 @@ FUNC (checkNeverCallExceptionDetail)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IR *iamock = mocks.InterfaceMock<IR>();
+	IR *iamock = mocks.Mock<IR>();
 	mocks.NeverCall(iamock, IR::g);
 	try
 	{
@@ -54,7 +54,7 @@ FUNC (checkInteractionBetweenCallTypesWorks)
 	bool exceptionCaught = false;
 	MockRepository mocks;
 	mocks.autoExpect = false;
-	IR *iamock = mocks.InterfaceMock<IR>();
+	IR *iamock = mocks.Mock<IR>();
 	Call &callF = mocks.ExpectCall(iamock, IR::f);
 	Call &onCallG = mocks.OnCall(iamock, IR::g);
 	mocks.OnCall(iamock, IR::h).Return(2);

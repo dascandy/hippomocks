@@ -11,7 +11,7 @@ public:
 FUNC (checkBaseCaseOptionalOk)
 {
 	MockRepository mocks;
-	II *iamock = mocks.InterfaceMock<II>();
+	II *iamock = mocks.Mock<II>();
 	mocks.ExpectCall(iamock, II::f);
 	mocks.OnCall(iamock, II::g);
 	iamock->g();
@@ -21,7 +21,7 @@ FUNC (checkBaseCaseOptionalOk)
 FUNC (checkBaseCaseOptionalNotRequired)
 {
 	MockRepository mocks;
-	II *iamock = mocks.InterfaceMock<II>();
+	II *iamock = mocks.Mock<II>();
 	mocks.ExpectCall(iamock, II::f);
 	mocks.OnCall(iamock, II::g);
 	iamock->f();
@@ -30,7 +30,7 @@ FUNC (checkBaseCaseOptionalNotRequired)
 FUNC (checkBaseCaseOptionalTwiceIsOK)
 {
 	MockRepository mocks;
-	II *iamock = mocks.InterfaceMock<II>();
+	II *iamock = mocks.Mock<II>();
 	mocks.ExpectCall(iamock, II::f);
 	mocks.OnCall(iamock, II::g);
 	iamock->g();

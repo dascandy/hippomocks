@@ -26,7 +26,7 @@ public:
 FUNC (checkArgCount16SupportedAndWorking)
 {
 	MockRepository mocks;
-	IR *iamock = mocks.InterfaceMock<IR>();
+	IR *iamock = mocks.Mock<IR>();
 	mocks.ExpectCall(iamock, IR::f0);
 	mocks.ExpectCall(iamock, IR::f1).With(0);
 	mocks.ExpectCall(iamock, IR::f2).With(1,2);

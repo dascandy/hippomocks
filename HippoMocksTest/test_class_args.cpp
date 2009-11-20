@@ -13,7 +13,7 @@ public:
 FUNC (checkClassArgumentsAccepted)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.InterfaceMock<IC>();
+	IC *iamock = mocks.Mock<IC>();
 	mocks.OnCall(iamock, IC::f).With("hi");
 	mocks.OnCall(iamock, IC::g).With("bye");
 	iamock->f("hi");
@@ -23,7 +23,7 @@ FUNC (checkClassArgumentsAccepted)
 FUNC (checkClassArgumentsChecked)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.InterfaceMock<IC>();
+	IC *iamock = mocks.Mock<IC>();
 	mocks.OnCall(iamock, IC::f).With("hi");
 	mocks.OnCall(iamock, IC::g).With("bye");
 	bool exceptionCaught = false;
@@ -42,7 +42,7 @@ FUNC (checkClassArgumentsChecked)
 FUNC (checkClassArgumentsIgnored)
 {
 	MockRepository mocks;
-	IC *iamock = mocks.InterfaceMock<IC>();
+	IC *iamock = mocks.Mock<IC>();
 	mocks.OnCall(iamock, IC::f);
 	iamock->f("bye");
 }

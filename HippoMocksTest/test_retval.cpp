@@ -11,7 +11,7 @@ public:
 FUNC (checkRetvalAccepted)
 {
 	MockRepository mocks;
-	ID *iamock = mocks.InterfaceMock<ID>();
+	ID *iamock = mocks.Mock<ID>();
 	mocks.ExpectCall(iamock, ID::f).Return(1);
 	mocks.ExpectCall(iamock, ID::g).Return("fsck");
 	iamock->f();
@@ -21,7 +21,7 @@ FUNC (checkRetvalAccepted)
 FUNC (checkRetvalProper)
 {
 	MockRepository mocks;
-	ID *iamock = mocks.InterfaceMock<ID>();
+	ID *iamock = mocks.Mock<ID>();
 	mocks.ExpectCall(iamock, ID::f).Return(1);
 	mocks.ExpectCall(iamock, ID::g).Return("fsck");
 	CHECK(iamock->f() == 1);

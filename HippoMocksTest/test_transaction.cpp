@@ -13,7 +13,7 @@ public:
 FUNC (checkTransactionStyleWorks)
 {
 	MockRepository mocks;
-	IM *iamock = mocks.InterfaceMock<IM>();
+	IM *iamock = mocks.Mock<IM>();
 	mocks.autoExpect = false;
 	Call &beginCall = mocks.ExpectCall(iamock, IM::begin);
 	Call &aCall = mocks.ExpectCall(iamock, IM::a).After(beginCall);
@@ -28,7 +28,7 @@ FUNC (checkTransactionStyleWorks)
 FUNC (checkTransactionStyleFailIfOneSkipped)
 {
 	MockRepository mocks;
-	IM *iamock = mocks.InterfaceMock<IM>();
+	IM *iamock = mocks.Mock<IM>();
 	mocks.autoExpect = false;
 	Call &beginCall = mocks.ExpectCall(iamock, IM::begin);
 	Call &aCall = mocks.ExpectCall(iamock, IM::a).After(beginCall);

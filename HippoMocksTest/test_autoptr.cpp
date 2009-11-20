@@ -14,10 +14,10 @@ public:
 
 FUNC (checkAutoptrReturnable)
 {
-	X *_t = new X();
+	X *_t = new X;
 
 	MockRepository mocks;
-	IQ *iamock = mocks.InterfaceMock<IQ>();
+	IQ *iamock = mocks.Mock<IQ>();
 	mocks.ExpectCall(iamock, IQ::g).Return(auto_ptr<X>(_t));
 	CHECK(_t == iamock->g().get());
 }
@@ -25,7 +25,7 @@ FUNC (checkAutoptrReturnable)
 FUNC (checkAutoptrCanReturnMock)
 {
 	MockRepository mocks;
-	IQ *iamock = mocks.InterfaceMock<IQ>();
+	IQ *iamock = mocks.Mock<IQ>();
 	mocks.ExpectCall(iamock, IQ::getSelf).Return(auto_ptr<IQ>(iamock));
 	mocks.ExpectCallDestructor(iamock);
 	CHECK(iamock == iamock->getSelf().get());
@@ -34,7 +34,7 @@ FUNC (checkAutoptrCanReturnMock)
 FUNC(checkCanDestroyMock)
 {
 	MockRepository mocks;
-	IQ *iamock = mocks.InterfaceMock<IQ>();
+	IQ *iamock = mocks.Mock<IQ>();
 	mocks.ExpectCallDestructor(iamock);
 	delete iamock;
 }

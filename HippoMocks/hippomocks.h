@@ -5,6 +5,15 @@
 #define EXCEPTION_BUFFER_SIZE 65536
 #endif
 
+#ifndef BASE_EXCEPTION
+#define BASE_EXCEPTION std::exception
+#include <exception>
+#endif
+
+#ifndef DONTCARE_NAME
+#define DONTCARE_NAME _
+#endif
+
 #ifndef VIRT_FUNC_LIMIT
 #define VIRT_FUNC_LIMIT 1024
 #elif VIRT_FUNC_LIMIT > 1024
@@ -38,17 +47,16 @@
 #pragma warning(disable: 4512)
 // Alignment not right in a union?
 #pragma warning(disable: 4121)
-// Template parameters have the tendency not to change between executions.
-#pragma warning(disable: 4127)
 // No deprecated warnings on functions that really aren't deprecated at all.
 #pragma warning(disable: 4996)
 #endif
+
 class MockRepository;
 
 enum RegistrationType {
   Never,
   Once,
-  DontCare
+  Any
 };
 
 // base type
@@ -77,6 +85,9 @@ public:
 	}
 };
 
+class DontCare {};
+static DontCare DONTCARE_NAME;
+
 struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
 
 inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
@@ -85,14 +96,21 @@ inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
 	return os;
 }
 
+inline std::ostream &operator<<(std::ostream &os, DontCare const&)
+{
+	os << "...";
+	return os;
+}
+
 template <typename T>
 struct printArg
 {
-  static inline void print(std::ostream &os, T arg, bool withComma)
-  {
-    if (withComma) os << ",";
-    os << arg;
-  }
+	static inline void print(std::ostream &os, T arg, bool withComma)
+	{
+		if (withComma) 
+			os << ",";
+		os << arg;
+	}
 };
 
 template <>
@@ -129,12 +147,21 @@ inline bool operator==(NotComparable, NotComparable)
 	return false;
 }
 
+template <typename A> struct with_const { typedef const A type; };
+template <typename A> struct with_const<A &> { typedef const A &type; };
+template <typename A> struct with_const<const A> { typedef const A type; };
+template <typename A> struct with_const<const A &> { typedef const A &type; };
+
 template <typename T>
 struct comparer
 {
-  static inline bool compare(T a, T b)
+  static inline bool compare(typename with_const<T>::type a, typename with_const<T>::type b)
   {
     return a == b;
+  }
+  static inline bool compare(DontCare, typename with_const<T>::type)
+  {
+    return true;
   }
 };
 
@@ -197,6 +224,24 @@ public:
 	virtual bool operator==(const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &bo) = 0;
 };
 
+template <typename A, typename B>
+struct with_ref
+{
+	typedef B type;
+};
+
+template <typename A, typename B>
+struct with_ref<A&, B>
+{
+	typedef B & type;
+};
+
+template <typename A, typename B>
+struct with_ref<A&, B&>
+{
+	typedef B & type;
+};
+
 template <typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H,
 		  typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P,
 		  typename CA, typename CB, typename CC, typename CD, typename CE, typename CF, typename CG, typename CH,
@@ -204,23 +249,30 @@ template <typename A, typename B, typename C, typename D, typename E, typename F
 class copy_tuple : public ref_comparable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>
 {
 public:
-	CA a;
-	CB b;
-	CC c;
-	CD d;
-	CE e;
-	CF f;
-	CG g;
-	CH h;
-	CI i;
-	CJ j;
-	CK k;
-	CL l;
-	CM m;
-	CN n;
-	CO o;
-	CP p;
-	copy_tuple(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n, CO o, CP p)
+	typename with_ref<A,CA>::type a;
+	typename with_ref<B,CB>::type b;
+	typename with_ref<C,CC>::type c;
+	typename with_ref<D,CD>::type d;
+	typename with_ref<E,CE>::type e;
+	typename with_ref<F,CF>::type f;
+	typename with_ref<G,CG>::type g;
+	typename with_ref<H,CH>::type h;
+	typename with_ref<I,CI>::type i;
+	typename with_ref<J,CJ>::type j;
+	typename with_ref<K,CK>::type k;
+	typename with_ref<L,CL>::type l;
+	typename with_ref<M,CM>::type m;
+	typename with_ref<N,CN>::type n;
+	typename with_ref<O,CO>::type o;
+	typename with_ref<P,CP>::type p;
+	copy_tuple(typename with_ref<A,CA>::type a, typename with_ref<B,CB>::type b, 
+		typename with_ref<C,CC>::type c, typename with_ref<D,CD>::type d, 
+		typename with_ref<E,CE>::type e, typename with_ref<F,CF>::type f, 
+		typename with_ref<G,CG>::type g, typename with_ref<H,CH>::type h, 
+		typename with_ref<I,CI>::type i, typename with_ref<J,CJ>::type j, 
+		typename with_ref<K,CK>::type k, typename with_ref<L,CL>::type l, 
+		typename with_ref<M,CM>::type m, typename with_ref<N,CN>::type n, 
+		typename with_ref<O,CO>::type o, typename with_ref<P,CP>::type p)
 		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
 	{}
 	bool operator==(const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to)
@@ -265,7 +317,7 @@ public:
 	}
 };
 
-class BaseException : public std::exception {
+class BaseException : public BASE_EXCEPTION {
 	char buffer[EXCEPTION_BUFFER_SIZE];
 public:
 	void setException(const char *description, MockRepository *repo);
@@ -624,11 +676,11 @@ std::pair<int, int> virtual_index(T t)
 #if defined(__GNUG__)
 	// simple implementation
 	if (conv.u.value & 1)
-		return std::pair<int, int>(conv.u.baseoffs / 4, conv.u.value >> 2);
+		return std::pair<int, int>(conv.u.baseoffs / sizeof(void*), conv.u.value / sizeof(void *));
 #else
 	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
 	if (value != -1)
-		return std::pair<int, int>(conv.u.baseoffs/4, value);
+		return std::pair<int, int>(conv.u.baseoffs/sizeof(void*), value);
 #endif
 #elif defined(__EDG__)
 	union {
@@ -642,7 +694,7 @@ std::pair<int, int> virtual_index(T t)
 	conv.t = t;
 
 	if (conv.u.vindex != 0)
-		return std::pair<int, int>((conv.u.delta + conv.u.vtordisp)/4, conv.u.vindex * 2 + 1);
+		return std::pair<int, int>((conv.u.delta + conv.u.vtordisp)/sizeof(void*), conv.u.vindex * 2 + 1);
 #else
 #error No virtual indexing found for this compiler! Please contact the maintainers of HippoMocks
 #endif
@@ -725,7 +777,7 @@ public:
 		((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
 		funcTables[0] = funcTable;
 		*(void **)this = funcTable;
-		for (unsigned int i = 1; i < sizeof(remaining) / 4; i++)
+		for (unsigned int i = 1; i < sizeof(remaining) / sizeof(funcptr); i++)
 		{
 			((void **)this)[i] = (void *)notimplementedfuncs;
 		}
@@ -735,6 +787,10 @@ public:
 		for (std::list<TypeDestructable *>::iterator i = members.begin(); i != members.end(); ++i)
 		{
 			delete *i;
+		}
+		for (std::map<int, void (**)()>::iterator i = funcTables.begin(); i != funcTables.end(); ++i)
+		{
+			delete [] i->second;
 		}
 	}
 	mock<T> *getRealThis() 
@@ -1041,6 +1097,7 @@ public:
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
+	VirtualDestructable *matchFunctor;
 	std::pair<int, int> funcIndex;
 	std::list<Call *> previousCalls;
 	RegistrationType expectation;
@@ -1054,6 +1111,7 @@ protected:
 		eHolder(0),
 		mock(mock),
 		functor(0),
+		matchFunctor(0),
 		funcIndex(funcIndex),
 		expectation(expectation),
 		satisfied(false),
@@ -1068,6 +1126,7 @@ public:
 	{
 		delete eHolder;
 		delete functor;
+		delete matchFunctor;
 		delete retVal;
 	}
 };
@@ -1086,14 +1145,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN, typename CO, typename CP>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n, CO o, CP p) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n, const CO & o, const CP & p) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,CO,CP>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,const CO &,const CP &>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &After(Call &call) {
@@ -1102,6 +1165,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1117,14 +1182,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN, typename CO, typename CP>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n, CO o, CP p) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n, const CO & o, const CP & p) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,CO,CP>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,const CO &,const CP &>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &After(Call &call) {
@@ -1133,6 +1202,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1149,14 +1220,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN, typename CO>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n, CO o) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n, const CO & o) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,CO,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,const CO &,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &After(Call &call) {
@@ -1165,6 +1240,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1180,14 +1257,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN, typename CO>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n, CO o) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n, const CO & o) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,CO,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,const CO &,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &After(Call &call) {
@@ -1196,6 +1277,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1212,14 +1295,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &After(Call &call) {
@@ -1228,6 +1315,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1243,14 +1332,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM, typename CN>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m, CN n) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m, const CN & n) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,const CN &,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &After(Call &call) {
@@ -1259,6 +1352,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1275,14 +1370,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &After(Call &call) {
@@ -1291,6 +1390,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1306,14 +1407,18 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL,
 			  typename CM>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l, CM m) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l, const CM & m) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,const CM &,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,m,NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &After(Call &call) {
@@ -1322,6 +1427,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1337,13 +1444,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1352,6 +1463,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1366,13 +1479,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK, typename CL>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k, CL l) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k, const CL & l) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,const CL &,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,l,NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1381,6 +1498,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1396,13 +1515,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1411,6 +1534,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1425,13 +1550,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ, typename CK>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j, CK k) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j, const CK & k) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,const CK &,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,k,NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1440,6 +1569,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1455,13 +1586,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ>
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1470,6 +1605,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1484,13 +1621,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI, typename CJ>
-	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i, CJ j) {
+	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i, const CJ & j) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,const CJ &,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,j,NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1499,6 +1640,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1514,13 +1657,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI>
-	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i) {
+	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1529,6 +1676,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1543,13 +1692,17 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
 			  typename CI>
-	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h, CI i) {
+	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h, const CI & i) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,CI,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,const CI &,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,i,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1558,6 +1711,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1572,12 +1727,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH>
-	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h) {
+	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1586,6 +1745,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1599,12 +1760,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH>
-	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g, CH h) {
+	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g, const CH & h) {
 		args = new copy_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,CH,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,const CH &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,h,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1613,6 +1778,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1627,12 +1794,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG>
-	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g) {
+	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g) {
 		args = new copy_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1641,6 +1812,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1654,12 +1827,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG>
-	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f, CG g) {
+	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f, const CG & g) {
 		args = new copy_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,CG,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,const CG &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,g,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1668,6 +1845,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1682,12 +1861,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF>
-	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f) {
+	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f) {
 		args = new copy_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1696,6 +1879,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1709,12 +1894,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF>
-	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e, CF f) {
+	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e, const CF & f) {
 		args = new copy_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,CF,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,const CF &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,f,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1723,6 +1912,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1737,12 +1928,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE>
-	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e) {
+	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e) {
 		args = new copy_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1751,6 +1946,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1764,12 +1961,16 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE>
-	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d, CE e) {
+	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d, const CE & e) {
 		args = new copy_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,CE,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,const CE &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,e,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1778,6 +1979,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1791,11 +1994,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD>
-	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d) {
+	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d) {
 		args = new copy_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1804,6 +2011,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1816,11 +2025,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC, typename CD>
-	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c, CD d) {
+	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d) {
 		args = new copy_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,CD,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,const CD &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,d,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1829,6 +2042,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1842,11 +2057,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC>
-	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c) {
+	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c) {
 		args = new copy_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1855,6 +2074,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1867,11 +2088,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB, typename CC>
-	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b, CC c) {
+	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c) {
 		args = new copy_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,CC,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,const CC &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,c,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1880,6 +2105,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1893,11 +2120,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB>
-	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b) {
+	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b) {
 		args = new copy_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1906,6 +2137,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1918,11 +2151,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA, typename CB>
-	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a, CB b) {
+	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b) {
 		args = new copy_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,CB,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,const CB &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,b,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1931,6 +2168,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1944,11 +2183,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA>
-	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a) {
+	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a) {
 		args = new copy_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1957,6 +2200,8 @@ public:
 	}
 	template <typename T>
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1969,11 +2214,15 @@ public:
     const base_tuple *getArgs() const { return args; }
 	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl); }
+	bool matchesArgs(const base_tuple &tupl) {
+		return (!args && !matchFunctor) ||
+			(args && (*args == reinterpret_cast<const ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl))) ||
+			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+	}
 	template <typename CA>
-	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(CA a) {
+	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA &a) {
 		args = new copy_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
-							  CA,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
+							  const CA &,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(a,NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 		return *this;
 	}
 	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
@@ -1982,6 +2231,8 @@ public:
 	}
 	template <typename T>
 	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+	template <typename T>
+	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -1997,6 +2248,7 @@ public:
 							  NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 							  (NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 	}
+	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &) { return true; }
 	TCall<Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
 		previousCalls.push_back(&call);
@@ -2019,6 +2271,7 @@ public:
 						  NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 						  (NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
 	}
+	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &) { return true; }
 	TCall<void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &After(Call &call) {
 		previousCalls.push_back(&call);
@@ -2040,18 +2293,18 @@ private:
 public:
 	bool autoExpect;
 #ifdef _MSC_VER
-#define OnCall(obj, func) RegisterExpect_<__COUNTER__, DontCare>(obj, &func, #func, __FILE__, __LINE__)
+#define OnCall(obj, func) RegisterExpect_<__COUNTER__, Any>(obj, &func, #func, __FILE__, __LINE__)
 #define ExpectCall(obj, func) RegisterExpect_<__COUNTER__, Once>(obj, &func, #func, __FILE__, __LINE__)
 #define NeverCall(obj, func) RegisterExpect_<__COUNTER__, Never>(obj, &func, #func, __FILE__, __LINE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__COUNTER__, DontCare>(obj, func, #func, __FILE__, __LINE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__COUNTER__, Any>(obj, func, #func, __FILE__, __LINE__)
 #define ExpectCallOverload(obj, func) RegisterExpect_<__COUNTER__, Once>(obj, func, #func, __FILE__, __LINE__)
 #define NeverCallOverload(obj, func) RegisterExpect_<__COUNTER__, Never>(obj, func, #func, __FILE__, __LINE__)
 #define ExpectCallDestructor(obj) RegisterExpectDestructor<__COUNTER__>(obj, __FILE__, __LINE__)
 #else
-#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, &func, #func, __FILE__, __LINE__)
+#define OnCall(obj, func) RegisterExpect_<__LINE__, Any>(obj, &func, #func, __FILE__, __LINE__)
 #define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__, __LINE__)
 #define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__, __LINE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__, __LINE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, Any>(obj, func, #func, __FILE__, __LINE__)
 #define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__, __LINE__)
 #define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__, __LINE__)
 #define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, __FILE__, __LINE__)
@@ -2483,13 +2736,26 @@ public:
     ~MockRepository()
     {
 		if (!std::uncaught_exception())
-			VerifyAll();
+		{
+			try
+			{
+				VerifyAll();
+			}
+			catch(...)
+			{
+				reset();
+				for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
+				{
+					(*i)->destroy();
+				}
+				throw;
+			}
+		}
 		reset();
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
 		{
 			(*i)->destroy();
 		}
-		mocks.clear();
     }
 	void reset()
 	{
@@ -2528,7 +2794,7 @@ public:
 		mocks.erase(std::find(mocks.begin(), mocks.end(), obj));
 	}
 	template <typename base>
-	base *InterfaceMock();
+	base *Mock();
 };
 
 // mock function providers
@@ -2786,19 +3052,26 @@ public:
 
 template <typename T>
 template <int X>
-void mock<T>::mockedDestructor(int)
+void mock<T>::mockedDestructor(int delete_too)
 {
     repo->DoVoidExpectation(this, translateX(X), ref_tuple<>());
     repo->VerifyPartialAndRemove(this);
-    unwriteVft();
-    this->~mock<T>();
+	if (delete_too)
+	{
+		destroy();
+	}
+	else
+	{
+		unwriteVft();
+		this->~mock<T>();
+	}
 }
 
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
 {
 	if (funcIndex > VIRT_FUNC_LIMIT) throw NotImplementedException(this);
-	if ((unsigned int)baseOffset * 4 + 3 > sizeof(Z)) throw NotImplementedException(this);
+	if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) throw NotImplementedException(this);
 	if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
 	{
 		if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
@@ -2854,7 +3127,7 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *f
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -2878,7 +3151,7 @@ TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A), const char
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -2903,7 +3176,7 @@ TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B), const 
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -2928,7 +3201,7 @@ TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C), co
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -2953,7 +3226,7 @@ TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D)
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -2979,7 +3252,7 @@ TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3005,7 +3278,7 @@ TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3031,7 +3304,7 @@ TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(A,
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3057,7 +3330,7 @@ TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3084,7 +3357,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3111,7 +3384,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*fu
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3138,7 +3411,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3165,7 +3438,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z:
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3193,7 +3466,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3221,7 +3494,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3249,7 +3522,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck,
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3278,7 +3551,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 	switch(expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -3424,7 +3697,7 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 	throw ExpectationException(this, &tuple, funcName);
 }
 template <typename base>
-base *MockRepository::InterfaceMock() {
+base *MockRepository::Mock() {
 	mock<base> *m = new mock<base>(this);
     mocks.push_back(m);
 	return reinterpret_cast<base *>(m);

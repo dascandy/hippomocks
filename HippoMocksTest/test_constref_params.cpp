@@ -22,7 +22,7 @@ public:
 FUNC (checkConstRefClassParam)
 {
 	MockRepository mocks;
-	IM *iamock = mocks.InterfaceMock<IM>();
+	IM *iamock = mocks.Mock<IM>();
 	mocks.ExpectCall(iamock, IM::e).With("Hello");
 	iamock->e("Hello");
 }
@@ -34,9 +34,10 @@ bool operator==(const IR &, const IR &)
 
 FUNC (checkConstRefAbstractClassParam)
 {
+	R r;
 	MockRepository mocks;
-	IM *iamock = mocks.InterfaceMock<IM>();
-	mocks.ExpectCall(iamock, IM::f).With(R());
-	iamock->f(R());
+	IM *iamock = mocks.Mock<IM>();
+	mocks.ExpectCall(iamock, IM::f).With(r);
+	iamock->f(r);
 }
 

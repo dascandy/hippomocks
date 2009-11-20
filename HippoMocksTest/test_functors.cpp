@@ -21,7 +21,7 @@ public:
 FUNC (checkFunctorsCalled)
 {
 	MockRepository mocks;
-	II *iamock = mocks.InterfaceMock<II>();
+	II *iamock = mocks.Mock<II>();
 	mocks.ExpectCall(iamock, II::f).Do(setChecked);
 	mocks.OnCall(iamock, II::g).Do(setChecked);
 	checked = false;
@@ -38,7 +38,7 @@ FUNC (checkFunctorsCalled)
 FUNC (checkFunctorObjectCalled)
 {
 	MockRepository mocks;
-	II *iamock = mocks.InterfaceMock<II>();
+	II *iamock = mocks.Mock<II>();
 	functorClass obj;
 	mocks.ExpectCall(iamock, II::f).Do(obj);
 	mocks.OnCall(iamock, II::g).Do(obj);

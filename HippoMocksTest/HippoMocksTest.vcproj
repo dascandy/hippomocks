@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="HippoMocksTest"
 	ProjectGUID="{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
 	RootNamespace="HippoMocksTest"
@@ -191,6 +191,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\test_class_mock.cpp"
+			>
+		</File>
+		<File
 			RelativePath=".\test_constref_params.cpp"
 			>
 		</File>
@@ -208,14 +212,6 @@
 		</File>
 		<File
 			RelativePath=".\test_functors.cpp"
-			>
-		</File>
-		<File
-			RelativePath=".\test_membermock.cpp"
-			>
-		</File>
-		<File
-			RelativePath=".\test_mi.cpp"
 			>
 		</File>
 		<File

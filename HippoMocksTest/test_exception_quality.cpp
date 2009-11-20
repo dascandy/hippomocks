@@ -16,7 +16,7 @@ FUNC (checkNoResultContainsFuncName)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IS *iamock = mocks.InterfaceMock<IS>();
+	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::f);
 	mocks.OnCall(iamock, IS::g);
 	try {
@@ -33,7 +33,7 @@ FUNC (checkNoResultContainsBlankArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IS *iamock = mocks.InterfaceMock<IS>();
+	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::g);
 	mocks.OnCall(iamock, IS::f);
 	try {
@@ -51,7 +51,7 @@ FUNC (checkNoResultContainsActualArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IS *iamock = mocks.InterfaceMock<IS>();
+	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::g).With(1,2);
 	mocks.OnCall(iamock, IS::f);
 	try {
@@ -69,7 +69,7 @@ FUNC (checkNoResultContainsActualUnprintableArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
-	IS *iamock = mocks.InterfaceMock<IS>();
+	IS *iamock = mocks.Mock<IS>();
 	mocks.NeverCall(iamock, IS::i).With(42, X());
 	try {
 		iamock->h();
@@ -84,7 +84,7 @@ FUNC (checkNoResultContainsActualUnprintableArgSpec)
 FUNC (checkNoResultDoesNotComplainIfNotCalled)
 {
 	MockRepository mocks;
-	IS *iamock = mocks.InterfaceMock<IS>();
+	IS *iamock = mocks.Mock<IS>();
 	mocks.OnCall(iamock, IS::g).With(1,2);
 	mocks.OnCall(iamock, IS::g).With(3,4).Return(42);
 	iamock->g(3,4);
@@ -94,7 +94,7 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 {
 	MockRepository mocks;
 	mocks.autoExpect = false;
-	IS *ismock = mocks.InterfaceMock<IS>();
+	IS *ismock = mocks.Mock<IS>();
 	mocks.ExpectCall(ismock, IS::f).Return(1);
 	mocks.OnCall(ismock, IS::f).Return(2);
 	mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);
@@ -121,7 +121,7 @@ FUNC(checkExpectationExceptionToContainInfo)
 {
 	MockRepository mocks;
 	mocks.autoExpect = false;
-	IS *ismock = mocks.InterfaceMock<IS>();
+	IS *ismock = mocks.Mock<IS>();
 	mocks.ExpectCall(ismock, IS::f).Return(1);
 	mocks.OnCall(ismock, IS::f).Return(2);
 	mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);
@@ -153,7 +153,7 @@ FUNC(checkCallMissingExceptionToContainInfo)
 	{
 		MockRepository mocks;
 		mocks.autoExpect = false;
-		IS *ismock = mocks.InterfaceMock<IS>();
+		IS *ismock = mocks.Mock<IS>();
 		mocks.ExpectCall(ismock, IS::f).Return(1);
 		mocks.OnCall(ismock, IS::f).Return(2);
 		mocks.ExpectCall(ismock, IS::g).With(1,2).Return(2);

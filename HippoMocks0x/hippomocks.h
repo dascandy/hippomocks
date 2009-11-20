@@ -11,10 +11,17 @@
 #error Adjust the code to support more than 1024 virtual functions before setting the VIRT_FUNC_LIMIT above 1024
 #endif
 
-#ifndef __GNUC__
-#error The 0x version is at this moment explicitly only for GCC. Please contact the development team for support for other compilers.
+#ifdef __EDG__
+#define FUNCTION_BASE 3
+#define FUNCTION_STRIDE 2
+#else
+#define FUNCTION_BASE 0
+#define FUNCTION_STRIDE 1
 #endif
+
+#ifdef __GNUC__
 #define EXTRA_DESTRUCTOR
+#endif
 
 #include <list>
 #include <map>
@@ -45,7 +52,7 @@ public:
 	}
 	void unwriteVft()
 	{
-		*(void **)this = (*(void ***)this)[VIRT_FUNC_LIMIT+1];
+		*(void **)this = (*(void ***)this)[-1];
 	}
 };
 
@@ -557,86 +564,91 @@ public:
 	virtual int f1020(int) { return lci=1020; }	virtual int f1021(int) { return lci=1021; }	virtual int f1022(int) { return lci=1022; }	virtual int f1023(int) { return lci=1023; }
 };
 
-template <typename T>
-std::pair<int, int> virtual_index(T t)
-{
-	union {
-		T t;
-		struct
-		{
-			unsigned long value;
-			unsigned long baseoffs;
-		} u;
-	} conv;
-	conv.t = t;
-	
-	if (conv.u.value & 1)
-		return std::pair<int, int>(conv.u.baseoffs / 4, conv.u.value >> 2);
-
-	return std::pair<int, int>(-1, 0);
-}
-
 template <typename T, typename U>
 T getNonvirtualMemberFunctionAddress(U u)
 {
+#ifdef __EDG__
+  // Edison Design Group C++ frontend (Comeau, Portland Group, Greenhills, etc)
+  union {
+    struct {
+      short delta;
+      short vindex;
+      T t;
+    } mfp_structure;
+    U u;
+  } conv;
+#else
+  // Visual Studio, GCC, others
   union {
     struct {
       T t;
     } mfp_structure;
     U u;
   } conv;
-
+#endif
   conv.u = u;
   return conv.mfp_structure.t;
+}
+
+template <typename T>
+int getFunctionIndex(T func) {
+	func_index idx;
+	return ((&idx)->*reinterpret_cast<int (func_index::*)()>(func))() * FUNCTION_STRIDE + FUNCTION_BASE;
 }
 
 // mock types
 template <class T>
 class mock : public base_mock
 {
-	typedef void (*funcptr)();
 	friend class MockRepository;
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(repo); }
 protected:
-	std::map<int, void (**)()> funcTables;
-	void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
-public:
+	void *oldVft;
+	void (*funcs[VIRT_FUNC_LIMIT])();
 	MockRepository *repo;
-	std::map<std::pair<int, int>, int> funcMap;
+public:
+	int funcMap[VIRT_FUNC_LIMIT];
 	mock(MockRepository *repo)
 		: repo(repo)
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
 		{
-			notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
+			funcs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
+			funcMap[i] = -1;
 		}
-		funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+2];
-		memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
-		((void **)funcTable)[VIRT_FUNC_LIMIT] = this;
-		((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
-		funcTables[0] = funcTable;
-		*(void **)this = funcTable;
-		for (unsigned int i = 1; i < sizeof(remaining) / 4; i++)
-		{
-			((void **)this)[i] = (void *)notimplementedfuncs;
-		}
+		memset(remaining, 0, sizeof(remaining));
+		oldVft = base_mock::rewriteVft(funcs);
 	}
-	mock<T> *getRealThis() 
+	int translateX(int x)
 	{
-		void ***base = (void ***)this;
-		return (mock<T> *)((*base)[VIRT_FUNC_LIMIT]);
-	}
-	std::pair<int, int> translateX(int x)
-	{
-		for (std::map<std::pair<int, int>, int>::iterator i = funcMap.begin(); i != funcMap.end(); ++i)
+		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
 		{
-			if (i->second == x+1) return i->first;
+			if (funcMap[i] == x) return i;
 		}
-		return std::pair<int, int>(-1, 0);
+		return -1;
 	}
     template <int X>
     void mockedDestructor(int);
+};
+
+template <class T>
+class classMock : public mock<T>
+{
+	void *backupVft;
+public:
+	classMock(MockRepository *repo)
+		: mock<T>(repo)
+	{
+		mock<T>::oldVft = base_mock::rewriteVft((void *)mock<T>::funcs);
+		new(this)T();
+		backupVft = base_mock::rewriteVft((void *)mock<T>::funcs);
+	}
+	~classMock()
+	{
+		base_mock::rewriteVft(backupVft);
+		((T *)this)->~T();
+	}
 };
 
 //Type-safe exception wrapping
@@ -698,7 +710,7 @@ public:
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
-	std::pair<int, int> funcIndex;
+	int funcIndex;
 	std::list<Call *> previousCalls;
 	RegistrationType expectation;
 	bool satisfied;
@@ -707,7 +719,7 @@ public:
 	const char *fileName;
 	virtual const base_tuple *getArgs() const = 0;
 protected:
-	Call(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName)
+	Call(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName)
 		: retVal(0),
 		eHolder(0),
 		mock(mock),
@@ -744,7 +756,7 @@ private:
 	ref_comparable_tuple<Args...> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<Args...> &>(tupl); }
 	template <typename... IArgs>
@@ -769,7 +781,7 @@ private:
 	ref_comparable_tuple<Args...> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<Args...> &>(tupl); }
 	template <typename... IArgs>
@@ -793,7 +805,7 @@ private:
 	ref_comparable_tuple<> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
 	{
 		this->args = new copy_tuple<ref_comparable_tuple<>>();
 	}
@@ -816,7 +828,7 @@ private:
 	ref_comparable_tuple<> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
+	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
 	{
 		this->args = new copy_tuple<ref_comparable_tuple<>>();
     }
@@ -868,10 +880,10 @@ public:
 		return RegisterExpect_<X,expect>(mck, (Y(Z::*)(Args...))(func), funcName, fileName);
 	}
 	template <typename Z>
-	void BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X);
+	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple);
-    void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
+	Z DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple);
+    void DoVoidExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
     {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 		{
@@ -1032,6 +1044,8 @@ public:
 	}
 	template <typename base>
 	base *InterfaceMock();
+	template <typename base>
+	base *ClassMock();
 };
 
 // mock function providers
@@ -1043,9 +1057,8 @@ public:
 	template <int X, typename... Args>
 	Y expectation(Args... args)
 	{
-		mock<Z> *realMock = mock<Z>::getRealThis();
-        MockRepository *repo = realMock->repo;
-        return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<Args...>(args...));
+        MockRepository *repo = mock<Z>::repo;
+		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
 	}
 };
 
@@ -1057,9 +1070,8 @@ public:
 	template <int X, typename... Args>
 	void expectation(Args... args)
 	{
-		mock<Z> *realMock = mock<Z>::getRealThis();
-        MockRepository *repo = realMock->repo;
-        repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<Args...>(args...));
+        MockRepository *repo = mock<Z>::repo;
+		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
 	}
 };
 
@@ -1074,23 +1086,12 @@ void mock<T>::mockedDestructor(int)
 }
 
 template <typename Z>
-void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
+void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X)
 {
-	if (funcIndex > VIRT_FUNC_LIMIT) throw NotImplementedException(this);
-	if ((unsigned int)baseOffset * 4 + 3 > sizeof(Z)) throw NotImplementedException(this);
-	if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
+	if (zMock->funcMap[funcIndex] == -1)
 	{
-		if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
-		{
-			typedef void (*funcptr)();
-			funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+1];
-			memcpy(funcTable, zMock->notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
-			((void **)funcTable)[VIRT_FUNC_LIMIT] = zMock;
-			zMock->funcTables[baseOffset] = funcTable;
-			((void **)zMock)[baseOffset] = funcTable;
-		}
-		zMock->funcMap[std::make_pair(baseOffset, funcIndex)] = X+1;
-		zMock->funcTables[baseOffset][funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
+		zMock->funcs[funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
+		zMock->funcMap[funcIndex] = X;
 	}
 }
 
@@ -1098,19 +1099,20 @@ template <int X, typename Z2>
 Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, unsigned long lineNo)
 {
 	func_index idx;
+	idx.lci = -40;
 	((Z2 *)&idx)->~Z2();
-	int funcIndex = idx.lci;
+	int funcIndex = idx.lci * FUNCTION_STRIDE + FUNCTION_BASE;
 	void (mock<Z2>::*member)(int);
 	member = &mock<Z2>::template mockedDestructor<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						0, funcIndex,
+						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #ifdef EXTRA_DESTRUCTOR
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						0, funcIndex+1,
+						funcIndex+1,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #endif
-	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), std::pair<int, int>(0, funcIndex), lineNo, "destructor", fileName);
+	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, "destructor", fileName);
 	if (autoExpect && expectations.size() > 0)
 	{
 		call->previousCalls.push_back(expectations.back());
@@ -1123,11 +1125,11 @@ Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, un
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName)
 {
-	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(Args...))func);
+	int funcIndex = getFunctionIndex(func);
 	Y (mockFuncs<Z2, Y>::*mfp)(Args...);
 	mfp = &mockFuncs<Z2, Y>::template expectation<X,Args...>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex.first, funcIndex.second,
+						funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
 	switch (expect)
@@ -1146,7 +1148,7 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...)
 }
 
 template <typename Z>
-Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
+Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
 {
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 	{
@@ -1263,6 +1265,12 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 template <typename base>
 base *MockRepository::InterfaceMock() {
 	mock<base> *m = new mock<base>(this);
+    mocks.push_back(m);
+	return reinterpret_cast<base *>(m);
+}
+template <typename base>
+base *MockRepository::ClassMock() {
+	classMock<base> *m = new classMock<base>(this);
     mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
