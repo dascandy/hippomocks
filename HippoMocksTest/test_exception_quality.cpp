@@ -1,5 +1,6 @@
 #include "yaffut.h"
 #include "hippomocks.h"
+#include <stdio.h>
 
 struct X {};
 
@@ -18,13 +19,11 @@ FUNC (checkNoResultContainsFuncName)
 	MockRepository mocks;
 	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::f);
-	mocks.OnCall(iamock, IS::g);
 	try {
 		iamock->f();
 	} catch(NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::f") != NULL);
-		CHECK(strlen(ex.what()) < strlen(__FILE__) + 80);
 	}
 	CHECK(exceptionCaught);
 }
@@ -35,14 +34,12 @@ FUNC (checkNoResultContainsBlankArgSpec)
 	MockRepository mocks;
 	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::g);
-	mocks.OnCall(iamock, IS::f);
 	try {
 		iamock->g(1,2);
 	} catch(NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::g") != NULL);
 		CHECK(strstr(ex.what(), "(...)") != NULL);
-		CHECK(strlen(ex.what()) < strlen(__FILE__) + 80);
 	}
 	CHECK(exceptionCaught);
 }
@@ -53,14 +50,12 @@ FUNC (checkNoResultContainsActualArgSpec)
 	MockRepository mocks;
 	IS *iamock = mocks.Mock<IS>();
 	mocks.ExpectCall(iamock, IS::g).With(1,2);
-	mocks.OnCall(iamock, IS::f);
 	try {
 		iamock->g(1,2);
 	} catch(NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::g") != NULL);
 		CHECK(strstr(ex.what(), "(1,2)") != NULL);
-		CHECK(strlen(ex.what()) < strlen(__FILE__) + 80);
 	}
 	CHECK(exceptionCaught);
 }
@@ -92,6 +87,7 @@ FUNC (checkNoResultDoesNotComplainIfNotCalled)
 
 FUNC(checkNotImplementedExceptionToContainInfo)
 {
+	bool exceptionCaught = false;
 	MockRepository mocks;
 	mocks.autoExpect = false;
 	IS *ismock = mocks.Mock<IS>();
@@ -113,12 +109,15 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
 		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		exceptionCaught = true;
 	}
 	mocks.reset();
+	CHECK(exceptionCaught);
 }
 
 FUNC(checkExpectationExceptionToContainInfo)
 {
+	bool exceptionCaught = false;
 	MockRepository mocks;
 	mocks.autoExpect = false;
 	IS *ismock = mocks.Mock<IS>();
@@ -143,12 +142,15 @@ FUNC(checkExpectationExceptionToContainInfo)
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::h()") != NULL);
 		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		exceptionCaught = true;
 	}
 	mocks.reset();
+	CHECK(exceptionCaught);
 }
 
 FUNC(checkCallMissingExceptionToContainInfo)
 {
+	bool exceptionCaught = false;
 	try
 	{
 		MockRepository mocks;
@@ -168,6 +170,8 @@ FUNC(checkCallMissingExceptionToContainInfo)
 		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
 		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		exceptionCaught = true;
 	}
+	CHECK(exceptionCaught);
 }
 
