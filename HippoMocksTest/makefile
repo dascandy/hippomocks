@@ -21,8 +21,11 @@ runtest:
 	./test.exe
 	./test0x.exe
 
-%_0x.o: %.cpp 
-	$(CXX0X) -c -o $@ $<
+%.o: %.cpp makefile
+	$(CXX) -c -o $@ $< -MMD -MP
+
+%_0x.o: %.cpp makefile
+	$(CXX0X) -c -o $@ $< -MMD -MP
 
 test0x.exe: $(OBJECTS_0x)
 	$(CXX0X) -o $@ $^
@@ -30,11 +33,7 @@ test0x.exe: $(OBJECTS_0x)
 test.exe: $(OBJECTS)
 	$(CXX) -o $@ $^
 
-%.d: %.cpp
-	@$(CXX) $(CPPFLAGS) -MM $< | sed 's,\($*\)\.o[ :]*,\1.o \1_0x.o $@ : ,g' >> $@
-	@echo $@
-
 -include $(OBJECTS:%.o=%.d)
-
+-include $(OBJECTS_0x:%.o=%.d)
 
 

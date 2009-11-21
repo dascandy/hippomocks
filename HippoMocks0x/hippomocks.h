@@ -5,6 +5,15 @@
 #define EXCEPTION_BUFFER_SIZE 65536
 #endif
 
+#ifndef BASE_EXCEPTION
+#define BASE_EXCEPTION std::exception
+#include <exception>
+#endif
+
+#ifndef DONTCARE_NAME
+#define DONTCARE_NAME _
+#endif
+
 #ifndef VIRT_FUNC_LIMIT
 #define VIRT_FUNC_LIMIT 1024
 #elif VIRT_FUNC_LIMIT > 1024
@@ -30,13 +39,14 @@
 #include <sstream>
 #include <cstring>
 #include <algorithm>
+#include <stdio.h>
 
 class MockRepository;
 
 enum RegistrationType {
 	Never,
 	Once,
-	DontCare
+	Any
 };
 
 // base type
@@ -52,7 +62,7 @@ public:
 	}
 	void unwriteVft()
 	{
-		*(void **)this = (*(void ***)this)[-1];
+		*(void **)this = (*(void ***)this)[VIRT_FUNC_LIMIT+1];
 	}
 };
 
@@ -67,6 +77,15 @@ public:
 };
 
 struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
+
+class DontCare {};
+static struct DontCare DONTCARE_NAME;
+
+inline std::ostream &operator<<(std::ostream &os, DontCare const&)
+{
+	os << "_";
+	return os;
+}
 
 inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
 {
@@ -114,12 +133,21 @@ inline bool operator==(NotComparable, NotComparable)
        return false;
 }
 
+template <typename A> struct with_const { typedef const A type; };
+template <typename A> struct with_const<A &> { typedef const A &type; };
+template <typename A> struct with_const<const A> { typedef const A type; };
+template <typename A> struct with_const<const A &> { typedef const A &type; };
+
 template <typename T>
 struct comparer
 {
-	static inline bool compare(T a, T b)
+	static inline bool compare(typename with_const<T>::type a, typename with_const<T>::type b)
 	{
 		return a == b;
+	}
+	static inline bool compare(DontCare, typename with_const<T>::type)
+	{
+		return true;
 	}
 };
 
@@ -191,6 +219,24 @@ public:
 	virtual bool operator==(const compare_type &to) = 0;
 };
 
+template <typename A, typename B>
+struct with_ref
+{
+      typedef B type;
+};
+
+template <typename A, typename B>
+struct with_ref<A&, B>
+{
+      typedef B & type;
+};
+
+template <typename A, typename B>
+struct with_ref<A&, B&>
+{
+      typedef B & type;
+};
+
 template <typename ref, typename... Args>
 class copy_tuple;
 
@@ -214,9 +260,9 @@ template <typename ref, typename Arg, typename... Args>
 class copy_tuple<ref, Arg, Args...> : public ref
 {
 public:
-	Arg head;
+	typename with_ref<typename ref::head_type, Arg>::type head;
 	copy_tuple<typename ref::child_type, Args...> tail;
-	copy_tuple(Arg arg, Args... args)
+	copy_tuple(typename with_ref<typename ref::head_type, Arg>::type arg, Args... args)
 		  : head(arg), tail(args...)
 	{
 	}
@@ -243,14 +289,16 @@ T horrible_cast(U u) {
     return conv.t;
 }
 
-class BaseException : public std::exception {
-	char buffer[EXCEPTION_BUFFER_SIZE];
+inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
+
+class BaseException : public BASE_EXCEPTION {
 public:
-	void setException(const char *description, MockRepository *repo);
-	const char *what() const throw() { return buffer; }
+	~BaseException() throw() {}
+	const char *what() const throw() { return txt.c_str(); }
+protected:
+	std::string txt;
 };
 
-// exception types
 class ExpectationException : public BaseException {
 public:
 	ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
@@ -263,8 +311,8 @@ public:
 		else
 			text << "(...)";
 		text << " called with mismatching expectation!" << std::endl;
-		std::string description = text.str();
-		setException(description.c_str(), repo);
+		text << *repo;
+		txt = text.str();
 	}
 };
 
@@ -272,7 +320,10 @@ class NotImplementedException : public BaseException {
 public:
 	NotImplementedException(MockRepository *repo)
 	{
-		setException("Function called without expectation!", repo);
+		std::stringstream text;
+		text << "Function called without expectation!";
+		text << *repo;
+		txt = text.str();
 	}
 };
 
@@ -280,15 +331,27 @@ class CallMissingException : public BaseException {
 public:
 	CallMissingException(MockRepository *repo)
 	{
-		setException("Function with expectation not called!", repo);
+		std::stringstream text;
+		text << "Function with expectation not called!";
+		text << *repo;
+		txt = text.str();
 	}
 };
 
-class NoResultSetUpException : public std::exception {
-	char buffer[EXCEPTION_BUFFER_SIZE];
+class ZombieMockException : public BaseException {
 public:
-	const char *what() const throw() { return buffer; }
-	NoResultSetUpException(const base_tuple *tuple, const char *funcName)
+	ZombieMockException(MockRepository *repo)
+	{
+		std::stringstream text;
+		text << "Function called on mock that has already been destroyed!" << std::endl;
+		text << *repo;
+		txt = text.str();
+	}
+};
+
+class NoResultSetUpException : public BaseException {
+public:
+	NoResultSetUpException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
 	{
 		std::stringstream text;
 		text << "No result set up on call to ";
@@ -298,8 +361,8 @@ public:
 		else
 			text << "(...)";
 		text << std::endl;
-		std::string result = text.str();
-		strncpy(buffer, result.c_str(), sizeof(buffer)-1);
+		text << *repo;
+		txt = text.str();
 	}
 };
 
@@ -591,6 +654,45 @@ T getNonvirtualMemberFunctionAddress(U u)
 }
 
 template <typename T>
+std::pair<int, int> virtual_index(T t)
+{
+      union {
+              T t;
+              struct
+              {
+                      unsigned long value;
+                      unsigned long baseoffs;
+              } u;
+      } conv;
+      conv.t = t;
+
+      // simple implementation
+      if (conv.u.value & 1)
+              return std::pair<int, int>(conv.u.baseoffs / sizeof(void*), conv.u.value / sizeof(void *));
+
+      return std::pair<int, int>(-1, 0);
+}
+
+// Do() function wrapping
+class VirtualDestructable { public: virtual ~VirtualDestructable() {} };
+
+template <typename A>
+class MemberWrap : public VirtualDestructable {
+public:
+	MemberWrap(A *member)
+		: member(member)
+	{
+		new (member)A();
+	}
+	~MemberWrap()
+	{
+		member->~A();
+	}
+private:
+	A *member;
+};
+
+template <typename T>
 int getFunctionIndex(T func) {
 	func_index idx;
 	return ((&idx)->*reinterpret_cast<int (func_index::*)()>(func))() * FUNCTION_STRIDE + FUNCTION_BASE;
@@ -600,58 +702,65 @@ int getFunctionIndex(T func) {
 template <class T>
 class mock : public base_mock
 {
+	typedef void (*funcptr)();
 	friend class MockRepository;
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() { throw NotImplementedException(repo); }
 protected:
-	void *oldVft;
-	void (*funcs[VIRT_FUNC_LIMIT])();
-	MockRepository *repo;
+	std::map<int, funcptr *> funcTables;
+	void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
 public:
-	int funcMap[VIRT_FUNC_LIMIT];
+	bool isZombie;
+	std::list<VirtualDestructable *> members;
+	MockRepository *repo;
+	std::map<std::pair<int, int>, int> funcMap;
 	mock(MockRepository *repo)
-		: repo(repo)
+		: isZombie(false)
+		, repo(repo)
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
 		{
-			funcs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
-			funcMap[i] = -1;
+			notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
 		}
-		memset(remaining, 0, sizeof(remaining));
-		oldVft = base_mock::rewriteVft(funcs);
+		funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+2];
+		memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
+		((void **)funcTable)[VIRT_FUNC_LIMIT] = this;
+		((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
+		funcTables[0] = funcTable;
+		*(void **)this = funcTable;
+		for (unsigned int i = 1; i < sizeof(remaining) / sizeof(funcptr); i++)
+		{
+			((void **)this)[i] = (void *)notimplementedfuncs;
+		}
 	}
-	int translateX(int x)
+	~mock()
 	{
-		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
+		for (std::list<VirtualDestructable *>::iterator i = members.begin(); i != members.end(); ++i)
 		{
-			if (funcMap[i] == x) return i;
+                        delete *i;
+                }
+                for (std::map<int, void (**)()>::iterator i = funcTables.begin(); i != funcTables.end(); ++i)
+                {
+                        delete [] i->second;
 		}
-		return -1;
+	}
+	mock<T> *getRealThis() 
+	{
+		void ***base = (void ***)this;
+                return (mock<T> *)((*base)[VIRT_FUNC_LIMIT]);
+	}
+	std::pair<int, int> translateX(int x)
+	{
+                for (std::map<std::pair<int, int>, int>::iterator i = funcMap.begin(); i != funcMap.end(); ++i)
+                {
+                        if (i->second == x+1) return i->first;
+                }
+                return std::pair<int, int>(-1, 0);
 	}
     template <int X>
     void mockedDestructor(int);
 };
 
-template <class T>
-class classMock : public mock<T>
-{
-	void *backupVft;
-public:
-	classMock(MockRepository *repo)
-		: mock<T>(repo)
-	{
-		mock<T>::oldVft = base_mock::rewriteVft((void *)mock<T>::funcs);
-		new(this)T();
-		backupVft = base_mock::rewriteVft((void *)mock<T>::funcs);
-	}
-	~classMock()
-	{
-		base_mock::rewriteVft(backupVft);
-		((T *)this)->~T();
-	}
-};
-
-//Type-safe exception wrapping
 class ExceptionHolder
 {
 public:
@@ -666,9 +775,6 @@ public:
 	ExceptionWrapper(T exception) : exception(exception) {}
 	void rethrow() { throw exception; }
 };
-
-// Do() function wrapping
-class VirtualDestructable { public: virtual ~VirtualDestructable() {} };
 
 template <typename Y>
 class TupleInvocable : public VirtualDestructable
@@ -710,7 +816,8 @@ public:
 	ExceptionHolder *eHolder;
 	base_mock *mock;
 	VirtualDestructable *functor;
-	int funcIndex;
+	VirtualDestructable *matchFunctor;
+	std::pair<int, int> funcIndex;
 	std::list<Call *> previousCalls;
 	RegistrationType expectation;
 	bool satisfied;
@@ -719,11 +826,12 @@ public:
 	const char *fileName;
 	virtual const base_tuple *getArgs() const = 0;
 protected:
-	Call(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName)
+	Call(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName)
 		: retVal(0),
 		eHolder(0),
 		mock(mock),
 		functor(0),
+		matchFunctor(0),
 		funcIndex(funcIndex),
 		expectation(expectation),
 		satisfied(false),
@@ -737,6 +845,7 @@ public:
 	{
 		delete eHolder;
 		delete functor;
+		delete matchFunctor;
 		delete retVal;
 	}
 };
@@ -756,12 +865,16 @@ private:
 	ref_comparable_tuple<Args...> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<Args...> &>(tupl); }
+        bool matchesArgs(const base_tuple &tupl) {
+                return (!args && !matchFunctor) ||
+                        (args && (*args == reinterpret_cast<const ref_tuple<Args...> &>(tupl))) ||
+                        (matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+        }
 	template <typename... IArgs>
-	TCall<Y,Args...> &With(IArgs... args) {
-		this->args = new copy_tuple<ref_comparable_tuple<Args...>, IArgs...>(args...);
+	TCall<Y,Args...> &With(const IArgs &... args) {
+		this->args = new copy_tuple<ref_comparable_tuple<Args...>, const IArgs &...>(args...);
 		return *this;
 	}
 	TCall<Y,Args...> &After(Call &call) {
@@ -769,7 +882,9 @@ public:
 		return *this;
 	}
 	template <typename T>
-	Call &Do(T &function) { functor = new DoWrapper<T,Y,Args...>(function); return *this; }
+	TCall<Y,Args...> &Do(T &function) { functor = new DoWrapper<T,Y,Args...>(function); return *this; }
+	template <typename T>
+	TCall<Y,Args...> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,Args...>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -781,12 +896,16 @@ private:
 	ref_comparable_tuple<Args...> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0) {}
 	~TCall() { delete args; }
-	bool matchesArgs(const base_tuple &tupl) { return !args || *args == reinterpret_cast<const ref_tuple<Args...> &>(tupl); }
+        bool matchesArgs(const base_tuple &tupl) {
+                return (!args && !matchFunctor) ||
+                        (args && (*args == reinterpret_cast<const ref_tuple<Args...> &>(tupl))) ||
+                        (matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
+        }
 	template <typename... IArgs>
-	TCall<void,Args...> &With(IArgs... args) {
-		this->args = new copy_tuple<ref_comparable_tuple<Args...>, IArgs...>(args...);
+	TCall<void,Args...> &With(const IArgs &... args) {
+		this->args = new copy_tuple<ref_comparable_tuple<Args...>, const IArgs &...>(args...);
 		return *this;
 	}
 	TCall<void,Args...> &After(Call &call) {
@@ -794,7 +913,9 @@ public:
 		return *this;
 	}
 	template <typename T>
-	Call &Do(T &function) { functor = new DoWrapper<T,void,Args...>(function); return *this; }
+	TCall<void,Args...> &Do(T &function) { functor = new DoWrapper<T,void,Args...>(function); return *this; }
+	template <typename T>
+	TCall<void,Args...> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,Args...>(function); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 };
@@ -805,7 +926,7 @@ private:
 	ref_comparable_tuple<> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
 	{
 		this->args = new copy_tuple<ref_comparable_tuple<>>();
 	}
@@ -828,7 +949,7 @@ private:
 	ref_comparable_tuple<> *args;
 public:
 	const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, int funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
+	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName, fileName), args(0)
 	{
 		this->args = new copy_tuple<ref_comparable_tuple<>>();
     }
@@ -853,13 +974,21 @@ private:
 	std::list<Call *> optionals;
 public:
 	bool autoExpect;
-#define OnCall(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, &func, #func, __FILE__)
+#define OnCall(obj, func) RegisterExpect_<__LINE__, Any>(obj, &func, #func, __FILE__)
 #define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__)
 #define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, DontCare>(obj, func, #func, __FILE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, Any>(obj, func, #func, __FILE__)
 #define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__)
 #define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__)
 #define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, __FILE__, __LINE__)
+	template <typename A, class B, typename C>
+	void Member(A *mck, C B::*member)
+	{
+		C A::*realMember = (C A::*)member;
+		C *realRealMember = &(mck->*realMember);
+		mock<A> *realMock = (mock<A> *)mck;
+		realMock->members.push_back(new MemberWrap<C>(realRealMember));
+	}
     template <int X, typename Z2>
     Call &RegisterExpectDestructor(Z2 *mck, const char *fileName, unsigned long lineNo);
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
@@ -880,10 +1009,10 @@ public:
 		return RegisterExpect_<X,expect>(mck, (Y(Z::*)(Args...))(func), funcName, fileName);
 	}
 	template <typename Z>
-	void BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X);
+	void BasicRegisterExpect(mock<Z> *zMock, int BaseOffset, int funcIndex, void (base_mock::*func)(), int X);
 	template <typename Z>
-	Z DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple);
-    void DoVoidExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
+	Z DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple);
+    void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
     {
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 		{
@@ -998,13 +1127,26 @@ public:
     ~MockRepository()
     {
 		if (!std::uncaught_exception())
-			VerifyAll();
+		{
+			try 
+			{
+				VerifyAll();
+			}
+			catch (...)
+			{
+				reset();
+				for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
+				{
+					(*i)->destroy();
+				}
+				throw;
+			}
+		}
 		reset();
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
 		{
 			(*i)->destroy();
 		}
-		mocks.clear();
     }
 	void reset()
 	{
@@ -1032,7 +1174,7 @@ public:
 	    		throw CallMissingException(this);
 		}
     }
-	void VerifyPartialAndRemove(base_mock *obj)
+	void VerifyPartial(base_mock *obj)
 	{
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
@@ -1040,12 +1182,9 @@ public:
 				!(*i)->satisfied)
 	    		throw CallMissingException(this);
 		}
-		mocks.erase(std::find(mocks.begin(), mocks.end(), obj));
 	}
 	template <typename base>
-	base *InterfaceMock();
-	template <typename base>
-	base *ClassMock();
+	base *Mock();
 };
 
 // mock function providers
@@ -1057,8 +1196,11 @@ public:
 	template <int X, typename... Args>
 	Y expectation(Args... args)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		return repo->DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
+                mock<Z> *realMock = mock<Z>::getRealThis();
+                if (realMock->isZombie)
+                        throw ZombieMockException(realMock->repo);
+                MockRepository *repo = realMock->repo;
+		return repo->template DoExpectation<Y>(realMock, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
 	}
 };
 
@@ -1070,8 +1212,11 @@ public:
 	template <int X, typename... Args>
 	void expectation(Args... args)
 	{
-        MockRepository *repo = mock<Z>::repo;
-		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
+                mock<Z> *realMock = mock<Z>::getRealThis();
+                if (realMock->isZombie)
+                        throw ZombieMockException(realMock->repo);
+                MockRepository *repo = realMock->repo;
+		repo->DoVoidExpectation(realMock, mock<Z>::translateX(X), ref_tuple<Args...>(args...));
 	}
 };
 
@@ -1079,19 +1224,29 @@ template <typename T>
 template <int X>
 void mock<T>::mockedDestructor(int)
 {
-    repo->DoVoidExpectation(this, translateX(X), ref_tuple<>());
-    repo->VerifyPartialAndRemove(this);
-    unwriteVft();
-    this->~mock<T>();
+	repo->DoVoidExpectation(this, translateX(X), ref_tuple<>());
+	repo->VerifyPartial(this);
+	isZombie = true;
 }
 
 template <typename Z>
-void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int funcIndex, void (base_mock::*func)(), int X)
+void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex,  void (base_mock::*func)(), int X)
 {
-	if (zMock->funcMap[funcIndex] == -1)
+	if (funcIndex > VIRT_FUNC_LIMIT) throw NotImplementedException(this);
+	if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) throw NotImplementedException(this);
+	if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
 	{
-		zMock->funcs[funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
-		zMock->funcMap[funcIndex] = X;
+	        if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
+	        {
+	                typedef void (*funcptr)();
+	                funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+1];
+	                memcpy(funcTable, zMock->notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
+	                ((void **)funcTable)[VIRT_FUNC_LIMIT] = zMock;
+	                zMock->funcTables[baseOffset] = funcTable;
+	                ((void **)zMock)[baseOffset] = funcTable;
+	        }
+	        zMock->funcMap[std::make_pair(baseOffset, funcIndex)] = X+1;
+	        zMock->funcTables[baseOffset][funcIndex] = getNonvirtualMemberFunctionAddress<void (*)()>(func);
 	}
 }
 
@@ -1105,14 +1260,14 @@ Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, un
 	void (mock<Z2>::*member)(int);
 	member = &mock<Z2>::template mockedDestructor<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						0, funcIndex,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #ifdef EXTRA_DESTRUCTOR
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex+1,
+						0, funcIndex+1,
 						reinterpret_cast<void (base_mock::*)()>(member), X);
 #endif
-	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, "destructor", fileName);
+	TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), std::pair<int, int>(0, funcIndex), lineNo, "destructor", fileName);
 	if (autoExpect && expectations.size() > 0)
 	{
 		call->previousCalls.push_back(expectations.back());
@@ -1125,17 +1280,17 @@ Call &MockRepository::RegisterExpectDestructor(Z2 *mck, const char *fileName, un
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z, typename... Args>
 TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), const char *funcName, const char *fileName)
 {
-	int funcIndex = getFunctionIndex(func);
+	std::pair<int, int> funcIndex = virtual_index((Y(Z2::*)(Args...))func);
 	Y (mockFuncs<Z2, Y>::*mfp)(Args...);
 	mfp = &mockFuncs<Z2, Y>::template expectation<X,Args...>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
+						funcIndex.first, funcIndex.second,
 						reinterpret_cast<void (base_mock::*)()>(mfp),X);
 	TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, X, funcName, fileName);
 	switch (expect)
 	{
 	case Never: neverCalls.push_back(call); break;
-	case DontCare: optionals.push_back(call); break;
+	case Any: optionals.push_back(call); break;
 	case Once:
 		if (autoExpect && expectations.size() > 0)
 		{
@@ -1148,7 +1303,7 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...)
 }
 
 template <typename Z>
-Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &tuple)
+Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
 {
 	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
 	{
@@ -1174,13 +1329,21 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 			if (call->eHolder)
 				call->eHolder->rethrow();
 
-    		if (call->retVal)
-    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
+    			if (call->functor)
+			{
+    				if (call->retVal)
+				{
+    					(*(TupleInvocable<Z> *)(call->functor))(tuple);
+					return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
+				}
+				
+				return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+			}
 
-    		if (call->functor != NULL)
-    			return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+    			if (call->retVal)
+	    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
-    		throw NoResultSetUpException(call->getArgs(), call->funcName);
+	    		throw NoResultSetUpException(this, call->getArgs(), call->funcName);
 		}
 	}
 	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i)
@@ -1229,13 +1392,21 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
 			if (call->eHolder)
 				call->eHolder->rethrow();
 
-        	if (call->retVal)
-    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
+    			if (call->functor)
+			{
+    				if (call->retVal)
+				{
+    					(*(TupleInvocable<Z> *)(call->functor))(tuple);
+					return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
+				}
+				
+				return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+			}
 
-        	if (call->functor != NULL)
-        		return (*(TupleInvocable<Z> *)(call->functor))(tuple);
+        		if (call->retVal)
+	    			return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
-        	throw NoResultSetUpException(call->getArgs(), call->funcName);
+	        	throw NoResultSetUpException(this, call->getArgs(), call->funcName);
 		}
 	}
 	const char *funcName = NULL;
@@ -1262,15 +1433,10 @@ Z MockRepository::DoExpectation(base_mock *mock, int funcno, const base_tuple &t
     }
 	throw ExpectationException(this, &tuple, funcName);
 }
+
 template <typename base>
-base *MockRepository::InterfaceMock() {
+base *MockRepository::Mock() {
 	mock<base> *m = new mock<base>(this);
-    mocks.push_back(m);
-	return reinterpret_cast<base *>(m);
-}
-template <typename base>
-base *MockRepository::ClassMock() {
-	classMock<base> *m = new classMock<base>(this);
     mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
@@ -1331,16 +1497,6 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 	}
 
 	return os;
-}
-
-inline void BaseException::setException(const char *description, MockRepository *repo)
-{
-	std::stringstream text;
-	text << description;
-	text << *repo;
-	std::string result = text.str();
-	strncpy(buffer, result.c_str(), sizeof(buffer)-1);
-	buffer[sizeof(buffer)-1] = '\0';
 }
 
 #endif

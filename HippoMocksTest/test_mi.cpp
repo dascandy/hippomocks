@@ -21,10 +21,10 @@ FUNC (checkMICallsWork)
 	MockRepository mocks;
 	ClassC *iamock = mocks.Mock<ClassC>();
 	mocks.ExpectCall(iamock, ClassC::a);
-	mocks.ExpectCall(iamock, ClassC::b);
 	mocks.ExpectCall(iamock, ClassC::c);
+	mocks.ExpectCall(iamock, ClassC::b);
 	iamock->a();
-	iamock->b();
 	iamock->c();
+	iamock->b();
 }
 
