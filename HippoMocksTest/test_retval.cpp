@@ -28,3 +28,21 @@ FUNC (checkRetvalProper)
 	CHECK(iamock->g() == "fsck");
 }
 
+bool replace_g_called = false;
+std::string replace_g() 
+{
+	replace_g_called = true;
+	return "";
+}
+
+FUNC (checkRetvalAfterDo)
+{
+	MockRepository mocks;
+	ID *iamock = mocks.Mock<ID>();
+	mocks.ExpectCall(iamock, ID::g).Do(replace_g).Return("fsck");
+	replace_g_called = false;
+	CHECK(iamock->g() == "fsck");
+	CHECK(replace_g_called);
+}
+
+

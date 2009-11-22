@@ -937,7 +937,7 @@ public:
 		return *this;
 	}
 	template <typename T>
-	Call &Do(T &function) { functor = new DoWrapper<T,Y>(function); return *this; }
+	TCall<Y> &Do(T &function) { functor = new DoWrapper<T,Y>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
