@@ -774,7 +774,13 @@ class mock : public base_mock
 	typedef void (*funcptr)();
 	friend class MockRepository;
 	unsigned char remaining[sizeof(T)];
-	void NotImplemented() { throw NotImplementedException(repo); }
+	void NotImplemented() { 
+		mock<T> *realMock = getRealThis();
+		if (realMock->isZombie)
+			throw ZombieMockException(realMock->repo);
+		MockRepository *repo = realMock->repo;
+		throw NotImplementedException(repo);
+	}
 protected:
 	std::map<int, void (**)()> funcTables;
 	void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
