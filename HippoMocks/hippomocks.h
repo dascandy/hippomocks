@@ -321,9 +321,21 @@ struct with_ref<A, const B&>
 };
 
 template <typename A, typename B>
+struct with_ref<A, const OutParam<B> &>
+{
+  typedef OutParam<B> type;
+};
+
+template <typename A, typename B>
 struct with_ref<A&, const B&>
 {
 	typedef const B & type;
+};
+
+template <typename A, typename B>
+struct with_ref<A&, const OutParam<B> &>
+{
+  typedef OutParam<B> type;
 };
 
 template <typename A, typename B>

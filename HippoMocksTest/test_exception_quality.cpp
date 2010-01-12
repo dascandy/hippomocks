@@ -4,6 +4,11 @@
 
 struct X {};
 
+bool operator==(const X &, const X &)
+{
+	return true;
+}
+
 class IS {
 public:
 	virtual ~IS() {}

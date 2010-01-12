@@ -6,9 +6,10 @@ class IOutParam {
 public:
 	virtual ~IOutParam() {}
 	virtual void a(std::string& out) = 0;
+	virtual void b(std::string** out) = 0;
 };
 
-FUNC (checkOutParamsAreFilledIn)
+FUNC (checkOutParamsAreFilledIn_ConstChar)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -18,4 +19,30 @@ FUNC (checkOutParamsAreFilledIn)
 	iamock->a(out);
 
 	CHECK(out == "Hello World");
+}
+
+FUNC (checkOutParamsAreFilledIn_String)
+{
+	MockRepository mocks;
+	IOutParam *iamock = mocks.Mock<IOutParam>();
+	std::string teststring("Hello World");
+	mocks.ExpectCall(iamock, IOutParam::a).With(Out(teststring));
+	
+	std::string out;
+	iamock->a(out);
+
+	CHECK(out == teststring);
+}
+
+FUNC (checkOutParamsAreFilledIn_PointerToString)
+{
+	MockRepository mocks;
+	IOutParam *iamock = mocks.Mock<IOutParam>();
+	std::string teststring("Hello World");
+	mocks.ExpectCall(iamock, IOutParam::b).With(Out(new std::string(teststring)));
+	
+	std::string* out = 0;
+	iamock->b(&out);
+
+	CHECK(*out == teststring);
 }
