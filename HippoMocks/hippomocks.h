@@ -1056,7 +1056,7 @@ class mock : public base_mock
 		if (realMock->isZombie)
 			throw ZombieMockException(realMock->repo);
 		MockRepository *repo = realMock->repo;
-		throw NotImplementedException(repo);
+		throw ::NotImplementedException(repo);
 	}
 protected:
 	std::map<int, void (**)()> funcTables;
