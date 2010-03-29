@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="HippoMocksTest"
 	ProjectGUID="{231F5EB2-1F1D-4C41-9FC1-59118049524F}"
 	RootNamespace="HippoMocksTest"
@@ -173,134 +173,70 @@
 		<File
 			RelativePath=".\is_virtual.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_args.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_autoptr.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\test_cfuncs.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\test_class_args.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_constref_params.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_cv_funcs.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\test_dontcare.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\test_except.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_exception_quality.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\test_filter.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\test_functors.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\test_membermock.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\test_mi.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\test_nevercall.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_optional.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_outparam.cpp"
@@ -309,57 +245,26 @@
 		<File
 			RelativePath=".\test_overload.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_ref_args.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_regression_arg_count.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_retval.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\test_transaction.cpp"
 			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-				/>
-			</FileConfiguration>
+		</File>
+		<File
+			RelativePath=".\test_zombie.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\yaffut.cpp"
