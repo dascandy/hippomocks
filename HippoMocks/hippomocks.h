@@ -218,6 +218,33 @@ struct OutParam: public DontCare
 template <typename T>
 OutParam<T> Out(T t) { return OutParam<T>(t); }
 
+template <typename T, bool isPointer>
+struct InParam;
+
+template <typename T>
+struct InParam<T, false>: public DontCare
+{
+	explicit InParam(T& value): value(value)
+	{
+	}
+	T& value;
+};
+
+template <typename T>
+struct InParam<T, true>: public DontCare
+{
+	explicit InParam(T*& value): value(value)
+	{
+	}
+	T*& value;
+};
+
+template <typename T>
+InParam<T, false> In(T& t) { return InParam<T, false>(t); }
+
+template <typename T>
+InParam<T, true> In(T*& t) { return InParam<T, true>(t); }
+
 struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
 
 inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
@@ -298,39 +325,59 @@ struct IsOutParamType { enum { value = false }; };
 template <typename T>
 struct IsOutParamType<OutParam<T> > { enum { value = true }; };
 
+template <typename T>
+struct IsInParamType { enum { value = false }; };
+template <typename T>
+struct IsInParamType<InParam<T, true> > { enum { value = true }; };
+template <typename T>
+struct IsInParamType<InParam<T, false> > { enum { value = true }; };
+
 template <typename T1, typename T2, bool Assign>
 struct do_assign;
 
 template <typename T1, typename T2>
 struct do_assign<T1, T2*, true>
 {
-  static void assign(T1 outparam, T2 *refparam)
+  static void assign_to(T1 outparam, T2 *refparam)
   {
     *refparam = outparam.value;
+  }
+  static void assign_from(T1 inparam, T2 *refparam)
+  {
+    inparam.value = refparam;
   }
 };
 
 template <typename T1, typename T2>
 struct do_assign<T1, T2&, true>
 {
-  static void assign(T1 outparam, T2 &refparam)
+  static void assign_to(T1 outparam, T2 &refparam)
   {
     refparam = outparam.value;
+  }
+  static void assign_from(T1 inparam, T2 &refparam)
+  {
+    inparam.value = refparam;
   }
 };
 
 template <typename T1, typename T2>
 struct do_assign<T1, T2, false>
 {
-  static void assign(T1, T2)
-  {
-  }
+	static void assign_to(T1, T2) {}
+	static void assign_from(T1, T2) {}
 };
 
 template <typename T1, typename T2>
-void assign(T1 a, T2 b)
+void out_assign(T1 a, T2 b)
 {
-  do_assign<T1, T2, IsOutParamType<typename base_type<T1>::type>::value >::assign(a, b);
+	do_assign<T1, T2, IsOutParamType<typename base_type<T1>::type>::value >::assign_to(a, b);
+}
+
+template <typename T1, typename T2>
+void in_assign(T1 a, T2 b)
+{
+	do_assign<T1, T2, IsInParamType<typename base_type<T1>::type>::value >::assign_from(a, b);
 }
 
 template <typename A = NullType, typename B = NullType, typename C = NullType, typename D = NullType,
@@ -390,6 +437,7 @@ class ref_comparable_assignable_tuple : public base_tuple
 {
 public:
 	virtual bool operator==(const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &bo) = 0;
+	virtual void assign_from(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &from) = 0;
   virtual void assign_to(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to) = 0;
 };
 
@@ -533,24 +581,43 @@ public:
 				comparer<O>::compare(o, to.o) &&
 				comparer<P>::compare(p, to.p));
 	}
+	void assign_from(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &from)
+	{
+		in_assign< typename with_ref<A,CA>::type, A>(a, from.a);
+		in_assign< typename with_ref<B,CB>::type, B>(b, from.b);
+		in_assign< typename with_ref<C,CC>::type, C>(c, from.c);
+		in_assign< typename with_ref<D,CD>::type, D>(d, from.d);
+		in_assign< typename with_ref<E,CE>::type, E>(e, from.e);
+		in_assign< typename with_ref<F,CF>::type, F>(f, from.f);
+		in_assign< typename with_ref<G,CG>::type, G>(g, from.g);
+		in_assign< typename with_ref<H,CH>::type, H>(h, from.h);
+		in_assign< typename with_ref<I,CI>::type, I>(i, from.i);
+		in_assign< typename with_ref<J,CJ>::type, J>(j, from.j);
+		in_assign< typename with_ref<K,CK>::type, K>(k, from.k);
+		in_assign< typename with_ref<L,CL>::type, L>(l, from.l);
+		in_assign< typename with_ref<M,CM>::type, M>(m, from.m);
+		in_assign< typename with_ref<N,CN>::type, N>(n, from.n);
+		in_assign< typename with_ref<O,CO>::type, O>(o, from.o);
+		in_assign< typename with_ref<P,CP>::type, P>(p, from.p);
+	}
 	void assign_to(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to)
 	{
-		assign< typename with_ref<A,CA>::type, A>(a, to.a);
-		assign< typename with_ref<B,CB>::type, B>(b, to.b);
-		assign< typename with_ref<C,CC>::type, C>(c, to.c);
-		assign< typename with_ref<D,CD>::type, D>(d, to.d);
-		assign< typename with_ref<E,CE>::type, E>(e, to.e);
-		assign< typename with_ref<F,CF>::type, F>(f, to.f);
-		assign< typename with_ref<G,CG>::type, G>(g, to.g);
-		assign< typename with_ref<H,CH>::type, H>(h, to.h);
-		assign< typename with_ref<I,CI>::type, I>(i, to.i);
-		assign< typename with_ref<J,CJ>::type, J>(j, to.j);
-		assign< typename with_ref<K,CK>::type, K>(k, to.k);
-		assign< typename with_ref<L,CL>::type, L>(l, to.l);
-		assign< typename with_ref<M,CM>::type, M>(m, to.m);
-		assign< typename with_ref<N,CN>::type, N>(n, to.n);
-		assign< typename with_ref<O,CO>::type, O>(o, to.o);
-		assign< typename with_ref<P,CP>::type, P>(p, to.p);
+		out_assign< typename with_ref<A,CA>::type, A>(a, to.a);
+		out_assign< typename with_ref<B,CB>::type, B>(b, to.b);
+		out_assign< typename with_ref<C,CC>::type, C>(c, to.c);
+		out_assign< typename with_ref<D,CD>::type, D>(d, to.d);
+		out_assign< typename with_ref<E,CE>::type, E>(e, to.e);
+		out_assign< typename with_ref<F,CF>::type, F>(f, to.f);
+		out_assign< typename with_ref<G,CG>::type, G>(g, to.g);
+		out_assign< typename with_ref<H,CH>::type, H>(h, to.h);
+		out_assign< typename with_ref<I,CI>::type, I>(i, to.i);
+		out_assign< typename with_ref<J,CJ>::type, J>(j, to.j);
+		out_assign< typename with_ref<K,CK>::type, K>(k, to.k);
+		out_assign< typename with_ref<L,CL>::type, L>(l, to.l);
+		out_assign< typename with_ref<M,CM>::type, M>(m, to.m);
+		out_assign< typename with_ref<N,CN>::type, N>(n, to.n);
+		out_assign< typename with_ref<O,CO>::type, O>(o, to.o);
+		out_assign< typename with_ref<P,CP>::type, P>(p, to.p);
 	}
 	virtual void printTo(std::ostream &os) const
 	{
@@ -1484,8 +1551,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1525,8 +1594,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1567,8 +1638,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1608,8 +1681,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1650,8 +1725,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1691,8 +1768,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1733,8 +1812,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1774,8 +1855,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1815,8 +1898,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1854,8 +1939,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1894,8 +1981,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1933,8 +2022,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -1973,8 +2064,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -2012,8 +2105,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -2052,8 +2147,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -2091,8 +2188,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH,
@@ -2130,8 +2229,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH>
@@ -2167,8 +2268,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG, typename CH>
@@ -2205,8 +2308,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG>
@@ -2242,8 +2347,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF, typename CG>
@@ -2280,8 +2387,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF>
@@ -2317,8 +2426,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE, typename CF>
@@ -2355,8 +2466,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE>
@@ -2392,8 +2505,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD,
 			  typename CE>
@@ -2429,8 +2544,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD>
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d) {
@@ -2464,8 +2581,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC, typename CD>
 	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c, const CD & d) {
@@ -2500,8 +2619,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC>
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c) {
@@ -2535,8 +2656,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB, typename CC>
 	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b, const CC & c) {
@@ -2571,8 +2694,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB>
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b) {
@@ -2606,8 +2731,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA, typename CB>
 	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a, const CB & b) {
@@ -2642,8 +2769,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA>
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA & a) {
@@ -2677,8 +2806,10 @@ public:
 			(matchFunctor && (*(TupleInvocable<bool> *)(matchFunctor))(tupl));
 	}
 	void assignArgs(base_tuple &tupl) {
-		if(args)
+		if(args) {
 			args->assign_to(static_cast<ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+			args->assign_from(static_cast<ref_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &>(tupl));
+		}
 	}
 	template <typename CA>
 	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &With(const CA &a) {
