@@ -7,6 +7,7 @@ public:
 	virtual ~IOutParam() {}
 	virtual void a(std::string& out) = 0;
 	virtual void b(std::string** out) = 0;
+	virtual void c(char** out) = 0;
 };
 
 FUNC (checkOutParamsAreFilledIn_ConstChar)
@@ -45,4 +46,17 @@ FUNC (checkOutParamsAreFilledIn_PointerToString)
 	iamock->b(&out);
 
 	CHECK(*out == teststring);
+}
+
+FUNC (checkOutParamsAreFilledIn_Char)
+{
+	MockRepository mocks;
+	IOutParam *iamock = mocks.Mock<IOutParam>();
+	const char* teststring = "Hello World";
+	mocks.ExpectCall(iamock, IOutParam::c).With(Out((char*)teststring));
+	
+	char* out = 0;
+	iamock->c(&out);
+
+	CHECK(strcmp(out, teststring) == 0);
 }
