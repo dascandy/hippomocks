@@ -95,11 +95,13 @@ public:
   : origFunc((intptr_t)location & (~0xFFF))
   , byteCount(byteCount + ((intptr_t)location - origFunc))
   {
-    mprotect((void *)origFunc, byteCount, PROT_READ|PROT_WRITE|PROT_EXEC); 
+    mprotect((void *)origFunc, this->byteCount, PROT_READ|PROT_WRITE|PROT_EXEC); 
+    printf("  %d %d %d\n", origFunc, this->byteCount, location);
   };
   ~Unprotect()
   {
     mprotect((void *)origFunc, byteCount, PROT_READ|PROT_EXEC); 
+    printf("~ %d %d\n", origFunc, byteCount);
   }
 private:
   intptr_t origFunc;
@@ -121,6 +123,7 @@ class Replace
 {
 private:
   void *origFunc;
+#ifdef _X86_
   char backupData[sizeof(e9ptrsize_t) + 1];
 public:
   template <typename T>
@@ -137,6 +140,25 @@ public:
     Unprotect _allow_write(origFunc, sizeof(e9ptrsize_t) + 1);
     memcpy(origFunc, backupData, sizeof(backupData)); 
   }
+#elif __PPC__
+  char backupData[4];
+public:
+  template <typename T>
+  Replace(T funcptr, T replacement)
+      : origFunc(horrible_cast<void *>(funcptr))
+  {
+    Unprotect _allow_write(origFunc, 4);
+    memcpy(backupData, origFunc, sizeof(backupData));
+    *(unsigned int *)origFunc = 0x48000000 | (unsigned int)replacement;
+  }
+  ~Replace()
+  {
+    Unprotect _allow_write(origFunc, 4);
+    memcpy(origFunc, backupData, sizeof(backupData)); 
+  }
+#else
+#warning No C function mocking supported!
+#endif
 };
 
 class MockRepository;
