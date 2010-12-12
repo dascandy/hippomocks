@@ -42,7 +42,7 @@ FUNC (checkMultiCallNotCalled)
 		iamock->f();
 		iamock->g();
 	}
-	catch (CallMissingException &) 
+	catch (HippoMocks::CallMissingException &) 
 	{
 		exceptionCaught = true;
 	}
@@ -61,7 +61,7 @@ FUNC (checkMultiCallWrongOrder)
 	try {
 		iamock->f();
 	}
-	catch (ExpectationException &) 
+	catch (HippoMocks::ExpectationException &) 
 	{
 		exceptionCaught = true;
 	}
@@ -79,7 +79,7 @@ FUNC (checkExpectationsNotCompleted)
 		mocks.ExpectCall(iamock, IA::g);
 		iamock->f();
 	}
-	catch (CallMissingException &) 
+	catch (HippoMocks::CallMissingException &) 
 	{
 		exceptionCaught = true;
 	}
@@ -98,7 +98,7 @@ FUNC (checkOvercompleteExpectations)
 		iamock->g();
 		iamock->f();
 	}
-	catch (ExpectationException &) 
+	catch (HippoMocks::ExpectationException &) 
 	{
 		exceptionCaught = true;
 	}
@@ -115,7 +115,7 @@ FUNC (checkExpectationsAreInOrder)
 		mocks.ExpectCall(iamock, IA::g);
 		iamock->g();
 	}
-	catch (ExpectationException &) 
+	catch (HippoMocks::ExpectationException &) 
 	{
 		exceptionCaught = true;
 	}

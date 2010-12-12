@@ -29,7 +29,7 @@ FUNC (checkArgumentsChecked)
 	{
 		iamock->f(2);
 	}
-	catch (ExpectationException)
+	catch (HippoMocks::ExpectationException)
 	{
 		exceptionCaught = true;
 	}

@@ -40,7 +40,7 @@ FUNC (checkArgumentsChecked)
 	{
 		iamock->f(y);
 	}
-	catch (ExpectationException)
+	catch (HippoMocks::ExpectationException)
 	{
 		exceptionCaught = true;
 	}

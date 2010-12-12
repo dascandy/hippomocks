@@ -26,7 +26,7 @@ FUNC (checkNoResultContainsFuncName)
 	mocks.ExpectCall(iamock, IS::f);
 	try {
 		iamock->f();
-	} catch(NoResultSetUpException &ex) {
+	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::f") != NULL);
 	}
@@ -41,7 +41,7 @@ FUNC (checkNoResultContainsBlankArgSpec)
 	mocks.ExpectCall(iamock, IS::g);
 	try {
 		iamock->g(1,2);
-	} catch(NoResultSetUpException &ex) {
+	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::g") != NULL);
 		CHECK(strstr(ex.what(), "(...)") != NULL);
@@ -57,7 +57,7 @@ FUNC (checkNoResultContainsActualArgSpec)
 	mocks.ExpectCall(iamock, IS::g).With(1,2);
 	try {
 		iamock->g(1,2);
-	} catch(NoResultSetUpException &ex) {
+	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::g") != NULL);
 		CHECK(strstr(ex.what(), "(1,2)") != NULL);
@@ -73,7 +73,7 @@ FUNC (checkNoResultContainsActualUnprintableArgSpec)
 	mocks.NeverCall(iamock, IS::i).With(42, X());
 	try {
 		iamock->h();
-	} catch(NotImplementedException &ex) {
+	} catch(HippoMocks::NotImplementedException &ex) {
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IS::i") != NULL);
 		CHECK(strstr(ex.what(), "(42,??\?)") != NULL);
@@ -106,7 +106,7 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 	{
 		ismock->h();
 	}
-	catch (NotImplementedException &ex)
+	catch (HippoMocks::NotImplementedException &ex)
 	{
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
@@ -137,7 +137,7 @@ FUNC(checkExpectationExceptionToContainInfo)
 	{
 		ismock->g(0,1);
 	}
-	catch (ExpectationException &ex)
+	catch (HippoMocks::ExpectationException &ex)
 	{
 		CHECK(strstr(ex.what(), "Function IS::g(0,1) called") != NULL);
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
@@ -167,7 +167,7 @@ FUNC(checkCallMissingExceptionToContainInfo)
 		mocks.OnCall(ismock, IS::g).Return(3);
 		mocks.NeverCall(ismock, IS::g).With(3,4);
 	}
-	catch (CallMissingException &ex)
+	catch (HippoMocks::CallMissingException &ex)
 	{
 		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
 		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);

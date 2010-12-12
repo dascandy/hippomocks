@@ -31,7 +31,7 @@ FUNC (checkClassArgumentsChecked)
 	{
 		iamock->f("bye");
 	}
-	catch (ExpectationException)
+	catch (HippoMocks::ExpectationException)
 	{
 		exceptionCaught = true;
 	}

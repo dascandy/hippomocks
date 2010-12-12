@@ -20,7 +20,7 @@ FUNC (checkZombieCallsAreReported)
 	{
 		iamock->a();
 	}
-	catch(ZombieMockException &)
+	catch(HippoMocks::ZombieMockException &)
 	{
 		exceptionCaught = true;
 	}

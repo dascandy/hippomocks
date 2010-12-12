@@ -62,7 +62,7 @@ FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
 		IE *iamock = mocks.Mock<IE>();
 		mocks.ExpectCall(iamock, IE::f);
 	}
-	catch (CallMissingException &)
+	catch (HippoMocks::CallMissingException &)
 	{
 		exceptionCaught = true;
 	}

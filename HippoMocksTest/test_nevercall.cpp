@@ -24,7 +24,7 @@ FUNC (checkNeverCallWorks)
 	{
 		iamock->g();
 	}
-	catch (ExpectationException &)
+	catch (HippoMocks::ExpectationException &)
 	{
 		exceptionCaught = true;
 	}
@@ -41,7 +41,7 @@ FUNC (checkNeverCallExceptionDetail)
 	{
 		iamock->g();
 	}
-	catch (ExpectationException &ex)
+	catch (HippoMocks::ExpectationException &ex)
 	{
 		exceptionCaught = true;
 		CHECK(strstr(ex.what(), "IR::g") != NULL);
@@ -72,7 +72,7 @@ FUNC (checkInteractionBetweenCallTypesWorks)
 	{
 		iamock->h();
 	}
-	catch (ExpectationException &)
+	catch (HippoMocks::ExpectationException &)
 	{
 		exceptionCaught = true;
 	}

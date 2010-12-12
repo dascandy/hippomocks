@@ -8,6 +8,7 @@ class X {};
 class IQ {
 public:
 	virtual ~IQ() {}
+	virtual void f();
 	virtual auto_ptr<X> g();
 	virtual auto_ptr<IQ> getSelf();
 };
@@ -38,4 +39,23 @@ FUNC(checkCanDestroyMock)
 	mocks.ExpectCallDestructor(iamock);
 	delete iamock;
 }
+
+/*
+FUNC(checkAutoptrStability)
+{
+	MockRepository mocks;
+	try
+	{
+		IQ *iamock = mocks.Mock<IQ>();
+		auto_ptr<IQ> auto_ptr(iamock);
+		mocks.ExpectCall(iamock, IQ::f);
+		mocks.ExpectCallDestructor(iamock);
+		throw 42;
+		// implicit: destructor for iamock, that may not throw
+	}
+	catch(int)
+	{
+	}
+}
+*/
 

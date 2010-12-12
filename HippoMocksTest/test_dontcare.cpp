@@ -20,8 +20,8 @@ FUNC (checkDontcareIsIgnored)
 {
 	MockRepository mocks;
 	IY *iamock = mocks.Mock<IY>();
-	mocks.OnCall(iamock, IY::test).With(42, _).Return(true);
 	mocks.OnCall(iamock, IY::test).Return(false);
+	mocks.OnCall(iamock, IY::test).With(42, _).Return(true);
 	IZ iz;
 	EQUAL(true, iamock->test(42, iz));
 	EQUAL(false, iamock->test(40, iz));

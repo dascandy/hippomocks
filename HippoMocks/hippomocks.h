@@ -1,13 +1,23 @@
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
-#ifndef EXCEPTION_BUFFER_SIZE
-#define EXCEPTION_BUFFER_SIZE 65536
+// If you want to put all HippoMocks symbols into the global namespace, use the define below.
+//#define NO_HIPPOMOCKS_NAMESPACE
+
+#ifdef NO_HIPPOMOCKS_NAMESPACE
+#define HM_NS
+#else
+#define HM_NS HippoMocks::
 #endif
 
-#ifndef BASE_EXCEPTION
-#define BASE_EXCEPTION std::exception
-#include <exception>
+#ifndef DEBUGBREAK
+#ifdef _MSC_VER
+int __stdcall IsDebuggerPresent(void);
+void __stdcall DebugBreak();
+#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0;
+#else
+#define DEBUGBREAK()
+#endif
 #endif
 
 #ifndef DONTCARE_NAME
@@ -31,6 +41,22 @@
 #define FUNCTION_BASE 0
 #define FUNCTION_STRIDE 1
 #endif
+
+#if defined(_MSC_VER) && defined(_M_IX86)
+#define ENABLE_CFUNC_MOCKING_SUPPORT
+#elif defined(__GNUC__) && defined(__i386__) 
+#define ENABLE_CFUNC_MOCKING_SUPPORT
+#endif
+
+#if defined(__GNUC__) && !defined(__EXCEPTIONS)
+#define HM_NO_EXCEPTIONS
+#else
+#ifndef BASE_EXCEPTION
+#define BASE_EXCEPTION std::exception
+#include <exception>
+#endif
+#endif
+
 
 #include <list>
 #include <map>
@@ -58,9 +84,51 @@
 #pragma pointers_to_members(full_generality, virtual_inheritance)
 #endif
 
-#include <memory.h>
+#ifndef NO_HIPPOMOCKS_NAMESPACE
+namespace HippoMocks
+{
+#endif
 
-#define REPLACE(x, y) Replace __replace_obj_##x (&x, &y)
+//Type-safe exception wrapping
+class ExceptionHolder
+{
+public:
+	virtual ~ExceptionHolder() {}
+	virtual void rethrow() = 0;
+	template <typename T>
+	static ExceptionHolder *Create(T ex);
+};
+
+template <class T>
+class ExceptionWrapper : public ExceptionHolder {
+	T exception;
+public:
+	ExceptionWrapper(T exception) : exception(exception) {}
+	void rethrow() { throw exception; }
+};
+
+template <typename T>
+ExceptionHolder *ExceptionHolder::Create(T ex)
+{
+	return new ExceptionWrapper<T>(ex);
+}
+
+#ifdef HM_NO_EXCEPTIONS
+#define RAISEEXCEPTION(e) 			{ DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
+	printf("%s\n", e.what()); \
+	abort(); }
+#define RAISELATENTEXCEPTION(e) 	{ DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \ 
+	printf("%s\n", e.what()); \
+	abort(); }
+#else
+#define RAISEEXCEPTION(e)			{ DEBUGBREAK(); throw e; }
+#define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(); if (std::uncaught_exception()) \
+	MockRepoInstanceHolder<0>::instance->SetLatentException(ExceptionHolder::Create(e)); \
+	else throw e; }
+#endif
+
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#include <memory.h>
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -96,12 +164,10 @@ public:
   , byteCount(byteCount + ((intptr_t)location - origFunc))
   {
     mprotect((void *)origFunc, this->byteCount, PROT_READ|PROT_WRITE|PROT_EXEC); 
-    printf("  %d %d %d\n", origFunc, this->byteCount, location);
   };
   ~Unprotect()
   {
     mprotect((void *)origFunc, byteCount, PROT_READ|PROT_EXEC); 
-    printf("~ %d %d\n", origFunc, byteCount);
   }
 private:
   intptr_t origFunc;
@@ -123,7 +189,6 @@ class Replace
 {
 private:
   void *origFunc;
-#ifdef _X86_
   char backupData[sizeof(e9ptrsize_t) + 1];
 public:
   template <typename T>
@@ -140,26 +205,8 @@ public:
     Unprotect _allow_write(origFunc, sizeof(e9ptrsize_t) + 1);
     memcpy(origFunc, backupData, sizeof(backupData)); 
   }
-#elif __PPC__
-  char backupData[4];
-public:
-  template <typename T>
-  Replace(T funcptr, T replacement)
-      : origFunc(horrible_cast<void *>(funcptr))
-  {
-    Unprotect _allow_write(origFunc, 4);
-    memcpy(backupData, origFunc, sizeof(backupData));
-    *(unsigned int *)origFunc = 0x48000000 | (unsigned int)replacement;
-  }
-  ~Replace()
-  {
-    Unprotect _allow_write(origFunc, 4);
-    memcpy(origFunc, backupData, sizeof(backupData)); 
-  }
-#else
-#warning No C function mocking supported!
-#endif
 };
+#endif 
 
 class MockRepository;
 
@@ -644,7 +691,11 @@ public:
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 
-class BaseException : public BASE_EXCEPTION {
+class BaseException
+#ifndef HM_NO_EXCEPTIONS
+	: public BASE_EXCEPTION 
+#endif
+{
 public:
 	~BaseException() throw() {}
 	const char *what() const throw() { return txt.c_str(); }
@@ -1143,9 +1194,9 @@ class mock : public base_mock
 	void NotImplemented() {
 		mock<T> *realMock = getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
-		throw ::NotImplementedException(repo);
+		RAISEEXCEPTION(:: HM_NS NotImplementedException(repo));
 	}
 protected:
 	std::map<int, void (**)()> funcTables;
@@ -1207,22 +1258,6 @@ public:
 	}
 	template <int X>
 	void mockedDestructor(int);
-};
-
-//Type-safe exception wrapping
-class ExceptionHolder
-{
-public:
-	virtual ~ExceptionHolder() {}
-	virtual void rethrow() = 0;
-};
-
-template <class T>
-class ExceptionWrapper : public ExceptionHolder {
-	T exception;
-public:
-	ExceptionWrapper(T exception) : exception(exception) {}
-	void rethrow() { throw exception; }
 };
 
 // Do() function wrapping
@@ -2890,39 +2925,56 @@ class MockRepository {
 private:
 	friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 	std::list<base_mock *> mocks;
-  std::map<void (*)(), int> staticFuncMap;
-  std::list<Replace *> staticReplaces;
-	std::list<Call *> neverCalls;
+    std::map<void (*)(), int> staticFuncMap;
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+    std::list<Replace *> staticReplaces;
+#endif
+    std::list<Call *> neverCalls;
 	std::list<Call *> expectations;
 	std::list<Call *> optionals;
+	ExceptionHolder *latentException;
 public:
+	void SetLatentException(ExceptionHolder *holder)
+	{
+		latentException = holder;
+	}
 	bool autoExpect;
 #ifdef _MSC_VER
-#define OnCallFunc(func) RegisterExpect_<__COUNTER__, Any>(&func, #func, __FILE__, __LINE__)
-#define ExpectCallFunc(func) RegisterExpect_<__COUNTER__, Once>(&func, #func, __FILE__, __LINE__)
-#define NeverCallFunc(func) RegisterExpect_<__COUNTER__, Never>(&func, #func, __FILE__, __LINE__)
-#define OnCall(obj, func) RegisterExpect_<__COUNTER__, Any>(obj, &func, #func, __FILE__, __LINE__)
-#define ExpectCall(obj, func) RegisterExpect_<__COUNTER__, Once>(obj, &func, #func, __FILE__, __LINE__)
-#define NeverCall(obj, func) RegisterExpect_<__COUNTER__, Never>(obj, &func, #func, __FILE__, __LINE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__COUNTER__, Any>(obj, func, #func, __FILE__, __LINE__)
-#define ExpectCallOverload(obj, func) RegisterExpect_<__COUNTER__, Once>(obj, func, #func, __FILE__, __LINE__)
-#define NeverCallOverload(obj, func) RegisterExpect_<__COUNTER__, Never>(obj, func, #func, __FILE__, __LINE__)
-#define OnCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, Any>(obj, __FILE__, __LINE__)
-#define ExpectCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, Once>(obj, __FILE__, __LINE__)
-#define NeverCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, Never>(obj, __FILE__, __LINE__)
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#define OnCallFunc(func) RegisterExpect_<__COUNTER__, HM_NS Any>(&func, #func, __FILE__, __LINE__)
+#define ExpectCallFunc(func) RegisterExpect_<__COUNTER__, HM_NS Once>(&func, #func, __FILE__, __LINE__)
+#define NeverCallFunc(func) RegisterExpect_<__COUNTER__, HM_NS Never>(&func, #func, __FILE__, __LINE__)
+#define OnCallFuncOverload(func) RegisterExpect_<__COUNTER__, HM_NS Any>(func, #func, __FILE__, __LINE__)
+#define ExpectCallFuncOverload(func) RegisterExpect_<__COUNTER__, HM_NS Once>(func, #func, __FILE__, __LINE__)
+#define NeverCallFuncOverload(func) RegisterExpect_<__COUNTER__, HM_NS Never>(func, #func, __FILE__, __LINE__)
+#endif
+#define OnCall(obj, func) RegisterExpect_<__COUNTER__, HM_NS Any>(obj, &func, #func, __FILE__, __LINE__)
+#define ExpectCall(obj, func) RegisterExpect_<__COUNTER__, HM_NS Once>(obj, &func, #func, __FILE__, __LINE__)
+#define NeverCall(obj, func) RegisterExpect_<__COUNTER__, HM_NS Never>(obj, &func, #func, __FILE__, __LINE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__COUNTER__, HM_NS Any>(obj, func, #func, __FILE__, __LINE__)
+#define ExpectCallOverload(obj, func) RegisterExpect_<__COUNTER__, HM_NS Once>(obj, func, #func, __FILE__, __LINE__)
+#define NeverCallOverload(obj, func) RegisterExpect_<__COUNTER__, HM_NS Never>(obj, func, #func, __FILE__, __LINE__)
+#define OnCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, HM_NS Any>(obj, __FILE__, __LINE__)
+#define ExpectCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, HM_NS Once>(obj, __FILE__, __LINE__)
+#define NeverCallDestructor(obj) RegisterExpectDestructor<__COUNTER__, HM_NS Never>(obj, __FILE__, __LINE__)
 #else
-#define OnCallFunc(func) RegisterExpect_<__LINE__, Any>(&func, #func, __FILE__, __LINE__)
-#define ExpectCallFunc(func) RegisterExpect_<__LINE__, Once>(&func, #func, __FILE__, __LINE__)
-#define NeverCallFunc(func) RegisterExpect_<__LINE__, Never>(&func, #func, __FILE__, __LINE__)
-#define OnCall(obj, func) RegisterExpect_<__LINE__, Any>(obj, &func, #func, __FILE__, __LINE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, Once>(obj, &func, #func, __FILE__, __LINE__)
-#define NeverCall(obj, func) RegisterExpect_<__LINE__, Never>(obj, &func, #func, __FILE__, __LINE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, Any>(obj, func, #func, __FILE__, __LINE__)
-#define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, Once>(obj, func, #func, __FILE__, __LINE__)
-#define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, Never>(obj, func, #func, __FILE__, __LINE__)
-#define OnCallDestructor(obj) RegisterExpectDestructor<__LINE__, Any>(obj, __FILE__, __LINE__)
-#define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__, Once>(obj, __FILE__, __LINE__)
-#define NeverCallDestructor(obj) RegisterExpectDestructor<__LINE__, Never>(obj, __FILE__, __LINE__)
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#define OnCallFunc(func) RegisterExpect_<__LINE__, HM_NS Any>(&func, #func, __FILE__, __LINE__)
+#define ExpectCallFunc(func) RegisterExpect_<__LINE__, HM_NS Once>(&func, #func, __FILE__, __LINE__)
+#define NeverCallFunc(func) RegisterExpect_<__LINE__, HM_NS Never>(&func, #func, __FILE__, __LINE__)
+#define OnCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Any>(func, #func, __FILE__, __LINE__)
+#define ExpectCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Once>(func, #func, __FILE__, __LINE__)
+#define NeverCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Never>(func, #func, __FILE__, __LINE__)
+#endif
+#define OnCall(obj, func) RegisterExpect_<__LINE__, HM_NS Any>(obj, &func, #func, __FILE__, __LINE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__, HM_NS Once>(obj, &func, #func, __FILE__, __LINE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__, HM_NS Never>(obj, &func, #func, __FILE__, __LINE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Any>(obj, func, #func, __FILE__, __LINE__)
+#define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Once>(obj, func, #func, __FILE__, __LINE__)
+#define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Never>(obj, func, #func, __FILE__, __LINE__)
+#define OnCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Any>(obj, __FILE__, __LINE__)
+#define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Once>(obj, __FILE__, __LINE__)
+#define NeverCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Never>(obj, __FILE__, __LINE__)
 #endif
 	template <typename A, class B, typename C>
 	void Member(A *mck, C B::*member)
@@ -2935,6 +2987,7 @@ public:
   template <int X, RegistrationType expect, typename Z2>
 	TCall<void> &RegisterExpectDestructor(Z2 *mck, const char *fileName, unsigned long lineNo);
 
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 	template <int X, RegistrationType expect, typename Y>
 	TCall<Y> &RegisterExpect_(Y (*func)(), const char *funcName, const char *fileName, unsigned long lineNo);
 	template <int X, RegistrationType expect, typename Y, typename A>
@@ -3008,6 +3061,7 @@ public:
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Y (*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), const char *funcName, const char *fileName, unsigned long lineNo);
+#endif
 
 	template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName, unsigned long lineNo);
@@ -3609,6 +3663,7 @@ public:
 
 	template <typename Z>
 	void BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X);
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
   int BasicStaticRegisterExpect(void (*func)(), void (*fp)(), int X)
   {
     if (staticFuncMap.find(func) == staticFuncMap.end())
@@ -3618,12 +3673,12 @@ public:
     }
     return staticFuncMap[func];
   }
-
+#endif
 	template <typename Z>
 	Z DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple);
 	void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
 	{
-		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
+		for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
 		{
 			Call *call = *i;
 			if (call->mock == mock &&
@@ -3655,7 +3710,7 @@ public:
 				return;
 	    	}
 		}
-		for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i)
+		for (std::list<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
 		{
 			Call *call = *i;
 			if (call->mock == mock &&
@@ -3675,10 +3730,10 @@ public:
 
 				call->satisfied = true;
 
-				throw ExpectationException(this, call->getArgs(), call->funcName);
+				RAISEEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
 			}
 		}
-		for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i)
+		for (std::list<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
 		{
 			Call *call = *i;
 			if (call->mock == mock &&
@@ -3731,16 +3786,17 @@ public:
 				call->funcIndex == funcno)
 				funcName = call->funcName;
 		}
-				throw ExpectationException(this, &tuple, funcName);
-		}
-		MockRepository()
-			: autoExpect(true)
-		{
-			MockRepoInstanceHolder<0>::instance = this;
-		}
-		~MockRepository()
-		{
-			MockRepoInstanceHolder<0>::instance = 0;
+		RAISEEXCEPTION(ExpectationException(this, &tuple, funcName));
+	}
+	MockRepository()
+		: autoExpect(true)
+		, latentException(0)
+	{
+		MockRepoInstanceHolder<0>::instance = this;
+	}
+	~MockRepository()
+	{
+		MockRepoInstanceHolder<0>::instance = 0;
 		if (!std::uncaught_exception())
 		{
 			try
@@ -3749,27 +3805,44 @@ public:
 			}
 			catch(...)
 			{
+				delete latentException;
 				reset();
 				for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
 				{
 					(*i)->destroy();
 				}
-    		for (std::list<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
-    		{
-    			delete *i;
-    		}
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+    			for (std::list<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
+    			{
+    				delete *i;
+    			}
+#endif
 				throw;
 			}
+		}
+		if (latentException)
+		{
+			try
+			{
+				latentException->rethrow();
+			}
+			catch(BASE_EXCEPTION e)
+			{
+				printf("Latent exception masked!\nException:\n%s\n", e.what());
+			}
+			delete latentException;
 		}
 		reset();
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
 		{
 			(*i)->destroy();
 		}
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 		for (std::list<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
 		{
 			delete *i;
 		}
+#endif
 	}
 	void reset()
 	{
@@ -3795,19 +3868,21 @@ public:
 	}
 	void VerifyAll()
 	{
+		if (latentException)
+			latentException->rethrow();
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
 			if (!(*i)->satisfied)
-	    		throw CallMissingException(this);
+	    		RAISEEXCEPTION(CallMissingException(this));
 		}
-		}
+	}
 	void VerifyPartial(base_mock *obj)
 	{
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
 			if ((*i)->mock == (base_mock *)obj &&
 				!(*i)->satisfied)
-	    		throw CallMissingException(this);
+	    		RAISELATENTEXCEPTION(CallMissingException(this));
 		}
 	}
 	template <typename base>
@@ -3825,7 +3900,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<>());
 	}
@@ -3834,7 +3909,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A>(a));
 	}
@@ -3843,7 +3918,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B>(a,b));
 	}
@@ -3852,7 +3927,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C>(a,b,c));
 	}
@@ -3861,7 +3936,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
 	}
@@ -3870,7 +3945,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
@@ -3879,7 +3954,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
@@ -3888,7 +3963,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
@@ -3897,7 +3972,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
 	}
@@ -3906,7 +3981,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
@@ -3915,7 +3990,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
@@ -3924,7 +3999,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
@@ -3933,7 +4008,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
@@ -3942,7 +4017,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
@@ -3951,7 +4026,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
@@ -3960,7 +4035,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
@@ -3969,7 +4044,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
@@ -4176,7 +4251,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<>());
 	}
@@ -4185,7 +4260,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A>(a));
 	}
@@ -4194,7 +4269,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B>(a,b));
 	}
@@ -4203,7 +4278,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C>(a,b,c));
 	}
@@ -4212,7 +4287,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D>(a,b,c,d));
 	}
@@ -4221,7 +4296,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
 	}
@@ -4230,7 +4305,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
 	}
@@ -4239,7 +4314,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
 	}
@@ -4248,7 +4323,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
 	}
@@ -4257,7 +4332,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
 	}
@@ -4266,7 +4341,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
 	}
@@ -4275,7 +4350,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
 	}
@@ -4284,7 +4359,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
 	}
@@ -4293,7 +4368,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
 	}
@@ -4302,7 +4377,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
 	}
@@ -4311,7 +4386,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
 	}
@@ -4320,7 +4395,7 @@ public:
 	{
 		mock<Z> *realMock = mock<Z>::getRealThis();
 		if (realMock->isZombie)
-			throw ZombieMockException(realMock->repo);
+			RAISEEXCEPTION(ZombieMockException(realMock->repo));
 		MockRepository *repo = realMock->repo;
 		repo->DoVoidExpectation(realMock, realMock->translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
@@ -4528,8 +4603,8 @@ void mock<T>::mockedDestructor(int)
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
 {
-	if (funcIndex > VIRT_FUNC_LIMIT) throw NotImplementedException(this);
-	if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) throw NotImplementedException(this);
+	if (funcIndex > VIRT_FUNC_LIMIT) RAISEEXCEPTION(NotImplementedException(this));
+	if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) RAISEEXCEPTION(NotImplementedException(this));
 	if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
 	{
 		if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
@@ -5030,6 +5105,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 }
 #endif
 
+#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 template <int X, RegistrationType expect, typename Y>
 TCall<Y> &MockRepository::RegisterExpect_(Y (*func)(), const char *funcName, const char *fileName, unsigned long lineNo)
 {
@@ -5427,6 +5503,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Y (*fu
   }
   return *call;
 }
+#endif
 
 template <int X, RegistrationType expect, typename Z2, typename Y, typename Z>
 TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(), const char *funcName, const char *fileName, unsigned long lineNo)
@@ -5880,7 +5957,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 template <typename Z>
 Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
 {
-	for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); ++i)
+	for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
 	{
 		Call *call = *i;
 		if (call->mock == mock &&
@@ -5921,10 +5998,10 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 			if (call->retVal)
 				return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
-			throw NoResultSetUpException(this, call->getArgs(), call->funcName);
+			RAISEEXCEPTION(NoResultSetUpException(this, call->getArgs(), call->funcName));
 		}
 	}
-	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end(); ++i)
+	for (std::list<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
 	{
 		Call *call = *i;
 		if (call->mock == mock &&
@@ -5944,10 +6021,10 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 
 			call->satisfied = true;
 
-			throw ExpectationException(this, call->getArgs(), call->funcName);
+			RAISEEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
 		}
 	}
-	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end(); ++i)
+	for (std::list<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
 	{
 		Call *call = *i;
 		if (call->mock == mock &&
@@ -5987,7 +6064,7 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 			if (call->retVal)
 				return ((ReturnValueWrapper<Z> *)call->retVal)->rv;
 
-			throw NoResultSetUpException(this, call->getArgs(), call->funcName);
+			RAISEEXCEPTION(NoResultSetUpException(this, call->getArgs(), call->funcName));
 		}
 	}
 	const char *funcName = NULL;
@@ -5999,20 +6076,20 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 			funcName = call->funcName;
 	}
 	for (std::list<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !funcName; ++i)
-		{
-	    Call *call = *i;
-	    if (call->mock == mock &&
-		    call->funcIndex == funcno)
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno)
 				funcName = call->funcName;
-		}
+	}
 	for (std::list<Call *>::iterator i = optionals.begin(); i != optionals.end() && !funcName; ++i)
-		{
-	    Call *call = *i;
-	    if (call->mock == mock &&
-		    call->funcIndex == funcno)
+	{
+		Call *call = *i;
+		if (call->mock == mock &&
+			call->funcIndex == funcno)
 				funcName = call->funcName;
-		}
-	throw ExpectationException(this, &tuple, funcName);
+	}
+	RAISEEXCEPTION(ExpectationException(this, &tuple, funcName));
 }
 template <typename base>
 base *MockRepository::Mock() {
@@ -6080,6 +6157,27 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+
+#ifndef NO_HIPPOMOCKS_NAMESPACE
+}
+
+using HippoMocks::MockRepository;
+using HippoMocks::DONTCARE_NAME;
+using HippoMocks::Call;
+using HippoMocks::Out;
+using HippoMocks::In;
+#endif
+
+#undef DEBUGBREAK
+#undef BASE_EXCEPTION
+#undef RAISEEXCEPTION
+#undef RAISELATENTEXCEPTION
+#undef DONTCARE_NAME
+#undef VIRT_FUNC_LIMIT
+#undef EXTRA_DESTRUCTOR
+#undef FUNCTION_BASE
+#undef FUNCTION_STRIDE
+#undef ENABLE_CFUNC_MOCKING_SUPPORT
 
 #endif
 

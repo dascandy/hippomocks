@@ -40,7 +40,7 @@ FUNC (checkTransactionStyleFailIfOneSkipped)
 	try {
 		iamock->end();
 	}
-	catch (ExpectationException &) 
+	catch (HippoMocks::ExpectationException &) 
 	{
 		exceptionCaught = true;
 	}

@@ -15,11 +15,11 @@ FUNC (checkFilterIsApplied)
 {
 	MockRepository mocks;
 	IAA *iamock = mocks.Mock<IAA>();
-	mocks.OnCall(iamock, IAA::f).Match(allEven).Return(5);
-	mocks.OnCall(iamock, IAA::f).Match(oeo).Return(1);
-	mocks.OnCall(iamock, IAA::f).Match(eod).Return(2);
-	mocks.OnCall(iamock, IAA::f).Match(never).Return(3);
 	mocks.OnCall(iamock, IAA::f).Return(4);
+	mocks.OnCall(iamock, IAA::f).Match(never).Return(3);
+	mocks.OnCall(iamock, IAA::f).Match(eod).Return(2);
+	mocks.OnCall(iamock, IAA::f).Match(oeo).Return(1);
+	mocks.OnCall(iamock, IAA::f).Match(allEven).Return(5);
 	EQUAL(5, iamock->f(0, 0, 0));
 	EQUAL(4, iamock->f(0, 0, 1));
 	EQUAL(2, iamock->f(0, 1, 0));
