@@ -3676,7 +3676,7 @@ public:
 #endif
 	template <typename Z>
 	Z DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple);
-	void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
+	void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple, bool makeLatent = false)
 	{
 		for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
 		{
@@ -3730,7 +3730,17 @@ public:
 
 				call->satisfied = true;
 
-				RAISEEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
+				if (makeLatent)
+				{
+					if (latentException) 
+						return;
+					RAISELATENTEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
+				}
+				else
+				{
+					RAISEEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
+				}
+				return;
 			}
 		}
 		for (std::list<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
@@ -3786,7 +3796,16 @@ public:
 				call->funcIndex == funcno)
 				funcName = call->funcName;
 		}
-		RAISEEXCEPTION(ExpectationException(this, &tuple, funcName));
+		if (makeLatent)
+		{
+			if (latentException) 
+				return;
+			RAISELATENTEXCEPTION(ExpectationException(this, &tuple, funcName));
+		}
+		else
+		{
+			RAISEEXCEPTION(ExpectationException(this, &tuple, funcName));
+		}
 	}
 	MockRepository()
 		: autoExpect(true)
@@ -3878,11 +3897,15 @@ public:
 	}
 	void VerifyPartial(base_mock *obj)
 	{
+		if (latentException) 
+			return;
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
 			if ((*i)->mock == (base_mock *)obj &&
 				!(*i)->satisfied)
+			{
 	    		RAISELATENTEXCEPTION(CallMissingException(this));
+			}
 		}
 	}
 	template <typename base>
@@ -4595,7 +4618,7 @@ template <typename T>
 template <int X>
 void mock<T>::mockedDestructor(int)
 {
-	repo->DoVoidExpectation(this, translateX(X), ref_tuple<>());
+	repo->DoVoidExpectation(this, translateX(X), ref_tuple<>(), true);
 	repo->VerifyPartial(this);
 	isZombie = true;
 }
