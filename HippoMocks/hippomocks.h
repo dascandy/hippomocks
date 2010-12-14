@@ -1,8 +1,42 @@
+// HippoMocks, a library for using mocks in unit testing of C++ code.
+// Copyright (C) 2008, Bas van Tiel, Christian Rexwinkel, Mike Looijmans, 
+// Peter Bindels
+// 
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+// 
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+// 
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+// 
+// You can also retrieve it from http://www.gnu.org/licenses/lgpl-2.1.html
+
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
 // If you want to put all HippoMocks symbols into the global namespace, use the define below.
 //#define NO_HIPPOMOCKS_NAMESPACE
+
+// The DEFAULT_AUTOEXPECT is an option that determines whether tests are, by default, under- or 
+// overspecified. Auto-expect, by function, adds an expectation to the current ExpectCall that 
+// it will happen after the previous ExpectCall. For many people this is an intuitive and logical 
+// thing when writing a C++ program. Usually, this makes your test workable but overspecified.
+// Overspecified means that your test will fail on working code that does things in a different 
+// order. The alternative, underspecified, allows code to pass your test that does things in a 
+// different order, where that different order should be considered wrong. Consider reading a 
+// file, where it needs to be first opened, then read and then closed.
+//
+// The default is to make tests overspecified. At least it prevents faulty code from passing 
+// unit tests. To locally disable (or enable) this behaviour, set the boolean autoExpect on your 
+// MockRepository to false (or true).
+#define DEFAULT_AUTOEXPECT true
 
 #ifdef NO_HIPPOMOCKS_NAMESPACE
 #define HM_NS
@@ -12,9 +46,9 @@
 
 #ifndef DEBUGBREAK
 #ifdef _MSC_VER
-int __stdcall IsDebuggerPresent(void);
+__declspec(dllimport) int __stdcall  IsDebuggerPresent();
 void __stdcall DebugBreak();
-#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0;
+#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
 #define DEBUGBREAK()
 #endif
@@ -42,14 +76,16 @@ void __stdcall DebugBreak();
 #define FUNCTION_STRIDE 1
 #endif
 
-#if defined(_MSC_VER) && defined(_M_IX86)
+#if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
 #define ENABLE_CFUNC_MOCKING_SUPPORT
-#elif defined(__GNUC__) && defined(__i386__) 
+#elif defined(__linux__) && defined(__GNUC__) && defined(__i386__) 
 #define ENABLE_CFUNC_MOCKING_SUPPORT
 #endif
 
 #if defined(__GNUC__) && !defined(__EXCEPTIONS)
 #define HM_NO_EXCEPTIONS
+class X{}; 
+#define BASE_EXCEPTION X
 #else
 #ifndef BASE_EXCEPTION
 #define BASE_EXCEPTION std::exception
@@ -65,10 +101,6 @@ void __stdcall DebugBreak();
 #include <sstream>
 #include <cstring>
 #include <algorithm>
-
-#ifdef LINUX_TARGET
-#include <execinfo.h>
-#endif
 
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users.
@@ -114,12 +146,12 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 }
 
 #ifdef HM_NO_EXCEPTIONS
-#define RAISEEXCEPTION(e) 			{ DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", e.what()); \
-	abort(); }
-#define RAISELATENTEXCEPTION(e) 	{ DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \ 
-	printf("%s\n", e.what()); \
-	abort(); }
+#define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
+	printf("%s\n", err); \
+	abort(); exit(-1); }
+#define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
+	printf("%s\n", err); \
+	abort(); exit(-1); }
 #else
 #define RAISEEXCEPTION(e)			{ DEBUGBREAK(); throw e; }
 #define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(); if (std::uncaught_exception()) \
@@ -130,7 +162,7 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 #ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 #include <memory.h>
 
-#ifdef _MSC_VER
+#if defined(_WIN32)
 #include <windows.h>
 
 class Unprotect
@@ -152,7 +184,7 @@ private:
   size_t byteCount;
   unsigned long oldprotect;
 };
-#else
+#elif defined(__linux__)
 #include <sys/mman.h>
 #include <stdint.h>
 
@@ -721,6 +753,10 @@ public:
 	}
 };
 
+#ifdef LINUX_TARGET
+#include <execinfo.h>
+#endif
+
 class NotImplementedException : public BaseException {
 public:
 	NotImplementedException(MockRepository *repo)
@@ -799,6 +835,22 @@ public:
 			text << "(...)";
 		text << std::endl;
 		text << *repo;
+
+#ifdef LINUX_TARGET
+    void* stacktrace[256];
+    size_t size = backtrace( stacktrace, sizeof(stacktrace) );
+    if( size > 0 )
+    {
+      text << "Stackdump:" << std::endl;
+      char **symbols = backtrace_symbols( stacktrace, size );
+      for( size_t i = 0; i < size; i = i + 1 )
+      {
+        text << symbols[i] << std::endl;
+      }
+      free( symbols );
+    }
+#endif
+
 		txt = text.str();
 	}
 };
@@ -1529,7 +1581,9 @@ public:
 	virtual bool matchesArgs(const base_tuple &tuple) = 0;
 	virtual void assignArgs(base_tuple &tuple) = 0;
 	ReturnValueHolder *retVal;
+#ifndef HM_NO_EXCEPTIONS
 	ExceptionHolder *eHolder;
+#endif
 	base_mock *mock;
 	VirtualDestructable *functor;
 	VirtualDestructable *matchFunctor;
@@ -1543,7 +1597,9 @@ public:
 protected:
 	Call(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName)
 		: retVal(0),
+#ifndef HM_NO_EXCEPTIONS
 		eHolder(0),
+#endif
 		mock(mock),
 		functor(0),
 		matchFunctor(0),
@@ -1559,7 +1615,9 @@ public:
 	virtual const base_tuple *getArgs() const = 0;
 	virtual ~Call()
 	{
+#ifndef HM_NO_EXCEPTIONS
 		delete eHolder;
+#endif
 		delete functor;
 		delete matchFunctor;
 		delete retVal;
@@ -1609,8 +1667,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -1651,8 +1711,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -1696,8 +1758,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -1738,8 +1802,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -1783,8 +1849,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -1825,8 +1893,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -1870,8 +1940,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -1912,8 +1984,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -1955,8 +2029,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -1995,8 +2071,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2038,8 +2116,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -2078,8 +2158,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2121,8 +2203,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -2161,8 +2245,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2204,8 +2290,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H,
@@ -2244,8 +2332,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2285,8 +2375,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G, typename H>
@@ -2323,8 +2415,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2364,8 +2458,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F, typename G>
@@ -2402,8 +2498,10 @@ public:
 	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2443,8 +2541,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E, typename F>
@@ -2481,8 +2581,10 @@ public:
 	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2522,8 +2624,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D,
 		  typename E>
@@ -2560,8 +2664,10 @@ public:
 	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2599,8 +2705,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C, typename D>
 class TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Call {
@@ -2635,8 +2743,10 @@ public:
 	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2674,8 +2784,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B, typename C>
 class TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Call {
@@ -2710,8 +2822,10 @@ public:
 	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2749,8 +2863,10 @@ public:
 	template <typename T>
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A, typename B>
 class TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Call {
@@ -2785,8 +2901,10 @@ public:
 	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y,
@@ -2824,8 +2942,10 @@ public:
 	template <typename T>
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <typename A>
 class TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Call {
@@ -2860,8 +2980,10 @@ public:
 	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<void,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T &function) { matchFunctor = new DoWrapper<T,bool,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <typename Y>
@@ -2885,8 +3007,10 @@ public:
 	template <typename T>
 	TCall<Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	Call &Return(Y obj) { retVal = new ReturnValueWrapper<Y>(obj); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 template <>
 class TCall<void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Call {
@@ -2908,8 +3032,10 @@ public:
 	}
 	template <typename T>
 	TCall<void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T &function) { functor = new DoWrapper<T,void,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
+#ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+#endif
 };
 
 template <int X>
@@ -2932,12 +3058,16 @@ private:
     std::list<Call *> neverCalls;
 	std::list<Call *> expectations;
 	std::list<Call *> optionals;
+#ifndef HM_NO_EXCEPTIONS
 	ExceptionHolder *latentException;
+#endif
 public:
+#ifndef HM_NO_EXCEPTIONS
 	void SetLatentException(ExceptionHolder *holder)
 	{
 		latentException = holder;
 	}
+#endif
 	bool autoExpect;
 #ifdef _MSC_VER
 #ifdef ENABLE_CFUNC_MOCKING_SUPPORT
@@ -3700,10 +3830,10 @@ public:
 				call->satisfied = true;
 
 				call->assignArgs(const_cast<base_tuple &>(tuple));
-
+#ifndef HM_NO_EXCEPTIONS
 				if (call->eHolder)
 					call->eHolder->rethrow();
-
+#endif
 				if (call->functor != NULL)
 					(*(TupleInvocable<void> *)(call->functor))(tuple);
 
@@ -3732,8 +3862,10 @@ public:
 
 				if (makeLatent)
 				{
+#ifndef HM_NO_EXCEPTIONS
 					if (latentException) 
 						return;
+#endif
 					RAISELATENTEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
 				}
 				else
@@ -3764,10 +3896,10 @@ public:
 				call->satisfied = true;
 
 				call->assignArgs(const_cast<base_tuple &>(tuple));
-
+#ifndef HM_NO_EXCEPTIONS
 				if (call->eHolder)
 					call->eHolder->rethrow();
-
+#endif
 				if (call->functor != NULL)
 					(*(TupleInvocable<void> *)(call->functor))(tuple);
 
@@ -3798,8 +3930,10 @@ public:
 		}
 		if (makeLatent)
 		{
+#ifndef HM_NO_EXCEPTIONS
 			if (latentException) 
 				return;
+#endif
 			RAISELATENTEXCEPTION(ExpectationException(this, &tuple, funcName));
 		}
 		else
@@ -3808,19 +3942,24 @@ public:
 		}
 	}
 	MockRepository()
-		: autoExpect(true)
+		: autoExpect(DEFAULT_AUTOEXPECT)
+#ifndef HM_NO_EXCEPTIONS
 		, latentException(0)
+#endif
 	{
 		MockRepoInstanceHolder<0>::instance = this;
 	}
 	~MockRepository()
 	{
 		MockRepoInstanceHolder<0>::instance = 0;
+#ifndef HM_NO_EXCEPTIONS
 		if (!std::uncaught_exception())
 		{
 			try
 			{
+#endif
 				VerifyAll();
+#ifndef HM_NO_EXCEPTIONS
 			}
 			catch(...)
 			{
@@ -3851,6 +3990,7 @@ public:
 			}
 			delete latentException;
 		}
+#endif
 		reset();
 		for (std::list<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
 		{
@@ -3887,8 +4027,10 @@ public:
 	}
 	void VerifyAll()
 	{
+#ifndef HM_NO_EXCEPTIONS
 		if (latentException)
 			latentException->rethrow();
+#endif
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
 			if (!(*i)->satisfied)
@@ -3897,8 +4039,10 @@ public:
 	}
 	void VerifyPartial(base_mock *obj)
 	{
+#ifndef HM_NO_EXCEPTIONS
 		if (latentException) 
 			return;
+#endif
 		for (std::list<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
 		{
 			if ((*i)->mock == (base_mock *)obj &&
@@ -6002,10 +6146,10 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 			call->satisfied = true;
 
 			call->assignArgs(const_cast<base_tuple &>(tuple));
-
+#ifndef HM_NO_EXCEPTIONS
 			if (call->eHolder)
 				call->eHolder->rethrow();
-
+#endif
 			if (call->functor != NULL)
 			{
 				if(call->retVal == NULL)
@@ -6069,9 +6213,10 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
 
 			call->assignArgs(const_cast<base_tuple &>(tuple));
 
+#ifndef HM_NO_EXCEPTIONS
 			if (call->eHolder)
 				call->eHolder->rethrow();
-
+#endif
 			if (call->functor != NULL)
 			{
 				if(call->retVal == NULL)

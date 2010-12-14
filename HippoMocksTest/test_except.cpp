@@ -1,6 +1,8 @@
 #include "hippomocks.h"
 #include "yaffut.h"
 
+// For obvious reasons, the Throw is not present when you disable exceptions.
+#ifndef HM_NO_EXCEPTIONS
 class IE {
 public:
 	virtual ~IE() {}
@@ -81,4 +83,5 @@ FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
 	}
 	CHECK(exceptionCaught);
 }
+#endif
 
