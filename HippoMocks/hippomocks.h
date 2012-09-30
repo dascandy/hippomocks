@@ -94,6 +94,7 @@ class X{};
 #endif
 
 
+#include <cstdio>
 #include <list>
 #include <map>
 #include <memory>
@@ -3155,21 +3156,23 @@ public:
 #else
 #ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__LINE__, HM_NS Any>(&func, #func, __FILE__, __LINE__)
-#define ExpectCallFunc(func) RegisterExpect_<__LINE__, HM_NS Once>(&func, #func, __FILE__, __LINE__)
-#define NeverCallFunc(func) RegisterExpect_<__LINE__, HM_NS Never>(&func, #func, __FILE__, __LINE__)
-#define OnCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Any>(func, #func, __FILE__, __LINE__)
-#define ExpectCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Once>(func, #func, __FILE__, __LINE__)
-#define NeverCallFuncOverload(func) RegisterExpect_<__LINE__, HM_NS Never>(func, #func, __FILE__, __LINE__)
+#define ExpectCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Once, #func, __FILE__, __LINE__)
+#define NeverCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Never, #func, __FILE__, __LINE__)
+#define OnCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Any, #func,  __FILE__, __LINE__)
+#define ExpectCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Once, #func, _FILE__, __LINE__)
+#define NeverCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Never, #func, _FILE__, __LINE__)
 #endif
-#define OnCall(obj, func) RegisterExpect_<__LINE__, HM_NS Any>(obj, &func, #func, __FILE__, __LINE__)
-#define ExpectCall(obj, func) RegisterExpect_<__LINE__, HM_NS Once>(obj, &func, #func, __FILE__, __LINE__)
-#define NeverCall(obj, func) RegisterExpect_<__LINE__, HM_NS Never>(obj, &func, #func, __FILE__, __LINE__)
-#define OnCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Any>(obj, func, #func, __FILE__, __LINE__)
-#define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Once>(obj, func, #func, __FILE__, __LINE__)
-#define NeverCallOverload(obj, func) RegisterExpect_<__LINE__, HM_NS Never>(obj, func, #func, __FILE__, __LINE__)
-#define OnCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Any>(obj, __FILE__, __LINE__)
-#define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Once>(obj, __FILE__, __LINE__)
-#define NeverCallDestructor(obj) RegisterExpectDestructor<__LINE__, HM_NS Never>(obj, __FILE__, __LINE__)
+#define OnCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Any, #func, __FILE__, __LINE__)
+#define OnCalls(obj, func, min) RegisterExpect_<__LINE__>(obj, &func, HM_NS RegistrationType(min,std::numeric_limits<unsigned>::max()), #func, __FILE__, __LINE__)
+#define ExpectCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Once, #func, __FILE__, __LINE__)
+#define ExpectCalls(obj, func, num) RegisterExpect_<__LINE__>(obj, &func, HM_NS RegistrationType(num,num), #func, __FILE__, __LINE__)
+#define NeverCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Never, #func, __FILE__, __LINE__)
+#define OnCallOverload(obj, func) RegisterExpect_<__LINE__>(obj, func, HM_NS Any, #func, __FILE__, __LINE__)
+#define ExpectCallOverload(obj, func) RegisterExpect_<__LINE__>(obj, func, HM_NS Once, #func, __FILE__, __LINE__)
+#define NeverCallOverload(obj, func) RegisterExpect_<__LINE__>(obj, func, HM_NS Never, #func, __FILE__, __LINE__)
+#define OnCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, HM_NS Any, __FILE__, __LINE__)
+#define ExpectCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, HM_NS Once, __FILE__, __LINE__)
+#define NeverCallDestructor(obj) RegisterExpectDestructor<__LINE__>(obj, HM_NS Never, __FILE__, __LINE__)
 #endif
 	template <typename A, class B, typename C>
 	void Member(A *mck, C B::*member)
