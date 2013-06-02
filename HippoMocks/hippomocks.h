@@ -1624,12 +1624,12 @@ protected:
 		functor(0),
 		matchFunctor(0),
 		funcIndex(funcIndex),
+		called( 0 ),
 		expectation(expectation),
 		satisfied(false),
 		lineno(X),
 		funcName(funcName),
-		fileName(fileName),
-        called( 0 )
+		fileName(fileName)
 	{
 	}
 public:
@@ -3095,6 +3095,7 @@ private:
     std::list<Call *> neverCalls;
     std::list<Call *> expectations;
     std::list<Call *> optionals;
+    bool autoExpect;
 
     void addAutoExpectTo( Call* call ) 
     {
@@ -3132,7 +3133,6 @@ public:
 		latentException = holder;
 	}
 #endif
-	bool autoExpect;
 #ifdef _MSC_VER
 #ifdef ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Any, #func, __FILE__, __LINE__)
