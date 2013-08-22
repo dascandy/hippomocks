@@ -81,16 +81,24 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define FUNCTION_STRIDE 1
 #endif
 
-#if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
-#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-#elif defined(_WIN64) && defined(_MSC_VER) && defined(_M_X64)
-#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#if defined(_M_IX86) || defined(__i386__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL) ||  defined(__x86_64__) || defined(_M_X64)
+#define SOME_X86
+#elif defined(arm) || defined(__arm__) || defined(ARM) || defined(_ARM_)
+#define SOME_ARM
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
 #define CFUNC_MOCK_PLATFORMIS64BIT
-#elif defined(__linux__) && defined(__GNUC__) && defined(__i386__) 
+#endif
+
+#ifdef SOME_X86
+#if defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64))
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-#elif defined(__linux__) && defined(__GNUC__) && defined(__x86_64__) 
+#elif defined(__linux__) && defined(__GNUC__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-#define CFUNC_MOCK_PLATFORMIS64BIT
+#elif defined(__APPLE__)
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#endif
 #endif
 
 #if defined(__GNUC__) && !defined(__EXCEPTIONS)
@@ -208,7 +216,7 @@ private:
   size_t byteCount;
   unsigned long oldprotect;
 };
-#elif defined(__linux__)
+#else
 #include <sys/mman.h>
 #include <stdint.h>
 
