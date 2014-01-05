@@ -79,7 +79,7 @@ public:
 struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
 
 class DontCare {};
-static struct DontCare DONTCARE_NAME;
+static class DontCare DONTCARE_NAME;
 
 inline std::ostream &operator<<(std::ostream &os, DontCare const&)
 {
