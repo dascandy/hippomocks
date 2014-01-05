@@ -257,7 +257,7 @@ inline
 bool operator==( RegistrationType const& rhs, RegistrationType const& lhs )
 { 
    return rhs.minimum == lhs.minimum && rhs.maximum == lhs.maximum;
-};
+}
 
 
 const RegistrationType Any = RegistrationType( std::numeric_limits<unsigned>::min(), std::numeric_limits<unsigned>::max() );
@@ -299,11 +299,14 @@ public:
 	}
 };
 
-class DontCare {};
+class DontCare {
+private:
+  inline DontCare &Instance();
+};
 static DontCare DONTCARE_NAME;
-static void _notused() {
-	if (&DONTCARE_NAME > 0) return;
-	_notused();
+inline DontCare &DontCare::Instance()
+{
+  return DONTCARE_NAME;
 }
 
 template <typename T>
@@ -3095,7 +3098,9 @@ private:
     std::list<Call *> neverCalls;
     std::list<Call *> expectations;
     std::list<Call *> optionals;
+public:
     bool autoExpect;
+private:
 
     void addAutoExpectTo( Call* call ) 
     {
