@@ -17,7 +17,7 @@ all: $(TARGETS)
 clean:
 	$(RM) $(OBJECTS) $(OBJECTS_0x) $(TARGETS) $(GARBAGE) $(OBJECTS:%.o=%.d) $(OBJECTS_0x:%.o=%.d)
 
-runtest:
+runtest: test.exe
 	./test.exe
 
 %.o: %.cpp makefile
