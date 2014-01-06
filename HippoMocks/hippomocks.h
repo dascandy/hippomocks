@@ -165,8 +165,7 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 #include <memory.h>
 
 #if defined(_WIN32)
-#define NOMINMAX
-#include <windows.h>
+int VirtualProtect(void *func, size_t byteCount, unsigned long flags, unsigned long *oldFlags);
 
 class Unprotect
 {
