@@ -3568,7 +3568,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Z2 *mck, Y (Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P) const, RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo) { return RegisterExpect_<X>(mck, (Y(Z::*)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P))(func), expect, funcName ,fileName, lineNo); }
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(_WIN64)
 	// COM only support - you can duplicate this for cdecl and fastcall if you want to, but those are not as common as COM.
 	template <int X, typename Z2, typename Y, typename Z>
 	TCall<Y> &RegisterExpect_(Z2 *mck, Y (__stdcall Z::* func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
@@ -4925,7 +4925,7 @@ TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType 
 	return *call;
 }
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(_WIN64)
 // Support for COM, see declarations
 template <int X, typename Z2, typename Y, typename Z>
 TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
