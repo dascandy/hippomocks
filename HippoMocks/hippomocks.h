@@ -248,7 +248,7 @@ class MockRepository;
 struct 
 RegistrationType 
 { 
-   RegistrationType( unsigned min, unsigned max ) : minimum( min ), maximum( max ) {}
+   RegistrationType( unsigned minimum, unsigned max ) : minimum( minimum ), maximum( max ) {}
    unsigned minimum; 
    unsigned maximum; 
 };
@@ -260,8 +260,8 @@ bool operator==( RegistrationType const& rhs, RegistrationType const& lhs )
 }
 
 
-const RegistrationType Any = RegistrationType( std::numeric_limits<unsigned>::min(), std::numeric_limits<unsigned>::max() );
-const RegistrationType Never = RegistrationType( std::numeric_limits<unsigned>::min(), std::numeric_limits<unsigned>::min() );
+const RegistrationType Any = RegistrationType((std::numeric_limits<unsigned>::min)(), (std::numeric_limits<unsigned>::max)());
+const RegistrationType Never = RegistrationType((std::numeric_limits<unsigned>::min)(), (std::numeric_limits<unsigned>::min)());
 const RegistrationType Once = RegistrationType( 1, 1 );
 
 
@@ -3148,7 +3148,7 @@ public:
 #define NeverCallFuncOverload(func) RegisterExpect_<__COUNTER__>(func, HM_NS Never, #func, __FILE__, __LINE__)
 #endif
 #define OnCall(obj, func) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS Any, #func, __FILE__, __LINE__)
-#define OnCalls(obj, func, min) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS RegistrationType(min,std::numeric_limits<unsigned>::max()), #func, __FILE__, __LINE__)
+#define OnCalls(obj, func, minimum) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS RegistrationType(minimum,std::numeric_limits<unsigned>::max()), #func, __FILE__, __LINE__)
 #define ExpectCall(obj, func) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS Once, #func, __FILE__, __LINE__)
 #define ExpectCalls(obj, func, num) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS RegistrationType(num,num), #func, __FILE__, __LINE__)
 #define NeverCall(obj, func) RegisterExpect_<__COUNTER__>(obj, &func, HM_NS Never, #func, __FILE__, __LINE__)
@@ -3168,7 +3168,7 @@ public:
 #define NeverCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Never, #func, _FILE__, __LINE__)
 #endif
 #define OnCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Any, #func, __FILE__, __LINE__)
-#define OnCalls(obj, func, min) RegisterExpect_<__LINE__>(obj, &func, HM_NS RegistrationType(min,std::numeric_limits<unsigned>::max()), #func, __FILE__, __LINE__)
+#define OnCalls(obj, func, minimum) RegisterExpect_<__LINE__>(obj, &func, HM_NS RegistrationType(minimum,std::numeric_limits<unsigned>::max()), #func, __FILE__, __LINE__)
 #define ExpectCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Once, #func, __FILE__, __LINE__)
 #define ExpectCalls(obj, func, num) RegisterExpect_<__LINE__>(obj, &func, HM_NS RegistrationType(num,num), #func, __FILE__, __LINE__)
 #define NeverCall(obj, func) RegisterExpect_<__LINE__>(obj, &func, HM_NS Never, #func, __FILE__, __LINE__)
