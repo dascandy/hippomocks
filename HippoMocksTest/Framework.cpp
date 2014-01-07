@@ -27,7 +27,8 @@ bool TestRegistry::RunTests(int type) {
         } catch (...) {
             printf("Test failed with ellipsis-caught error\n");
         }
-        printf("%c\r", spinner[spinidx++]);
+        printf("%c\r", spinner[spinidx]);
+        spinidx = (spinidx + 1) % 4;
     }
     printf("%lu of %lu tests successful\n", s, i);
     return !(s == i);
