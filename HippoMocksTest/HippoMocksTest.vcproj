@@ -267,11 +267,15 @@
 			>
 		</File>
 		<File
-			RelativePath=".\yaffut.cpp"
+			RelativePath=".\Framework.cpp"
 			>
 		</File>
 		<File
-			RelativePath=".\yaffut.h"
+			RelativePath=".\main.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\Framework.h"
 			>
 		</File>
 	</Files>

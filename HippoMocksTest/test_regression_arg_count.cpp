@@ -1,4 +1,4 @@
-#include "yaffut.h"
+#include "Framework.h"
 #include "hippomocks.h"
 
 class IR { 
@@ -23,7 +23,7 @@ public:
 	virtual void f16(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int) {}
 };
 
-FUNC (checkArgCount16SupportedAndWorking)
+TEST (checkArgCount16SupportedAndWorking)
 {
 	MockRepository mocks;
 	IR *iamock = mocks.Mock<IR>();

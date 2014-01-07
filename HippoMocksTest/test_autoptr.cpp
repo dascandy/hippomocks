@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 #include <utility>
 using std::auto_ptr;
 
@@ -13,7 +13,7 @@ public:
 	virtual auto_ptr<IQ> getSelf();
 };
 
-FUNC (checkAutoptrReturnable)
+TEST (checkAutoptrReturnable)
 {
 	X *_t = new X;
 
@@ -23,7 +23,7 @@ FUNC (checkAutoptrReturnable)
 	CHECK(_t == iamock->g().get());
 }
 
-FUNC (checkAutoptrCanReturnMock)
+TEST (checkAutoptrCanReturnMock)
 {
 	MockRepository mocks;
 	IQ *iamock = mocks.Mock<IQ>();
@@ -32,7 +32,7 @@ FUNC (checkAutoptrCanReturnMock)
 	CHECK(iamock == iamock->getSelf().get());
 }
 
-FUNC(checkCanDestroyMock)
+TEST(checkCanDestroyMock)
 {
 	MockRepository mocks;
 	IQ *iamock = mocks.Mock<IQ>();
@@ -40,7 +40,7 @@ FUNC(checkCanDestroyMock)
 	delete iamock;
 }
 
-FUNC(checkAutoptrStability)
+TEST(checkAutoptrStability)
 {
 	int exceptionsCaught = 0;
 	try

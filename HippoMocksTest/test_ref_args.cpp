@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IRefArg {
 public:
@@ -16,7 +16,7 @@ public:
 	virtual void l(IRefArg &refArg) { refArg.test();}
 };
 
-FUNC (checkArgumentsAccepted)
+TEST (checkRefArgumentsAccepted)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -28,7 +28,7 @@ FUNC (checkArgumentsAccepted)
 }
 
 
-FUNC (checkArgumentsChecked)
+TEST (checkRefArgumentsChecked)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -57,7 +57,7 @@ void plusequals2(int &x)
 	x+=2; 
 }
 
-FUNC (checkRefArgumentsPassedAsRef)
+TEST (checkRefArgumentsPassedAsRef)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -70,7 +70,7 @@ FUNC (checkRefArgumentsPassedAsRef)
 	CHECK(y == 4);
 }
 
-FUNC (checkRefReturnValues)
+TEST (checkRefReturnValues)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -78,8 +78,8 @@ FUNC (checkRefReturnValues)
 	mocks.ExpectCall(iamock, IK::h).Return(x);
 	mocks.ExpectCall(iamock, IK::k).Return("Hello World");
 	iamock->h() = 1;
-	EQUAL(iamock->k(), std::string("Hello World"));
-	EQUAL(x, 1);
+	EQUALS(iamock->k(), "Hello World");
+	EQUALS(x, 1);
 }
 
 bool operator==(const IRefArg &a, const IRefArg &b)
@@ -87,7 +87,7 @@ bool operator==(const IRefArg &a, const IRefArg &b)
 	return (&a == &b);
 }
 
-FUNC (checkRefArgCheckedAsReference)
+TEST (checkRefArgCheckedAsReference)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();

@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IM { 
 public:
@@ -10,7 +10,7 @@ public:
 	virtual void b() = 0;
 };
 
-FUNC (checkTransactionStyleWorks)
+TEST (checkTransactionStyleWorks)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -25,7 +25,7 @@ FUNC (checkTransactionStyleWorks)
 	iamock->end();
 }
 
-FUNC (checkTransactionStyleFailIfOneSkipped)
+TEST (checkTransactionStyleFailIfOneSkipped)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();

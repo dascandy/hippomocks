@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 #include <string>
 
 class IR {
@@ -19,7 +19,7 @@ public:
 	virtual void f(const IR &arg) = 0;
 };
 
-FUNC (checkConstRefClassParam)
+TEST (checkConstRefClassParam)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -32,7 +32,7 @@ bool operator==(const IR &, const IR &)
 	return true;
 }
 
-FUNC (checkConstRefAbstractClassParam)
+TEST (checkConstRefAbstractClassParam)
 {
 	R r;
 	MockRepository mocks;

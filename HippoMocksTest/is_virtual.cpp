@@ -1,4 +1,4 @@
-#include "yaffut.h"
+#include "Framework.h"
 #include <iostream>
 #include "hippomocks.h"
 
@@ -27,36 +27,36 @@ class ILD : public IL, public SecondBase, public ThirdBase
 {
 };
 
-FUNC(checkNonVirtual) 
+TEST(checkNonVirtual) 
 {
 	CHECK(HippoMocks::virtual_index(&ILD::f).first == -1);
 }
 
-FUNC(checkFirstVirtual) 
+TEST(checkFirstVirtual) 
 {
 	CHECK(HippoMocks::virtual_index(&ILD::g).first == 0);
 	CHECK(HippoMocks::virtual_index(&ILD::g).second == 0);
 }
 
-FUNC(checkSecondVirtual) 
+TEST(checkSecondVirtual) 
 {
 	CHECK(HippoMocks::virtual_index(&ILD::h).first == 0);
 	CHECK(HippoMocks::virtual_index(&ILD::h).second == 1);
 }
 
-FUNC(checkSecondBaseFirstVirtual) 
+TEST(checkSecondBaseFirstVirtual) 
 {
 	CHECK(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).first == 1);
 	CHECK(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).second == 0);
 }
 
-FUNC(checkThirdBaseSecondVirtualAfterInt) 
+TEST(checkThirdBaseSecondVirtualAfterInt) 
 {
 	CHECK(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).first == 3);
 	CHECK(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).second == 1);
 }
 
-FUNC(checkPointerConversionIsOk) 
+TEST(checkPointerConversionIsOk) 
 {
 	void (ThirdBase::*f)() = &ThirdBase::m;
 	CHECK(HippoMocks::virtual_index((void (ILD::*)())f).first == 3);

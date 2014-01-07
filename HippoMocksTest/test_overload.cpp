@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IA { 
 public:
@@ -10,7 +10,7 @@ public:
 
 typedef void (IA::*mf)();
 
-FUNC (checkOverloadWithCastWorks)
+TEST (checkOverloadWithCastWorks)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();

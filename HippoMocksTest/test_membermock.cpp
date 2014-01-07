@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 #include <string>
 
 class IT {
@@ -8,12 +8,12 @@ public:
 	virtual std::string getText() { return text; }
 };
 
-FUNC (checkMemberWorks)
+TEST (checkMemberWorks)
 {
 	MockRepository mocks;
 	IT *iamock = mocks.Mock<IT>();
 	mocks.Member(iamock, &IT::text);
 	iamock->text = "helloworld";
-	EQUAL("helloworld", iamock->text);
+	EQUALS("helloworld", iamock->text);
 }
 

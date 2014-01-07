@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class II { 
 public:
@@ -18,7 +18,7 @@ public:
 	void operator()() { ++calls; }
 };
 
-FUNC (checkFunctorsCalled)
+TEST (checkFunctorsCalled)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -35,7 +35,7 @@ FUNC (checkFunctorsCalled)
 	CHECK(checked == true);
 }
 
-FUNC (checkFunctorObjectCalled)
+TEST (checkFunctorObjectCalled)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();

@@ -1,6 +1,6 @@
 #include <string>
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IOutParam { 
 public:
@@ -10,7 +10,7 @@ public:
 	virtual void c(char** out) = 0;
 };
 
-FUNC (checkOutParamsAreFilledIn_ConstChar)
+TEST (checkOutParamsAreFilledIn_ConstChar)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -22,7 +22,7 @@ FUNC (checkOutParamsAreFilledIn_ConstChar)
 	CHECK(out == "Hello World");
 }
 
-FUNC (checkOutParamsAreFilledIn_String)
+TEST (checkOutParamsAreFilledIn_String)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -35,7 +35,7 @@ FUNC (checkOutParamsAreFilledIn_String)
 	CHECK(out == teststring);
 }
 
-FUNC (checkOutParamsAreFilledIn_PointerToString)
+TEST (checkOutParamsAreFilledIn_PointerToString)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -48,7 +48,7 @@ FUNC (checkOutParamsAreFilledIn_PointerToString)
 	CHECK(*out == teststring);
 }
 
-FUNC (checkOutParamsAreFilledIn_Char)
+TEST (checkOutParamsAreFilledIn_Char)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();

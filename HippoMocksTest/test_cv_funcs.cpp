@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IM { 
 public:
@@ -10,7 +10,7 @@ public:
 	virtual void h() const volatile = 0;
 };
 
-FUNC (checkCVQualifiedMemberFunctions)
+TEST (checkCVQualifiedMemberFunctions)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();

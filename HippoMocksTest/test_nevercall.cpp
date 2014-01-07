@@ -1,4 +1,4 @@
-#include "yaffut.h"
+#include "Framework.h"
 #include "hippomocks.h"
 
 class IR { 
@@ -9,7 +9,7 @@ public:
 	virtual int h() { return 0; }
 };
 
-FUNC (checkNeverCallWorks)
+TEST (checkNeverCallWorks)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -31,7 +31,7 @@ FUNC (checkNeverCallWorks)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkNeverCallExceptionDetail)
+TEST (checkNeverCallExceptionDetail)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -49,7 +49,7 @@ FUNC (checkNeverCallExceptionDetail)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkInteractionBetweenCallTypesWorks)
+TEST (checkInteractionBetweenCallTypesWorks)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;

@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 #include <string>
 
 // non-reference is bad, but should work
@@ -10,7 +10,7 @@ public:
 	virtual void g(std::string s) = 0;
 };
 
-FUNC (checkClassArgumentsAccepted)
+TEST (checkClassArgumentsAccepted)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();
@@ -20,7 +20,7 @@ FUNC (checkClassArgumentsAccepted)
 	iamock->g("bye");
 }
 
-FUNC (checkClassArgumentsChecked)
+TEST (checkClassArgumentsChecked)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();
@@ -39,7 +39,7 @@ FUNC (checkClassArgumentsChecked)
 	mocks.reset();
 }
 
-FUNC (checkClassArgumentsIgnored)
+TEST (checkClassArgumentsIgnored)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();

@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class II { 
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g() = 0;
 };
 
-FUNC (checkBaseCaseOptionalOk)
+TEST (checkBaseCaseOptionalOk)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -18,7 +18,7 @@ FUNC (checkBaseCaseOptionalOk)
 	iamock->f();
 }
 
-FUNC (checkBaseCaseOptionalNotRequired)
+TEST (checkBaseCaseOptionalNotRequired)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -27,7 +27,7 @@ FUNC (checkBaseCaseOptionalNotRequired)
 	iamock->f();
 }
 
-FUNC (checkBaseCaseOptionalTwiceIsOK)
+TEST (checkBaseCaseOptionalTwiceIsOK)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();

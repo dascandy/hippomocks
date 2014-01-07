@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IA { 
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g() = 0;
 };
 
-FUNC (checkBaseCase)
+TEST (checkBaseCase)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -18,7 +18,7 @@ FUNC (checkBaseCase)
 	iamock->g();
 }
 
-FUNC (checkMultiCall)
+TEST (checkMultiCall)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -30,7 +30,7 @@ FUNC (checkMultiCall)
 	iamock->f();
 }
 
-FUNC (checkMultiCallNotCalled)
+TEST (checkMultiCallNotCalled)
 {
 	bool exceptionCaught = false;
 	try {
@@ -49,7 +49,7 @@ FUNC (checkMultiCallNotCalled)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkMultiCallWrongOrder)
+TEST (checkMultiCallWrongOrder)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -69,7 +69,7 @@ FUNC (checkMultiCallWrongOrder)
 	mocks.reset();
 }
 
-FUNC (checkExpectationsNotCompleted)
+TEST (checkExpectationsNotCompleted)
 {
 	bool exceptionCaught = false;
 	try {
@@ -86,7 +86,7 @@ FUNC (checkExpectationsNotCompleted)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkOvercompleteExpectations)
+TEST (checkOvercompleteExpectations)
 {
 	bool exceptionCaught = false;
 	try {
@@ -105,7 +105,7 @@ FUNC (checkOvercompleteExpectations)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkExpectationsAreInOrder)
+TEST (checkExpectationsAreInOrder)
 {
 	bool exceptionCaught = false;
 	try {

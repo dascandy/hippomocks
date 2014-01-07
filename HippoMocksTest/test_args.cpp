@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IB {
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g(int) = 0;
 };
 
-FUNC (checkArgumentsAccepted)
+TEST (checkArgumentsAccepted)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.Mock<IB>();
@@ -18,7 +18,7 @@ FUNC (checkArgumentsAccepted)
 	iamock->g(2);
 }
 
-FUNC (checkArgumentsChecked)
+TEST (checkArgumentsChecked)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.Mock<IB>();

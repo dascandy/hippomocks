@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class IZombie { 
 public:
@@ -7,7 +7,7 @@ public:
 	virtual void a() = 0;
 };
 
-FUNC (checkZombieCallsAreReported)
+TEST (checkZombieCallsAreReported)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;

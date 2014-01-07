@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 // For obvious reasons, the Throw is not present when you disable exceptions.
 #ifndef HM_NO_EXCEPTIONS
@@ -10,7 +10,7 @@ public:
 	virtual std::string g() = 0;
 };
 
-FUNC (checkPrimitiveExceptionAcceptedAndThrown)
+TEST (checkPrimitiveExceptionAcceptedAndThrown)
 {
 	MockRepository mocks;
 	IE *iamock = mocks.Mock<IE>();
@@ -36,7 +36,7 @@ public:
 	const char *what() const throw() { return text; }
 };
 
-FUNC (checkClassTypeExceptionWithContent)
+TEST (checkClassTypeExceptionWithContent)
 {
 	const char *sText = "someText";
 	MockRepository mocks;
@@ -55,7 +55,7 @@ FUNC (checkClassTypeExceptionWithContent)
 	CHECK(exceptionCaught);
 }
 
-FUNC(checkMockRepoVerifyDoesNotThrowDuringException)
+TEST(checkMockRepoVerifyDoesNotThrowDuringException)
 {
 	bool exceptionCaught = false;
 	try

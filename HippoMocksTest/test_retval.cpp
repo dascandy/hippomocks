@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "yaffut.h"
+#include "Framework.h"
 
 class ID {
 public:
@@ -8,7 +8,7 @@ public:
 	virtual std::string g() = 0;
 };
 
-FUNC (checkRetvalAccepted)
+TEST (checkRetvalAccepted)
 {
 	MockRepository mocks;
 	ID *iamock = mocks.Mock<ID>();
@@ -18,7 +18,7 @@ FUNC (checkRetvalAccepted)
 	iamock->g();
 }
 
-FUNC (checkRetvalProper)
+TEST (checkRetvalProper)
 {
 	MockRepository mocks;
 	ID *iamock = mocks.Mock<ID>();
@@ -35,7 +35,7 @@ std::string replace_g()
 	return "";
 }
 
-FUNC (checkRetvalAfterDo)
+TEST (checkRetvalAfterDo)
 {
 	MockRepository mocks;
 	ID *iamock = mocks.Mock<ID>();

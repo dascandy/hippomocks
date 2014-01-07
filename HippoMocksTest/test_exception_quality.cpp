@@ -1,4 +1,4 @@
-#include "yaffut.h"
+#include "Framework.h"
 #include "hippomocks.h"
 #include <stdio.h>
 
@@ -18,7 +18,7 @@ public:
 	virtual void i(int, const X &) = 0;
 };
 
-FUNC (checkNoResultContainsFuncName)
+TEST (checkNoResultContainsFuncName)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -33,7 +33,7 @@ FUNC (checkNoResultContainsFuncName)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkNoResultContainsBlankArgSpec)
+TEST (checkNoResultContainsBlankArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -49,7 +49,7 @@ FUNC (checkNoResultContainsBlankArgSpec)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkNoResultContainsActualArgSpec)
+TEST (checkNoResultContainsActualArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -65,7 +65,7 @@ FUNC (checkNoResultContainsActualArgSpec)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkNoResultContainsActualUnprintableArgSpec)
+TEST (checkNoResultContainsActualUnprintableArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -81,7 +81,7 @@ FUNC (checkNoResultContainsActualUnprintableArgSpec)
 	CHECK(exceptionCaught);
 }
 
-FUNC (checkNoResultDoesNotComplainIfNotCalled)
+TEST (checkNoResultDoesNotComplainIfNotCalled)
 {
 	MockRepository mocks;
 	IS *iamock = mocks.Mock<IS>();
@@ -90,7 +90,7 @@ FUNC (checkNoResultDoesNotComplainIfNotCalled)
 	iamock->g(3,4);
 }
 
-FUNC(checkNotImplementedExceptionToContainInfo)
+TEST(checkNotImplementedExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -120,7 +120,7 @@ FUNC(checkNotImplementedExceptionToContainInfo)
 	CHECK(exceptionCaught);
 }
 
-FUNC(checkExpectationExceptionToContainInfo)
+TEST(checkExpectationExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -153,7 +153,7 @@ FUNC(checkExpectationExceptionToContainInfo)
 	CHECK(exceptionCaught);
 }
 
-FUNC(checkCallMissingExceptionToContainInfo)
+TEST(checkCallMissingExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	try
