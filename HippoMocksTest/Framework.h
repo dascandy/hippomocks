@@ -34,7 +34,7 @@ public:
     void AddTest(Test *test) {
         tests.push_back(test);
     }
-    bool RunTests(int type);
+    bool RunTests();
 };
 
 class Test {

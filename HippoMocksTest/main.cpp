@@ -1,7 +1,7 @@
 #include "Framework.h"
 
-int main(int argc, char **argv) {
-    return TestRegistry::Instance().RunTests(0);
+int main(int , char **) {
+    return TestRegistry::Instance().RunTests();
 }
 
 

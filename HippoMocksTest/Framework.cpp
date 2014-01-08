@@ -10,7 +10,7 @@ void check_equal<const char *, const char *>(const char *a, const char *b, const
     if (strcmp(a, b) != 0) { throw BaseException("%s(%s) != %s(%s)", sa, a, sb, b); }
 }
 
-bool TestRegistry::RunTests(int type) {
+bool TestRegistry::RunTests() {
     char spinner[5] = "\\|/-";
     size_t i = 0, s = 0;
     size_t spinidx = 0;

@@ -46,8 +46,13 @@
 
 #ifndef DEBUGBREAK
 #ifdef _MSC_VER
-__declspec(dllimport) int __stdcall  IsDebuggerPresent();
-void __stdcall DebugBreak();
+#ifdef _WIN64
+#define WINCALL 
+#else
+#define WINCALL __stdcall
+#endif
+extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
+extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
 #define DEBUGBREAK()
@@ -165,7 +170,17 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 #include <memory.h>
 
 #if defined(_WIN32)
-int VirtualProtect(void *func, size_t byteCount, unsigned long flags, unsigned long *oldFlags);
+}
+
+int WINCALL VirtualProtect(void *func, size_t byteCount, unsigned long flags, unsigned long *oldFlags);
+
+#ifndef PAGE_EXECUTE_READWRITE
+#define PAGE_EXECUTE_READWRITE 0x40
+#endif
+
+#ifndef NO_HIPPOMOCKS_NAMESPACE
+namespace HippoMocks {
+#endif
 
 class Unprotect
 {
@@ -1189,7 +1204,7 @@ std::pair<int, int> virtual_index(T t)
 
 	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
 	if (value != -1)
-		return std::pair<int, int>(conv.u.baseoffs/sizeof(void*), value);
+		return std::pair<int, int>((int)(conv.u.baseoffs/sizeof(void*)), value);
 #elif defined(__EDG__)
 	union {
 		T t;
