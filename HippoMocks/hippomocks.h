@@ -1163,11 +1163,15 @@ int virtual_function_index(unsigned char *func) {
 	}
 	else
 	{
+#ifdef _WIN64
+		// Add one to the pointer to skip the REX prefix used to access 64-bit registers.
+		func++;
+#endif
 		switch(*(unsigned int *)func)
 		{ // mov ecx, this; jump [eax + v/Ib/Iw]
 		case 0x20ff018b: return 0;
-		case 0x60ff018b: return *(unsigned char *)(func + 4) / 4;
-		case 0xA0ff018b: return *(unsigned long *)(func + 4) / 4;
+		case 0x60ff018b: return *(unsigned char *)(func + sizeof(int)) / sizeof(void*);
+		case 0xA0ff018b: return *(unsigned long *)(func + sizeof(int)) / sizeof(void*);
 		default: return -1;
 		}
 	}
