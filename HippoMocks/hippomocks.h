@@ -172,7 +172,8 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 #if defined(_WIN32)
 }
 
-int WINCALL VirtualProtect(void *func, size_t byteCount, unsigned long flags, unsigned long *oldFlags);
+// De-windows.h-ified import to avoid including that file. 
+extern "C" __declspec(dllimport) int WINCALL VirtualProtect(void *func, unsigned long byteCount, unsigned long flags, unsigned long *oldFlags);
 
 #ifndef PAGE_EXECUTE_READWRITE
 #define PAGE_EXECUTE_READWRITE 0x40
