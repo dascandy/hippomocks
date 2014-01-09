@@ -1,9 +1,8 @@
 #include "hippomocks.h"
 #include "Framework.h"
 
-// If you add a new target for Cfunction mocking, add it here too
-#if (defined(_MSC_VER) && defined(_M_IX86)) || (defined(__GNUC__) && defined(__i386__))
-
+// If it's not supported, then don't test it.
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 int a()
 {
   return 1;
@@ -27,6 +26,5 @@ TEST (checkFunctionReturnedToOriginal)
 	}
 	EQUALS(a(), 1);
 }
-
 #endif
 

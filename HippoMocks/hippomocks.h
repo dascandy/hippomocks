@@ -82,9 +82,15 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
-#define ENABLE_CFUNC_MOCKING_SUPPORT
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#elif defined(_WIN64) && defined(_MSC_VER) && defined(_M_X64)
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#define CFUNC_MOCK_PLATFORMIS64BIT
 #elif defined(__linux__) && defined(__GNUC__) && defined(__i386__) 
-#define ENABLE_CFUNC_MOCKING_SUPPORT
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#elif defined(__linux__) && defined(__GNUC__) && defined(__x86_64__) 
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+#define CFUNC_MOCK_PLATFORMIS64BIT
 #endif
 
 #if defined(__GNUC__) && !defined(__EXCEPTIONS)
@@ -166,7 +172,7 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 	else throw e; }
 #endif
 
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #include <memory.h>
 
 #if defined(_WIN32)
@@ -239,20 +245,35 @@ class Replace
 {
 private:
   void *origFunc;
-  char backupData[sizeof(e9ptrsize_t) + 1];
+  char backupData[16]; // typical use is 5 for 32-bit and 14 for 64-bit code.
 public:
   template <typename T>
   Replace(T funcptr, T replacement)
       : origFunc(horrible_cast<void *>(funcptr))
   {
-    Unprotect _allow_write(origFunc, sizeof(e9ptrsize_t) + 1);
+    Unprotect _allow_write(origFunc, sizeof(backupData));
     memcpy(backupData, origFunc, sizeof(backupData));
-    *(unsigned char *)origFunc = 0xE9;
-    *(e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1) = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
+#ifdef CMOCK_FUNC_PLATFORMIS64BIT
+    if (llabs((long long)origFunc - (long long)replacement) < 0x80000000LL) {
+#endif
+      *(unsigned char *)origFunc = 0xE9;
+      *(e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1) = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
+#ifdef CMOCK_FUNC_PLATFORMIS64BIT
+    } else {
+      unsigned char *funcptr = (unsigned char *)origFunc;
+      funcptr[0] = 0xFF; // jmp (rip + imm32)
+      funcptr[1] = 0x25;
+      funcptr[2] = 0x00; // imm32 of 0, so immediately after the instruction
+      funcptr[3] = 0x00;
+      funcptr[4] = 0x00;
+      funcptr[5] = 0x00;
+      *(long long*)(horrible_cast<intptr_t>(origFunc) + 6) = (long long)(horrible_cast<intptr_t>(replacement));
+    }
+#endif
   }
   ~Replace()
   {
-    Unprotect _allow_write(origFunc, sizeof(e9ptrsize_t) + 1);
+    Unprotect _allow_write(origFunc, sizeof(backupData));
     memcpy(origFunc, backupData, sizeof(backupData)); 
   }
 };
@@ -3110,7 +3131,7 @@ private:
 	friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 	std::list<base_mock *> mocks;
     std::map<void (*)(), int> staticFuncMap;
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
     std::list<Replace *> staticReplaces;
 #endif
 
@@ -3158,7 +3179,7 @@ public:
 	}
 #endif
 #ifdef _MSC_VER
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Any, #func, __FILE__, __LINE__)
 #define ExpectCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Once, #func, __FILE__, __LINE__)
 #define NeverCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Never, #func, __FILE__, __LINE__)
@@ -3178,7 +3199,7 @@ public:
 #define ExpectCallDestructor(obj) RegisterExpectDestructor<__COUNTER__>(obj, HM_NS Once, __FILE__, __LINE__)
 #define NeverCallDestructor(obj) RegisterExpectDestructor<__COUNTER__>(obj, HM_NS Never, __FILE__, __LINE__)
 #else
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__LINE__, HM_NS Any>(&func, #func, __FILE__, __LINE__)
 #define ExpectCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Once, #func, __FILE__, __LINE__)
 #define NeverCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Never, #func, __FILE__, __LINE__)
@@ -3209,7 +3230,7 @@ public:
   template <int X, typename Z2>
 	TCall<void> &RegisterExpectDestructor(Z2 *mck, RegistrationType expect, const char *fileName, unsigned long lineNo);
 
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 	template <int X, typename Y>
 	TCall<Y> &RegisterExpect_(Y (*func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
 	template <int X, typename Y, typename A>
@@ -3889,7 +3910,7 @@ public:
 
 	template <typename Z>
 	void BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X);
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
   int BasicStaticRegisterExpect(void (*func)(), void (*fp)(), int X)
   {
     if (staticFuncMap.find(func) == staticFuncMap.end())
@@ -4101,7 +4122,7 @@ public:
 				{
 					(*i)->destroy();
 				}
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
     			for (std::list<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
     			{
     				delete *i;
@@ -4128,7 +4149,7 @@ public:
 		{
 			(*i)->destroy();
 		}
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 		for (std::list<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
 		{
 			delete *i;
@@ -5210,7 +5231,7 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 }
 #endif
 
-#ifdef ENABLE_CFUNC_MOCKING_SUPPORT
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 template <int X, typename Y>
 TCall<Y> &MockRepository::RegisterExpect_(Y (*func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
@@ -5801,7 +5822,7 @@ using HippoMocks::In;
 #undef EXTRA_DESTRUCTOR
 #undef FUNCTION_BASE
 #undef FUNCTION_STRIDE
-#undef ENABLE_CFUNC_MOCKING_SUPPORT
+#undef CFUNC_MOCK_PLATFORMIS64BIT
 
 #endif
 

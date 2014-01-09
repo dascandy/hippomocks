@@ -1,4 +1,4 @@
-WARNFLAGS = -Wall -Wextra -pedantic
+WARNFLAGS = -Wall -Wextra -pedantic -Wno-long-long
 CXXOPTS0X = -std=c++0x -I../HippoMocks0x/ $(WARNFLAGS)
 CXXOPTS = -std=c++98 -I../HippoMocks/ $(WARNFLAGS) -ansi -g
 CXX = g++ $(CXXOPTS)
