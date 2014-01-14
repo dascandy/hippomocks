@@ -21,11 +21,11 @@ bool TestRegistry::RunTests() {
             t->Run();
             s++;
         } catch (std::exception &e) {
-            printf("Test failed with exception: %s\n", e.what());
+            printf("Test %s failed with exception: %s\n", t->name.c_str(), e.what());
         } catch (int e) {
-            printf("Test failed with error code: %d\n", e);
+            printf("Test %s failed with error code: %d\n", t->name.c_str(), e);
         } catch (...) {
-            printf("Test failed with ellipsis-caught error\n");
+            printf("Test %s failed with ellipsis-caught error\n", t->name.c_str());
         }
         printf("%c\r", spinner[spinidx]);
         spinidx = (spinidx + 1) % 4;

@@ -2,6 +2,8 @@
 #include "Framework.h"
 #include <string>
 
+using HippoMocks::byRef;
+
 class IR {
 public:
 	virtual void func() = 0;
@@ -15,9 +17,18 @@ public:
 class IM { 
 public:
 	virtual ~IM() {}
+	virtual void d(std::string var) = 0;
 	virtual void e(const std::string &var) = 0;
 	virtual void f(const IR &arg) = 0;
 };
+
+TEST (checkTemporaryClassParam)
+{
+  MockRepository mocks;
+	IM *iamock = mocks.Mock<IM>();
+	mocks.ExpectCall(iamock, IM::d).With("Hello");
+	iamock->d("Hello");
+}
 
 TEST (checkConstRefClassParam)
 {
@@ -27,9 +38,9 @@ TEST (checkConstRefClassParam)
 	iamock->e("Hello");
 }
 
-bool operator==(const IR &, const IR &)
+bool operator==(const IR &objA, const IR &objB)
 {
-	return true;
+	return &objA == &objB;
 }
 
 TEST (checkConstRefAbstractClassParam)
@@ -37,7 +48,7 @@ TEST (checkConstRefAbstractClassParam)
 	R r;
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
-	mocks.ExpectCall(iamock, IM::f).With(r);
+	mocks.ExpectCall(iamock, IM::f).With(byRef(r));
 	iamock->f(r);
 }
 
