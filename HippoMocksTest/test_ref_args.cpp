@@ -1,6 +1,8 @@
 #include "hippomocks.h"
 #include "Framework.h"
 
+using HippoMocks::byRef;
+
 class IRefArg {
 public:
 	virtual void test() = 0;
@@ -93,7 +95,7 @@ TEST (checkRefArgCheckedAsReference)
 	IK *iamock = mocks.Mock<IK>();
 	IRefArg *refArg = mocks.Mock<IRefArg>();
 
-	mocks.ExpectCall(iamock, IK::l).With(*refArg);
+	mocks.ExpectCall(iamock, IK::l).With(byRef(*refArg));
 	iamock->l(*refArg);
 }
 

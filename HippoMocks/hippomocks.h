@@ -338,10 +338,8 @@ template <typename T>
 class ByRef
 {
 public:
-  ByRef(T &arg) : arg(arg) {}
-  operator T&() { return arg; }
+  explicit ByRef(T &arg) : arg(arg) {}
   void operator()() { arg(); }
-private:
   T &arg;
 };
 
@@ -421,6 +419,12 @@ inline std::ostream &operator<<(std::ostream &os, DontCare const&)
 }
 
 template <typename T>
+inline std::ostream &operator<<(std::ostream &os, ByRef<T> &ref) {
+  os << "byRef(" << (T)ref << ")";
+  return os;
+}
+
+template <typename T>
 struct printArg
 {
 	static inline void print(std::ostream &os, T arg, bool withComma)
@@ -479,6 +483,11 @@ struct comparer
 	{
 		return true;
 	}
+  template <typename U>
+  static inline bool compare(const ByRef<U> &a, typename with_const<T>::type b)
+  {
+    return &a.arg == &b;
+  }
 };
 
 template <typename T>
@@ -602,92 +611,19 @@ public:
   virtual void assign_to(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to) = 0;
 };
 
-template <typename A, typename B>
-struct with_ref
+template <typename T> struct no_array { typedef T type; };
+template <typename T, int N> struct no_array<T[N]> { typedef T* type; };
+
+template <typename B>
+struct store_as
 {
-	typedef B type;
+	typedef typename no_array<B>::type type;
 };
 
-template <typename A, typename B>
-struct with_ref<A, B&>
+template <typename B>
+struct store_as<B&>
 {
-	typedef B type;
-};
-
-template <typename A, typename B>
-struct with_ref<A&, B>
-{
-	typedef B type;
-};
-
-template <typename A, typename B>
-struct with_ref<A&, B&>
-{
-	typedef const B & type;
-};
-
-template <typename A, typename B>
-struct with_ref<A, const B&>
-{
-	typedef B type;
-};
-
-template <typename A, typename B>
-struct with_ref<A, const OutParam<B> &>
-{
-  typedef OutParam<B> type;
-};
-
-template <typename A, typename B>
-struct with_ref<A&, const B&>
-{
-	typedef const B & type;
-};
-
-template <typename A, typename B>
-struct with_ref<A&, const OutParam<B> &>
-{
-  typedef OutParam<B> type;
-};
-
-template <typename A, typename B>
-struct with_ref<const A&, B>
-{
-	typedef B type;
-};
-
-template <typename A, typename B>
-struct with_ref<const A&, B&>
-{
-	typedef B type;
-};
-
-template <typename A, typename B>
-struct with_ref<const A&, const B&>
-{
-	typedef B type;
-};
-
-// Fix specifically for char arrays (which aren't assignable, but don't change either)
-template <typename A, int B>
-struct with_ref<A, const char (&)[B]>
-{
-	typedef const char *type;
-};
-template <typename A, int B>
-struct with_ref<A&, const char (&)[B]>
-{
-	typedef const char *type;
-};
-template <typename A, int B>
-struct with_ref<const A, const char (&)[B]>
-{
-	typedef const char *type;
-};
-template <typename A, int B>
-struct with_ref<const A&, const char (&)[B]>
-{
-	typedef const char *type;
+  typedef typename no_array<B>::type type;
 };
 
 template <typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H,
@@ -697,30 +633,30 @@ template <typename A, typename B, typename C, typename D, typename E, typename F
 class copy_tuple : public ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>
 {
 public:
-	typename with_ref<A,CA>::type a;
-	typename with_ref<B,CB>::type b;
-	typename with_ref<C,CC>::type c;
-	typename with_ref<D,CD>::type d;
-	typename with_ref<E,CE>::type e;
-	typename with_ref<F,CF>::type f;
-	typename with_ref<G,CG>::type g;
-	typename with_ref<H,CH>::type h;
-	typename with_ref<I,CI>::type i;
-	typename with_ref<J,CJ>::type j;
-	typename with_ref<K,CK>::type k;
-	typename with_ref<L,CL>::type l;
-	typename with_ref<M,CM>::type m;
-	typename with_ref<N,CN>::type n;
-	typename with_ref<O,CO>::type o;
-	typename with_ref<P,CP>::type p;
-	copy_tuple(typename with_ref<A,CA>::type a, typename with_ref<B,CB>::type b,
-		typename with_ref<C,CC>::type c, typename with_ref<D,CD>::type d,
-		typename with_ref<E,CE>::type e, typename with_ref<F,CF>::type f,
-		typename with_ref<G,CG>::type g, typename with_ref<H,CH>::type h,
-		typename with_ref<I,CI>::type i, typename with_ref<J,CJ>::type j,
-		typename with_ref<K,CK>::type k, typename with_ref<L,CL>::type l,
-		typename with_ref<M,CM>::type m, typename with_ref<N,CN>::type n,
-		typename with_ref<O,CO>::type o, typename with_ref<P,CP>::type p)
+	typename store_as<CA>::type a;
+	typename store_as<CB>::type b;
+	typename store_as<CC>::type c;
+	typename store_as<CD>::type d;
+	typename store_as<CE>::type e;
+	typename store_as<CF>::type f;
+	typename store_as<CG>::type g;
+	typename store_as<CH>::type h;
+	typename store_as<CI>::type i;
+	typename store_as<CJ>::type j;
+	typename store_as<CK>::type k;
+	typename store_as<CL>::type l;
+	typename store_as<CM>::type m;
+	typename store_as<CN>::type n;
+	typename store_as<CO>::type o;
+	typename store_as<CP>::type p;
+	copy_tuple(typename store_as<CA>::type a, typename store_as<CB>::type b,
+		typename store_as<CC>::type c, typename store_as<CD>::type d,
+		typename store_as<CE>::type e, typename store_as<CF>::type f,
+		typename store_as<CG>::type g, typename store_as<CH>::type h,
+		typename store_as<CI>::type i, typename store_as<CJ>::type j,
+		typename store_as<CK>::type k, typename store_as<CL>::type l,
+		typename store_as<CM>::type m, typename store_as<CN>::type n,
+		typename store_as<CO>::type o, typename store_as<CP>::type p)
 		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
 	{}
 	bool operator==(const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to)
@@ -744,61 +680,61 @@ public:
 	}
 	void assign_from(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &from)
 	{
-		in_assign< typename with_ref<A,CA>::type, A>(a, from.a);
-		in_assign< typename with_ref<B,CB>::type, B>(b, from.b);
-		in_assign< typename with_ref<C,CC>::type, C>(c, from.c);
-		in_assign< typename with_ref<D,CD>::type, D>(d, from.d);
-		in_assign< typename with_ref<E,CE>::type, E>(e, from.e);
-		in_assign< typename with_ref<F,CF>::type, F>(f, from.f);
-		in_assign< typename with_ref<G,CG>::type, G>(g, from.g);
-		in_assign< typename with_ref<H,CH>::type, H>(h, from.h);
-		in_assign< typename with_ref<I,CI>::type, I>(i, from.i);
-		in_assign< typename with_ref<J,CJ>::type, J>(j, from.j);
-		in_assign< typename with_ref<K,CK>::type, K>(k, from.k);
-		in_assign< typename with_ref<L,CL>::type, L>(l, from.l);
-		in_assign< typename with_ref<M,CM>::type, M>(m, from.m);
-		in_assign< typename with_ref<N,CN>::type, N>(n, from.n);
-		in_assign< typename with_ref<O,CO>::type, O>(o, from.o);
-		in_assign< typename with_ref<P,CP>::type, P>(p, from.p);
+		in_assign< typename store_as<CA>::type, A>(a, from.a);
+		in_assign< typename store_as<CB>::type, B>(b, from.b);
+		in_assign< typename store_as<CC>::type, C>(c, from.c);
+		in_assign< typename store_as<CD>::type, D>(d, from.d);
+		in_assign< typename store_as<CE>::type, E>(e, from.e);
+		in_assign< typename store_as<CF>::type, F>(f, from.f);
+		in_assign< typename store_as<CG>::type, G>(g, from.g);
+		in_assign< typename store_as<CH>::type, H>(h, from.h);
+		in_assign< typename store_as<CI>::type, I>(i, from.i);
+		in_assign< typename store_as<CJ>::type, J>(j, from.j);
+		in_assign< typename store_as<CK>::type, K>(k, from.k);
+		in_assign< typename store_as<CL>::type, L>(l, from.l);
+		in_assign< typename store_as<CM>::type, M>(m, from.m);
+		in_assign< typename store_as<CN>::type, N>(n, from.n);
+		in_assign< typename store_as<CO>::type, O>(o, from.o);
+		in_assign< typename store_as<CP>::type, P>(p, from.p);
 	}
 	void assign_to(ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to)
 	{
-		out_assign< typename with_ref<A,CA>::type, A>(a, to.a);
-		out_assign< typename with_ref<B,CB>::type, B>(b, to.b);
-		out_assign< typename with_ref<C,CC>::type, C>(c, to.c);
-		out_assign< typename with_ref<D,CD>::type, D>(d, to.d);
-		out_assign< typename with_ref<E,CE>::type, E>(e, to.e);
-		out_assign< typename with_ref<F,CF>::type, F>(f, to.f);
-		out_assign< typename with_ref<G,CG>::type, G>(g, to.g);
-		out_assign< typename with_ref<H,CH>::type, H>(h, to.h);
-		out_assign< typename with_ref<I,CI>::type, I>(i, to.i);
-		out_assign< typename with_ref<J,CJ>::type, J>(j, to.j);
-		out_assign< typename with_ref<K,CK>::type, K>(k, to.k);
-		out_assign< typename with_ref<L,CL>::type, L>(l, to.l);
-		out_assign< typename with_ref<M,CM>::type, M>(m, to.m);
-		out_assign< typename with_ref<N,CN>::type, N>(n, to.n);
-		out_assign< typename with_ref<O,CO>::type, O>(o, to.o);
-		out_assign< typename with_ref<P,CP>::type, P>(p, to.p);
+		out_assign< typename store_as<CA>::type, A>(a, to.a);
+		out_assign< typename store_as<CB>::type, B>(b, to.b);
+		out_assign< typename store_as<CC>::type, C>(c, to.c);
+		out_assign< typename store_as<CD>::type, D>(d, to.d);
+		out_assign< typename store_as<CE>::type, E>(e, to.e);
+		out_assign< typename store_as<CF>::type, F>(f, to.f);
+		out_assign< typename store_as<CG>::type, G>(g, to.g);
+		out_assign< typename store_as<CH>::type, H>(h, to.h);
+		out_assign< typename store_as<CI>::type, I>(i, to.i);
+		out_assign< typename store_as<CJ>::type, J>(j, to.j);
+		out_assign< typename store_as<CK>::type, K>(k, to.k);
+		out_assign< typename store_as<CL>::type, L>(l, to.l);
+		out_assign< typename store_as<CM>::type, M>(m, to.m);
+		out_assign< typename store_as<CN>::type, N>(n, to.n);
+		out_assign< typename store_as<CO>::type, O>(o, to.o);
+		out_assign< typename store_as<CP>::type, P>(p, to.p);
 	}
 	virtual void printTo(std::ostream &os) const
 	{
 		os << "(";
-		printArg<typename with_ref<A,CA>::type>::print(os, a, false);
-		printArg<typename with_ref<B,CB>::type>::print(os, b, true);
-		printArg<typename with_ref<C,CC>::type>::print(os, c, true);
-		printArg<typename with_ref<D,CD>::type>::print(os, d, true);
-		printArg<typename with_ref<E,CE>::type>::print(os, e, true);
-		printArg<typename with_ref<F,CF>::type>::print(os, f, true);
-		printArg<typename with_ref<G,CG>::type>::print(os, g, true);
-		printArg<typename with_ref<H,CH>::type>::print(os, h, true);
-		printArg<typename with_ref<I,CI>::type>::print(os, i, true);
-		printArg<typename with_ref<J,CJ>::type>::print(os, j, true);
-		printArg<typename with_ref<K,CK>::type>::print(os, k, true);
-		printArg<typename with_ref<L,CL>::type>::print(os, l, true);
-		printArg<typename with_ref<M,CM>::type>::print(os, m, true);
-		printArg<typename with_ref<N,CN>::type>::print(os, n, true);
-		printArg<typename with_ref<O,CO>::type>::print(os, o, true);
-		printArg<typename with_ref<P,CP>::type>::print(os, p, true);
+		printArg<typename store_as<CA>::type>::print(os, a, false);
+		printArg<typename store_as<CB>::type>::print(os, b, true);
+		printArg<typename store_as<CC>::type>::print(os, c, true);
+		printArg<typename store_as<CD>::type>::print(os, d, true);
+		printArg<typename store_as<CE>::type>::print(os, e, true);
+		printArg<typename store_as<CF>::type>::print(os, f, true);
+		printArg<typename store_as<CG>::type>::print(os, g, true);
+		printArg<typename store_as<CH>::type>::print(os, h, true);
+		printArg<typename store_as<CI>::type>::print(os, i, true);
+		printArg<typename store_as<CJ>::type>::print(os, j, true);
+		printArg<typename store_as<CK>::type>::print(os, k, true);
+		printArg<typename store_as<CL>::type>::print(os, l, true);
+		printArg<typename store_as<CM>::type>::print(os, m, true);
+		printArg<typename store_as<CN>::type>::print(os, n, true);
+		printArg<typename store_as<CO>::type>::print(os, o, true);
+		printArg<typename store_as<CP>::type>::print(os, p, true);
 		os << ")";
 	}
 };
