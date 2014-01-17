@@ -10,6 +10,7 @@ public:
 	virtual void a(std::string arg) = 0;
 };
 
+#if __cplusplus > 199711L
 TEST (checkDoFunctorCanBeLambdaWithContent)
 {
 	MockRepository mocks;
@@ -23,6 +24,7 @@ TEST (checkDoFunctorCanBeLambdaWithContent)
 
   iamock->a("Hello World");
 }
+#endif
 
 class II { 
 public:

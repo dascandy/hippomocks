@@ -4065,7 +4065,8 @@ public:
 		MockRepoInstanceHolder<0>::instance = this;
 	}
 	~MockRepository()
-#if __cplusplus
+  // If we're on a recent enough compiler that's not VS2012 (as it doesn't have noexcept)
+#if __cplusplus > 199711L && _MSC_VER > 1700
 noexcept(false)
 #endif
 	{
