@@ -35,8 +35,10 @@
 //
 // The default is to make tests overspecified. At least it prevents faulty code from passing 
 // unit tests. To locally disable (or enable) this behaviour, set the boolean autoExpect on your 
-// MockRepository to false (or true).
+// MockRepository to false (or true). To globally override, redefine DEFAULT_AUTOEXPECT to false.
+#ifndef DEFAULT_AUTOEXPECT
 #define DEFAULT_AUTOEXPECT true
+#endif
 
 #ifdef NO_HIPPOMOCKS_NAMESPACE
 #define HM_NS
@@ -53,9 +55,9 @@
 #endif
 extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
 extern "C" __declspec(dllimport) void WINCALL DebugBreak();
-#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0
+#define DEBUGBREAK(e) if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
-#define DEBUGBREAK()
+#define DEBUGBREAK(e)
 #endif
 #endif
 
@@ -167,15 +169,15 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 }
 
 #ifdef HM_NO_EXCEPTIONS
-#define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
+#define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
 	printf("%s\n", err); \
 	abort(); exit(-1); }
-#define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(); printf("Mock error found - Fatal due to no exception support:\n"); \
+#define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
 	printf("%s\n", err); \
 	abort(); exit(-1); }
 #else
-#define RAISEEXCEPTION(e)			{ DEBUGBREAK(); throw e; }
-#define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(); if (std::uncaught_exception()) \
+#define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); throw e; }
+#define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(e); if (std::uncaught_exception()) \
 	MockRepoInstanceHolder<0>::instance->SetLatentException(ExceptionHolder::Create(e)); \
 	else throw e; }
 #endif
@@ -4063,6 +4065,9 @@ public:
 		MockRepoInstanceHolder<0>::instance = this;
 	}
 	~MockRepository()
+#if __cplusplus
+noexcept(false)
+#endif
 	{
 		MockRepoInstanceHolder<0>::instance = 0;
 #ifndef HM_NO_EXCEPTIONS
