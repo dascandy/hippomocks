@@ -101,6 +101,11 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #elif defined(__APPLE__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #endif
+#elif defined(SOME_ARM) && defined(__GNUC__)
+#define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+
+// This clear-cache is *required*. The tests will fail if you remove it.
+extern "C" void __clear_cache(char *beg, char *end);
 #endif
 
 #if defined(__GNUC__) && !defined(__EXCEPTIONS)
@@ -113,7 +118,6 @@ class X{};
 #include <exception>
 #endif
 #endif
-
 
 #include <cstdio>
 #include <list>
@@ -263,6 +267,7 @@ public:
   {
     Unprotect _allow_write(origFunc, sizeof(backupData));
     memcpy(backupData, origFunc, sizeof(backupData));
+#ifdef SOME_X86
 #ifdef CMOCK_FUNC_PLATFORMIS64BIT
     if (llabs((long long)origFunc - (long long)replacement) < 0x80000000LL) {
 #endif
@@ -280,11 +285,28 @@ public:
       *(long long*)(horrible_cast<intptr_t>(origFunc) + 6) = (long long)(horrible_cast<intptr_t>(replacement));
     }
 #endif
+#elif defined(SOME_ARM)
+    unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
+    if ((intptr_t)origFunc & 1) {
+      rawptr[0] = 0x6800A001;
+      rawptr[1] = 0x46874687;
+      rawptr[2] = (intptr_t)replacement;
+    } else {
+      rawptr[0] = 0xE59FF000;
+      rawptr[1] = (intptr_t)replacement;
+      rawptr[2] = (intptr_t)replacement;
+    }
+    __clear_cache((char *)rawptr, (char *)rawptr+16);
+#endif
   }
   ~Replace()
   {
     Unprotect _allow_write(origFunc, sizeof(backupData));
     memcpy(origFunc, backupData, sizeof(backupData)); 
+#ifdef SOME_ARM
+    unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
+    __clear_cache((char *)rawptr, (char *)rawptr+16);
+#endif
   }
 };
 #endif 
@@ -1175,10 +1197,17 @@ std::pair<int, int> virtual_index(T t)
 		} u;
 	} conv;
 	conv.t = t;
-
-	// simple implementation
+#if defined(SOME_ARM)
+	// ARM ABI says the bit is in bsaeoffs instead, and that the value is shiffted left 1.
+	// This because valid ARM pointers may have the LSB set, so the "is virtual" bit had to be moved.
+	if (conv.u.baseoffs & 1)
+		return std::pair<int, int>(conv.u.baseoffs / (sizeof(void*) * 2), conv.u.value / sizeof(void *));
+#else
+	// simple Itanium ABI implementation, used by everything but Microsoft and embedded EDG-based compilers
 	if (conv.u.value & 1)
 		return std::pair<int, int>(conv.u.baseoffs / sizeof(void*), conv.u.value / sizeof(void *));
+#endif
+
 #elif defined(_MSC_VER)
 	union {
 		T t;
