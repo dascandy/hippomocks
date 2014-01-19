@@ -81,6 +81,8 @@ public:
   functorByVal(int &count) : count(count) {}
   void operator()() { count++; }
   int &count;
+private:
+  functorByVal &operator=(const functorByVal&); // Silence VS
 };
 
 TEST (checkFunctorObjectByvalCalled)

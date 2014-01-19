@@ -26,5 +26,20 @@ TEST (checkFunctionReturnedToOriginal)
 	}
 	EQUALS(a(), 1);
 }
+
+#ifdef _WIN32
+#include <windows.h>
+TEST (checkCanMockGetSystemTime) {
+	MockRepository mocks;
+	SYSTEMTIME outtime;
+	outtime.wDay = 1;
+	SYSTEMTIME systime;
+	systime.wDay = 0;
+	mocks.ExpectCallFunc(GetSystemTime).With(Out(outtime));
+	GetSystemTime(&systime);
+	EQUALS(systime.wDay, 1);
+}
+#endif
+
 #endif
 

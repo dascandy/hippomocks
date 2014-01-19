@@ -3295,6 +3295,82 @@ public:
 			  typename I, typename J, typename K, typename L,
 			  typename M, typename N, typename O, typename P>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Y (*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+
+#if defined(_MSC_VER) && !defined(_WIN64)
+	template <int X, typename Y>
+	TCall<Y> &RegisterExpect_(Y (__stdcall *func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y, typename A>
+	TCall<Y,A> &RegisterExpect_(Y (__stdcall *func)(A), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B>
+	TCall<Y,A,B> &RegisterExpect_(Y (__stdcall *func)(A,B), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C>
+	TCall<Y,A,B,C> &RegisterExpect_(Y (__stdcall *func)(A,B,C), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D>
+	TCall<Y,A,B,C,D> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E>
+	TCall<Y,A,B,C,D,E> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F>
+	TCall<Y,A,B,C,D,E,F> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G>
+	TCall<Y,A,B,C,D,E,F,G> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H>
+	TCall<Y,A,B,C,D,E,F,G,H> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I>
+	TCall<Y,A,B,C,D,E,F,G,H,I> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K, typename L>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K, typename L,
+			  typename M>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K, typename L,
+			  typename M, typename N>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K, typename L,
+			  typename M, typename N, typename O>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+	template <int X, typename Y,
+			  typename A, typename B, typename C, typename D,
+			  typename E, typename F, typename G, typename H,
+			  typename I, typename J, typename K, typename L,
+			  typename M, typename N, typename O, typename P>
+	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo);
+#endif
 #endif
 
 	template <int X, typename Z2, typename Y, typename Z>
@@ -4556,6 +4632,93 @@ public:
         MockRepository *repo = mock<Z>::repo;
 		return repo->template DoExpectation<Y>(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
+#if defined(_MSC_VER) && !defined(_WIN64)
+	template <int X>
+	static Y __stdcall static_stdcallexpectation0()
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<>());
+	}
+	template <int X, typename A>
+	static Y __stdcall static_stdcallexpectation1(A a)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A>(a));
+	}
+	template <int X, typename A, typename B>
+	static Y __stdcall static_stdcallexpectation2(A a, B b)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B>(a,b));
+	}
+	template <int X, typename A, typename B, typename C>
+	static Y __stdcall static_stdcallexpectation3(A a, B b, C c)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C>(a,b,c));
+	}
+	template <int X, typename A, typename B, typename C, typename D>
+	static Y __stdcall static_stdcallexpectation4(A a, B b, C c, D d)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D>(a,b,c,d));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E>
+	static Y __stdcall static_stdcallexpectation5(A a, B b, C c, D d, E e)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
+	static Y __stdcall static_stdcallexpectation6(A a, B b, C c, D d, E e, F f)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
+	static Y __stdcall static_stdcallexpectation7(A a, B b, C c, D d, E e, F f, G g)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
+	static Y __stdcall static_stdcallexpectation8(A a, B b, C c, D d, E e, F f, G g, H h)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
+	static Y __stdcall static_stdcallexpectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
+	static Y __stdcall static_stdcallexpectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
+	static Y __stdcall static_stdcallexpectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
+	static Y __stdcall static_stdcallexpectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
+	static Y __stdcall static_stdcallexpectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
+	static Y __stdcall static_stdcallexpectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
+	static Y __stdcall static_stdcallexpectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
+	static Y __stdcall static_stdcallexpectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+		return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+	}
+#endif
 #endif
 };
 
@@ -4906,6 +5069,93 @@ public:
         MockRepository *repo = mock<Z>::repo;
 		repo->DoVoidExpectation(this, mock<Z>::translateX(X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
 	}
+#if defined(_MSC_VER) && !defined(_WIN64)
+	template <int X>
+	static void __stdcall static_stdcallexpectation0()
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<>());
+	}
+	template <int X, typename A>
+	static void __stdcall static_stdcallexpectation1(A a)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A>(a));
+	}
+	template <int X, typename A, typename B>
+	static void __stdcall static_stdcallexpectation2(A a, B b)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B>(a,b));
+	}
+	template <int X, typename A, typename B, typename C>
+	static void __stdcall static_stdcallexpectation3(A a, B b, C c)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C>(a,b,c));
+	}
+	template <int X, typename A, typename B, typename C, typename D>
+	static void __stdcall static_stdcallexpectation4(A a, B b, C c, D d)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D>(a,b,c,d));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E>
+	static void __stdcall static_stdcallexpectation5(A a, B b, C c, D d, E e)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E>(a,b,c,d,e));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F>
+	static void __stdcall static_stdcallexpectation6(A a, B b, C c, D d, E e, F f)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F>(a,b,c,d,e,f));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
+	static void __stdcall static_stdcallexpectation7(A a, B b, C c, D d, E e, F f, G g)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G>(a,b,c,d,e,f,g));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
+	static void __stdcall static_stdcallexpectation8(A a, B b, C c, D d, E e, F f, G g, H h)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H>(a,b,c,d,e,f,g,h));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I>
+	static void __stdcall static_stdcallexpectation9(A a, B b, C c, D d, E e, F f, G g, H h, I i)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I>(a,b,c,d,e,f,g,h,i));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J>
+	static void __stdcall static_stdcallexpectation10(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J>(a,b,c,d,e,f,g,h,i,j));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K>
+	static void __stdcall static_stdcallexpectation11(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K>(a,b,c,d,e,f,g,h,i,j,k));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L>
+	static void __stdcall static_stdcallexpectation12(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L>(a,b,c,d,e,f,g,h,i,j,k,l));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M>
+	static void __stdcall static_stdcallexpectation13(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M>(a,b,c,d,e,f,g,h,i,j,k,l,m));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N>
+	static void __stdcall static_stdcallexpectation14(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N>(a,b,c,d,e,f,g,h,i,j,k,l,m,n));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O>
+	static void __stdcall static_stdcallexpectation15(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o));
+	}
+	template <int X, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I, typename J, typename K, typename L, typename M, typename N, typename O, typename P>
+	static void __stdcall static_stdcallexpectation16(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
+	{
+		return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p));
+	}
+#endif
 #endif
 };
 
@@ -5437,6 +5687,219 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Y (*fu
   addCall( call, expect );
   return *call;
 }
+
+#if defined(_MSC_VER) && !defined(_WIN64)
+template <int X, typename Y>
+TCall<Y> &MockRepository::RegisterExpect_(Y (__stdcall *func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)();
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation0<X>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y> *call = new TCall<Y>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y, typename A>
+TCall<Y,A> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation1<X,A>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A> *call = new TCall<Y,A>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B>
+TCall<Y,A,B> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation2<X,A,B>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C>
+TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation3<X,A,B,C>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D>
+TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation4<X,A,B,C,D>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E>
+TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation5<X,A,B,C,D,E>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F>
+TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation6<X,A,B,C,D,E,F>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G>
+TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation7<X,A,B,C,D,E,F,G>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+   addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H>
+TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation8<X,A,B,C,D,E,F,G,H>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I>
+TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation9<X,A,B,C,D,E,F,G,H,I>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J>
+TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation10<X,A,B,C,D,E,F,G,H,I,J>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation11<X,A,B,C,D,E,F,G,H,I,J,K>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K,L);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K,L,M);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N, typename O>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+
+template <int X, typename Y,
+		  typename A, typename B, typename C, typename D,
+		  typename E, typename F, typename G, typename H,
+		  typename I, typename J, typename K, typename L,
+		  typename M, typename N, typename O, typename P>
+TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Y (__stdcall *func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
+{
+  Y (__stdcall *fp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
+  fp = &mockFuncs<char, Y>::template static_stdcallexpectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>;
+  int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
+  TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  addCall( call, expect );
+  return *call;
+}
+#endif
 #endif
 
 template <int X, typename Z2, typename Y, typename Z>
