@@ -46,19 +46,19 @@
 #define HM_NS HippoMocks::
 #endif
 
-#ifndef DEBUGBREAK
 #ifdef _MSC_VER
 #ifdef _WIN64
 #define WINCALL 
 #else
 #define WINCALL __stdcall
 #endif
+#endif
+#ifndef DEBUGBREAK
 extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
 extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define DEBUGBREAK(e) if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
 #define DEBUGBREAK(e)
-#endif
 #endif
 
 #ifndef DONTCARE_NAME
@@ -90,7 +90,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)
-#define CFUNC_MOCK_PLATFORMIS64BIT
+#define CMOCK_FUNC_PLATFORMIS64BIT
 #endif
 
 #ifdef SOME_X86
@@ -193,7 +193,11 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 }
 
 // De-windows.h-ified import to avoid including that file. 
+#ifdef _WIN64
+extern "C" __declspec(dllimport) int WINCALL VirtualProtect(void *func, unsigned long long byteCount, unsigned long flags, unsigned long *oldFlags);
+#else
 extern "C" __declspec(dllimport) int WINCALL VirtualProtect(void *func, unsigned long byteCount, unsigned long flags, unsigned long *oldFlags);
+#endif
 
 #ifndef PAGE_EXECUTE_READWRITE
 #define PAGE_EXECUTE_READWRITE 0x40

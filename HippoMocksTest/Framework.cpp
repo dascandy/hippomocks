@@ -12,7 +12,7 @@ void check_equal<const char *, const char *>(const char *a, const char *b, const
 
 bool TestRegistry::RunTests() {
     char spinner[5] = "\\|/-";
-    size_t i = 0, s = 0;
+    unsigned long i = 0, s = 0;
     size_t spinidx = 0;
     for (std::vector<Test *>::iterator it = tests.begin(); it != tests.end(); ++it) {
         Test *t = *it;

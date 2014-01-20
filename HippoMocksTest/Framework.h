@@ -12,9 +12,9 @@ class BaseException : public std::exception {
 public:
   BaseException(std::string fmt, ...) {
     va_list l;
-    char buffer[4096];
+    static char buffer[4096];
     va_start(l, fmt);
-    vsnprintf(buffer, 1024, fmt.c_str(), l);
+    vsnprintf(buffer, 4096, fmt.c_str(), l);
     va_end(l);
     error = buffer;
   }
