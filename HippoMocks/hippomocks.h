@@ -54,11 +54,13 @@
 #endif
 #endif
 #ifndef DEBUGBREAK
+#ifdef _MSC_VER
 extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
 extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define DEBUGBREAK(e) if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
 #define DEBUGBREAK(e)
+#endif
 #endif
 
 #ifndef DONTCARE_NAME
