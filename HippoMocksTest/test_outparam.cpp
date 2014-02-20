@@ -40,12 +40,15 @@ TEST (checkOutParamsAreFilledIn_PointerToString)
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
 	std::string teststring("Hello World");
-	mocks.ExpectCall(iamock, IOutParam::b).With(Out(new std::string(teststring)));
+  std::string *outString = new std::string(teststring);
+	mocks.ExpectCall(iamock, IOutParam::b).With(Out(outString));
 	
 	std::string* out = 0;
 	iamock->b(&out);
 
 	CHECK(*out == teststring);
+
+  delete outString;
 }
 
 TEST (checkOutParamsAreFilledIn_Char)
