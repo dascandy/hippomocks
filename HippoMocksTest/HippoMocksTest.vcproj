@@ -48,7 +48,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/vmg"
+				AdditionalOptions=""
 				Optimization="0"
 				AdditionalIncludeDirectories="../HippoMocks/"
 				MinimalRebuild="true"
@@ -125,7 +125,7 @@
 				AdditionalOptions="/vmg"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../hippo mocks"
+				AdditionalIncludeDirectories="../HippoMocks"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="4"
@@ -270,7 +270,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/vmg"
+				AdditionalOptions=""
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="../hippo mocks"
