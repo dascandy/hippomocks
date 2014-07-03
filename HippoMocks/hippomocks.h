@@ -192,7 +192,9 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 #include <memory.h>
 
 #if defined(_WIN32)
+#ifndef NO_HIPPOMOCKS_NAMESPACE
 }
+#endif
 
 // De-windows.h-ified import to avoid including that file. 
 #ifdef _WIN64
