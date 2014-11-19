@@ -176,10 +176,10 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 
 #ifdef HM_NO_EXCEPTIONS
 #define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", err); \
+	printf("%s\n", err.c_str()); \
 	abort(); exit(-1); }
 #define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", err); \
+	printf("%s\n", err.c_str()); \
 	abort(); exit(-1); }
 #else
 #define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); throw e; }
