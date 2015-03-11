@@ -488,6 +488,12 @@ public:
 	virtual void printTo(std::ostream &os) const = 0;
 };
 
+template <typename X>
+struct no_cref { typedef X type; };
+
+template <typename X>
+struct no_cref<const X &> { typedef X type; };
+
 template <typename A> struct with_const { typedef const A type; };
 template <typename A> struct with_const<A &> { typedef const A &type; };
 template <typename A> struct with_const<const A> { typedef const A type; };
@@ -1626,7 +1632,7 @@ public:
 template <class T>
 class ReturnValueWrapper : public ReturnValueHolder {
 public:
-	T rv;
+	typename no_cref<T>::type rv;
 	ReturnValueWrapper(T rv) : rv(rv) {}
 };
 
