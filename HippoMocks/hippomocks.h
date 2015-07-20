@@ -164,7 +164,7 @@ template <class T>
 class ExceptionWrapper : public ExceptionHolder {
 	T exception;
 public:
-	ExceptionWrapper(T exception) : exception(exception) {}
+	ExceptionWrapper(T ex) : exception(ex) {}
 	void rethrow() { throw exception; }
 };
 
@@ -237,9 +237,9 @@ private:
 class Unprotect
 {
 public:
-  Unprotect(void *location, size_t byteCount)
+  Unprotect(void *location, size_t count)
   : origFunc((intptr_t)location & (~0xFFF))
-  , byteCount(byteCount + ((intptr_t)location - origFunc))
+  , byteCount(count + ((intptr_t)location - origFunc))
   {
 	mprotect((void *)origFunc, this->byteCount, PROT_READ|PROT_WRITE|PROT_EXEC);
   };
@@ -283,13 +283,13 @@ public:
 	  *(e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1) = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
 #ifdef CMOCK_FUNC_PLATFORMIS64BIT
 	} else {
-	  unsigned char *funcptr = (unsigned char *)origFunc;
-	  funcptr[0] = 0xFF; // jmp (rip + imm32)
-	  funcptr[1] = 0x25;
-	  funcptr[2] = 0x00; // imm32 of 0, so immediately after the instruction
-	  funcptr[3] = 0x00;
-	  funcptr[4] = 0x00;
-	  funcptr[5] = 0x00;
+	  unsigned char *func = (unsigned char *)origFunc;
+	  func[0] = 0xFF; // jmp (rip + imm32)
+	  func[1] = 0x25;
+	  func[2] = 0x00; // imm32 of 0, so immediately after the instruction
+	  func[3] = 0x00;
+	  func[4] = 0x00;
+	  func[5] = 0x00;
 	  *(long long*)(horrible_cast<intptr_t>(origFunc) + 6) = (long long)(horrible_cast<intptr_t>(replacement));
 	}
 #endif
@@ -324,7 +324,7 @@ class MockRepository;
 struct
 RegistrationType
 {
-   RegistrationType( unsigned minimum, unsigned max ) : minimum( minimum ), maximum( max ) {}
+   RegistrationType( unsigned min, unsigned max ) : minimum( min ), maximum( max ) {}
    unsigned minimum;
    unsigned maximum;
 };
@@ -370,7 +370,7 @@ template <typename T>
 class ByRef
 {
 public:
-  explicit ByRef(T &arg) : arg(arg) {}
+  explicit ByRef(T &argument) : arg(argument) {}
   void operator()() { arg(); }
   T &arg;
 };
@@ -402,7 +402,7 @@ inline DontCare &DontCare::Instance()
 template <typename T>
 struct OutParam: public DontCare
 {
-	explicit OutParam(T value): value(value) {}
+	explicit OutParam(T val): value(val) {}
 	T value;
 };
 
@@ -415,7 +415,7 @@ struct InParam;
 template <typename T>
 struct InParam<T, false>: public DontCare
 {
-	explicit InParam(T& value): value(value)
+	explicit InParam(T& val): value(val)
 	{
 	}
 	T& value;
@@ -424,7 +424,7 @@ struct InParam<T, false>: public DontCare
 template <typename T>
 struct InParam<T, true>: public DontCare
 {
-	explicit InParam(T*& value): value(value)
+	explicit InParam(T*& val): value(val)
 	{
 	}
 	T*& value;
@@ -605,8 +605,8 @@ public:
 	N n;
 	O o;
 	P p;
-	ref_tuple(A a = A(), B b = B(), C c = C(), D d = D(), E e = E(), F f = F(), G g = G(), H h = H(), I i = I(), J j = J(), K k = K(), L l = L(), M m = M(), N n = N(), O o = O(), P p = P())
-		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
+	ref_tuple(A valueA = A(), B valueB = B(), C valueC = C(), D valueD = D(), E valueE = E(), F valueF = F(), G valueG = G(), H valueH = H(), I valueI = I(), J valueJ = J(), K valueK = K(), L valueL = L(), M valueM = M(), N valueN = N(), O valueO = O(), P valueP = P())
+		  : a(valueA), b(valueB), c(valueC), d(valueD), e(valueE), f(valueF), g(valueG), h(valueH), i(valueI), j(valueJ), k(valueK), l(valueL), m(valueM), n(valueN), o(valueO), p(valueP)
 	{}
 	virtual void printTo(std::ostream &os) const
 	{
@@ -681,15 +681,15 @@ public:
 	typename store_as<CN>::type n;
 	typename store_as<CO>::type o;
 	typename store_as<CP>::type p;
-	copy_tuple(typename store_as<CA>::type a, typename store_as<CB>::type b,
-		typename store_as<CC>::type c, typename store_as<CD>::type d,
-		typename store_as<CE>::type e, typename store_as<CF>::type f,
-		typename store_as<CG>::type g, typename store_as<CH>::type h,
-		typename store_as<CI>::type i, typename store_as<CJ>::type j,
-		typename store_as<CK>::type k, typename store_as<CL>::type l,
-		typename store_as<CM>::type m, typename store_as<CN>::type n,
-		typename store_as<CO>::type o, typename store_as<CP>::type p)
-		  : a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), i(i), j(j), k(k), l(l), m(m), n(n), o(o), p(p)
+	copy_tuple(typename store_as<CA>::type valueA, typename store_as<CB>::type valueB,
+		typename store_as<CC>::type valueC, typename store_as<CD>::type valueD,
+		typename store_as<CE>::type valueE, typename store_as<CF>::type valueF,
+		typename store_as<CG>::type valueG, typename store_as<CH>::type valueH,
+		typename store_as<CI>::type valueI, typename store_as<CJ>::type valueJ,
+		typename store_as<CK>::type valueK, typename store_as<CL>::type valueL,
+		typename store_as<CM>::type valueM, typename store_as<CN>::type valueN,
+		typename store_as<CO>::type valueO, typename store_as<CP>::type valueP)
+		  : a(valueA), b(valueB), c(valueC), d(valueD), e(valueE), f(valueF), g(valueG), h(valueH), i(valueI), j(valueJ), k(valueK), l(valueL), m(valueM), n(valueN), o(valueO), p(valueP)
 	{}
 	bool operator==(const ref_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &to)
 	{
@@ -1286,8 +1286,8 @@ class MemberWrap : public TypeDestructable {
 private:
 	A *member;
 public:
-	MemberWrap(A *member)
-		: member(member)
+	MemberWrap(A *mem)
+		: member(mem)
 	{
 		new (member) A();
 	}
@@ -1308,8 +1308,8 @@ class mock : public base_mock
 		mock<T> *realMock = getRealThis();
 		if (realMock->isZombie)
 			RAISEEXCEPTION(ZombieMockException(realMock->repo));
-		MockRepository *repo = realMock->repo;
-		RAISEEXCEPTION(:: HM_NS NotImplementedException(repo));
+		MockRepository *repository = realMock->repo;
+		RAISEEXCEPTION(:: HM_NS NotImplementedException(repository));
 	}
 protected:
 	std::map<int, void (**)()> funcTables;
@@ -1319,9 +1319,9 @@ public:
 	std::list<TypeDestructable *> members;
 	MockRepository *repo;
 	std::map<std::pair<int, int>, int> funcMap;
-	mock(MockRepository *repo)
+	mock(MockRepository *repository)
 		: isZombie(false)
-		, repo(repo)
+		, repo(repository)
 	{
 		for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
 		{
@@ -1351,10 +1351,10 @@ public:
 	}
 	void mock_reset()
 	{
-		MockRepository *repo = this->repo;
+		MockRepository *repository = this->repo;
 		// ugly but simple
 		this->~mock<T>();
-		new (this) mock<T>(repo);
+		new (this) mock<T>(repository);
 	}
 	mock<T> *getRealThis()
 	{
@@ -1406,7 +1406,7 @@ template <typename T, typename Y,
 class DoWrapper : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, P p)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
@@ -1421,7 +1421,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, O o, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o);
@@ -1436,7 +1436,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m,n);
@@ -1451,7 +1451,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l,m);
@@ -1465,7 +1465,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K,L> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k,l);
@@ -1479,7 +1479,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J,K> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j,k);
@@ -1493,7 +1493,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H,I,J> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i,j);
@@ -1507,7 +1507,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>  : public Invocable<Y,A,B,C,D,E,F,G,H,I>{
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, I i, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h,i);
@@ -1520,7 +1520,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G,H> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, H h, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g,h);
@@ -1533,7 +1533,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F,G> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, G g, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f,g);
@@ -1546,7 +1546,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E,F> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, F f, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e,f);
@@ -1559,7 +1559,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D,E> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, E e, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d,e);
@@ -1571,7 +1571,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C,D> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, D d, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c,d);
@@ -1583,7 +1583,7 @@ template <typename T, typename Y,
 class DoWrapper<T,Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B,C> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, C c, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b,c);
@@ -1594,7 +1594,7 @@ template <typename T, typename Y, typename A, typename B>
 class DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A,B> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, B b, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a,b);
@@ -1605,7 +1605,7 @@ template <typename T, typename Y, typename A>
 class DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y,A> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(A a, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t(a);
@@ -1616,7 +1616,7 @@ template <typename T, typename Y>
 class DoWrapper<T,Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> : public Invocable<Y> {
 	T t;
 public:
-	DoWrapper(T t) : t(t) {}
+	DoWrapper(T templ) : t(templ) {}
 	virtual Y operator()(NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType, NullType)
 	{
 		return t();
@@ -1633,7 +1633,7 @@ template <class T>
 class ReturnValueWrapper : public ReturnValueHolder {
 public:
 	typename no_cref<T>::type rv;
-	ReturnValueWrapper(T rv) : rv(rv) {}
+	ReturnValueWrapper(T retValue) : rv(retValue) {}
 };
 
 //Call wrapping
@@ -1657,21 +1657,21 @@ public:
 	const char *funcName;
 	const char *fileName;
 protected:
-	Call(RegistrationType expectation, base_mock *mock, const std::pair<int, int> &funcIndex, int X, const char *funcName, const char *fileName)
+	Call(RegistrationType expect, base_mock *baseMock, const std::pair<int, int> &index, int X, const char *func, const char *file)
 		: retVal(0),
 #ifndef HM_NO_EXCEPTIONS
 		eHolder(0),
 #endif
-		mock(mock),
+		mock(baseMock),
 		functor(0),
 		matchFunctor(0),
-		funcIndex(funcIndex),
+		funcIndex(index),
 		called( 0 ),
-		expectation(expectation),
+		expectation(expect),
 		satisfied(false),
 		lineno(X),
-		funcName(funcName),
-		fileName(fileName)
+		funcName(func),
+		fileName(file)
 	{
 	}
 public:
@@ -1699,7 +1699,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1744,7 +1744,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1790,7 +1790,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1835,7 +1835,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1881,7 +1881,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1926,7 +1926,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -1972,7 +1972,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2017,7 +2017,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2062,7 +2062,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2105,7 +2105,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2149,7 +2149,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2192,7 +2192,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2236,7 +2236,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2279,7 +2279,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2323,7 +2323,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2366,7 +2366,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2409,7 +2409,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2450,7 +2450,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2492,7 +2492,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2533,7 +2533,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2575,7 +2575,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2616,7 +2616,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2658,7 +2658,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2699,7 +2699,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2740,7 +2740,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2779,7 +2779,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2819,7 +2819,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2858,7 +2858,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2898,7 +2898,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2937,7 +2937,7 @@ private:
 	ref_comparable_assignable_tuple<A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -2977,7 +2977,7 @@ private:
 	ref_comparable_assignable_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -3016,7 +3016,7 @@ private:
 	ref_comparable_assignable_tuple<A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName), args(0) {}
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) {}
 	~TCall() { delete args; }
 	bool matchesArgs(const base_tuple &tupl) {
 		return (!args && !matchFunctor) ||
@@ -3055,7 +3055,7 @@ private:
 	ref_comparable_assignable_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName) {
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file) {
 		args = new copy_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
 								NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 								(NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
@@ -3081,7 +3081,7 @@ private:
 	ref_comparable_assignable_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> *args;
 public:
 		const base_tuple *getArgs() const { return args; }
-	TCall(RegistrationType expectation, base_mock *mock, std::pair<int, int> funcIndex, int X, const char *funcName, const char *fileName) : Call(expectation, mock, funcIndex, X, funcName ,fileName) {
+	TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file) {
 		args = new copy_tuple<NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,
 							NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>
 							(NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType(),NullType());
