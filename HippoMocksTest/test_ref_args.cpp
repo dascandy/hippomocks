@@ -101,7 +101,7 @@ TEST (checkRefArgCheckedAsReference)
 
 class IB {
 public:
-   virtual ~IB() = 0 {}
+   virtual ~IB() {}
 
    virtual void doSomething() const = 0;
 
@@ -109,7 +109,7 @@ public:
 
 class IA {
 public:
-   virtual ~IA() = 0 {}
+   virtual ~IA() {}
 
    virtual const IB & getB() const = 0;
    
