@@ -99,3 +99,37 @@ TEST (checkRefArgCheckedAsReference)
 	iamock->l(*refArg);
 }
 
+class IB {
+public:
+   virtual ~IB() {}
+
+   virtual void doSomething() const = 0;
+
+};
+
+class IA {
+public:
+   virtual ~IA() {}
+
+   virtual const IB & getB() const = 0;
+   
+};
+
+TEST (checkRefReturnAsReference)
+{
+   MockRepository mocks;
+
+   IB * b = mocks.Mock<IB>();
+
+   IA * a = mocks.Mock<IA>();
+
+   mocks.OnCall(a, IA::getB).ReturnByRef(*b);
+   mocks.ExpectCall(b, IB::doSomething);
+
+   CHECK(b == &a->getB());
+   a->getB().doSomething();
+
+   mocks.VerifyAll();
+}
+
+
