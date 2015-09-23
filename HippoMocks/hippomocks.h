@@ -1170,26 +1170,33 @@ public:
 
 #ifdef _MSC_VER
 template <int s>
-int virtual_function_index(unsigned char *func) {
+int virtual_function_index(unsigned char *func)
+{
 	if (*func == 0xE9)
 	{
-		return virtual_function_index<0>(func + 5 + *(unsigned int *)(func+1));
+		return virtual_function_index<0>(func + 5 + *(unsigned int *)(func + 1));
 	}
 	else
 	{
 #ifdef _WIN64
-		// Add one to the pointer to skip the REX prefix used to access 64-bit registers.
-		func++;
+		func++; // Add one to the pointer to skip the REX prefix used to access 64-bit registers.
 #endif
-		switch(*(unsigned int *)func)
+		switch (*(unsigned int *)func)
 		{ // mov ecx, this; jump [eax + v/Ib/Iw]
 		case 0x20ff018b: return 0;
+#ifdef _WIN32
+		case 0x0424448b: 
+			if (func[7] == 0x20)
+				return 0;
+			return *(unsigned char *)(func + 8) / sizeof(void*);
+#endif
 		case 0x60ff018b: return *(unsigned char *)(func + sizeof(int)) / sizeof(void*);
 		case 0xA0ff018b: return *(unsigned long *)(func + sizeof(int)) / sizeof(void*);
 		default: return -1;
 		}
 	}
 }
+
 #endif
 
 template <typename T>
@@ -5255,13 +5262,14 @@ TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType 
 template <int X, typename Z2, typename Y, typename Z>
 TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)();
+	std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)())func);
+	Y(__stdcall mockFuncs<Z2, Y>::*mfp)();
 	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation0<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		funcIndex.first,
+		funcIndex.second,
+		reinterpret_cast<void (base_mock::*)()>(mfp), X);
+	TCall<Y> *call = new TCall<Y>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 
 	addCall( call, expect );
 	return *call;
@@ -5269,250 +5277,266 @@ TCall<Y> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(), Reg
 template <int X, typename Z2, typename Y, typename Z, typename A>
 TCall<Y,A> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation1<X,A>;
+	std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A))func);
+	Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A);
+	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation1<X, A>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A> *call = new TCall<Y,A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		funcIndex.first,
+		funcIndex.second,
+		reinterpret_cast<void (base_mock::*)()>(mfp), X);
+	TCall<Y, A> *call = new TCall<Y, A>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
 	return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B>
+	typename A, typename B>
 TCall<Y,A,B> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation2<X,A,B>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B> *call = new TCall<Y,A,B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation2<X, A, B>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B> *call = new TCall<Y, A, B>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C>
+	typename A, typename B, typename C>
 TCall<Y,A,B,C> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation3<X,A,B,C>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C> *call = new TCall<Y,A,B,C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation3<X, A, B, C>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C> *call = new TCall<Y, A, B, C>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D>
+	typename A, typename B, typename C, typename D>
 TCall<Y,A,B,C,D> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation4<X,A,B,C,D>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D> *call = new TCall<Y,A,B,C,D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation4<X, A, B, C, D>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D> *call = new TCall<Y, A, B, C, D>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E>
+	typename A, typename B, typename C, typename D,
+	typename E>
 TCall<Y,A,B,C,D,E> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation5<X,A,B,C,D,E>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E> *call = new TCall<Y,A,B,C,D,E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation5<X, A, B, C, D, E>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E> *call = new TCall<Y, A, B, C, D, E>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F>
 TCall<Y,A,B,C,D,E,F> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation6<X,A,B,C,D,E,F>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F> *call = new TCall<Y,A,B,C,D,E,F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation6<X, A, B, C, D, E, F>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F> *call = new TCall<Y, A, B, C, D, E, F>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G>
 TCall<Y,A,B,C,D,E,F,G> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation7<X,A,B,C,D,E,F,G>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G> *call = new TCall<Y,A,B,C,D,E,F,G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation7<X, A, B, C, D, E, F, G>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G> *call = new TCall<Y, A, B, C, D, E, F, G>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H>
 TCall<Y,A,B,C,D,E,F,G,H> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation8<X,A,B,C,D,E,F,G,H>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H> *call = new TCall<Y,A,B,C,D,E,F,G,H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation8<X, A, B, C, D, E, F, G, H>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H> *call = new TCall<Y, A, B, C, D, E, F, G, H>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I>
 TCall<Y,A,B,C,D,E,F,G,H,I> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation9<X,A,B,C,D,E,F,G,H,I>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I> *call = new TCall<Y,A,B,C,D,E,F,G,H,I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation9<X, A, B, C, D, E, F, G, H, I>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I> *call = new TCall<Y, A, B, C, D, E, F, G, H, I>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J>
 TCall<Y,A,B,C,D,E,F,G,H,I,J> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation10<X,A,B,C,D,E,F,G,H,I,J>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation10<X, A, B, C, D, E, F, G, H, I, J>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation11<X,A,B,C,D,E,F,G,H,I,J,K>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation11<X, A, B, C, D, E, F, G, H, I, J, K>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K, typename L>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K, typename L>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation12<X,A,B,C,D,E,F,G,H,I,J,K,L>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K, L))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K, L);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation12<X, A, B, C, D, E, F, G, H, I, J, K, L>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K, typename L,
-		  typename M>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K, typename L,
+	typename M>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation13<X,A,B,C,D,E,F,G,H,I,J,K,L,M>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K, L, M))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K, L, M);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation13<X, A, B, C, D, E, F, G, H, I, J, K, L, M>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K, typename L,
-		  typename M, typename N>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K, typename L,
+	typename M, typename N>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation14<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K, L, M, N))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K, L, M, N);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation14<X, A, B, C, D, E, F, G, H, I, J, K, L, M, N>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K, typename L,
-		  typename M, typename N, typename O>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K, typename L,
+	typename M, typename N, typename O>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation15<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation15<X, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 
 template <int X, typename Z2, typename Y, typename Z,
-		  typename A, typename B, typename C, typename D,
-		  typename E, typename F, typename G, typename H,
-		  typename I, typename J, typename K, typename L,
-		  typename M, typename N, typename O, typename P>
+	typename A, typename B, typename C, typename D,
+	typename E, typename F, typename G, typename H,
+	typename I, typename J, typename K, typename L,
+	typename M, typename N, typename O, typename P>
 TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), RegistrationType expect, const char *funcName, const char *fileName, unsigned long lineNo)
 {
-	int funcIndex = getFunctionIndex(func);
-	Y (__stdcall mockFuncs<Z2, Y>::*mfp)(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
-	mfp = &mockFuncs<Z2, Y>::template stdcallexpectation16<X,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>;
-	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
-						funcIndex,
-						reinterpret_cast<void (base_mock::*)()>(mfp),X);
-	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> *call = new TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName ,fileName);
+		std::pair<int, int> funcIndex = virtual_index((Y(__stdcall Z2::*)(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P))func);
+		Y(__stdcall mockFuncs<Z2, Y>::*mfp)(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+		mfp = &mockFuncs<Z2, Y>::template stdcallexpectation16<X, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>;
+		BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+			funcIndex.first,
+			funcIndex.second,
+			reinterpret_cast<void (base_mock::*)()>(mfp), X);
+		TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P> *call = new TCall<Y, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(expect, reinterpret_cast<base_mock *>(mck), funcIndex, lineNo, funcName, fileName);
 	addCall( call, expect );
-	return *call;
+		return *call;
 }
 #endif
 
