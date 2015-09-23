@@ -97,6 +97,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
+    <PostBuildEvent>
+      <Command>$(TargetDir)$(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -133,6 +136,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <PostBuildEvent>
+      <Command>$(TargetDir)$(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -179,6 +185,7 @@
     <ClCompile Include="test_ref_args.cpp" />
     <ClCompile Include="test_regression_arg_count.cpp" />
     <ClCompile Include="test_retval.cpp" />
+    <ClCompile Include="test_com_support_stdcall.cpp" />
     <ClCompile Include="test_transaction.cpp" />
     <ClCompile Include="test_zombie.cpp" />
   </ItemGroup>
