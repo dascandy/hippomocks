@@ -18,5 +18,5 @@ addons:
       description: "HippoMocks, C++98 Mocking Framework"
     notification_email: dascandy@gmail.com
     build_command: make && make test
-    branch_pattern: coverity_scan
+    branch_pattern: master
 
