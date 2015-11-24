@@ -141,8 +141,6 @@ class X{};
 // No deprecated warnings on functions that really aren't deprecated at all.
 #pragma warning(disable: 4996)
 
-// Tell Microsoft to conform to C++ (as far as is possible...)
-#pragma pointers_to_members(full_generality, virtual_inheritance)
 #endif
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
@@ -1169,6 +1167,27 @@ public:
 };
 
 #ifdef _MSC_VER
+
+struct msc_mfp {
+	unsigned char *value;
+	unsigned long baseoffs;
+};
+
+// http://www.codeproject.com/Articles/7150/Member-Function-Pointers-and-the-Fastest-Possible
+// single inheritance (mfp size == ptr size) -> base offset = 0
+// multiple inheritance -> base offset in baseoffs
+// virtual inheritance -> TODO?
+// unknown inheritance -> TODO?
+template<int size>
+inline int get_base_offset(const msc_mfp& m) {
+	return (int)(m.baseoffs/sizeof(void*));
+}
+
+template<>
+inline int get_base_offset<sizeof(char*)>(const msc_mfp&) {
+	return 0;
+}
+
 template <int s>
 int virtual_function_index(unsigned char *func)
 {
@@ -1226,17 +1245,13 @@ std::pair<int, int> virtual_index(T t)
 #elif defined(_MSC_VER)
 	union {
 		T t;
-		struct
-		{
-			unsigned char *value;
-			unsigned long baseoffs;
-		} u;
+		msc_mfp u;
 	} conv;
 	conv.t = t;
 
-	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
+	int value = virtual_function_index<0>(conv.u.value);
 	if (value != -1)
-		return std::pair<int, int>((int)(conv.u.baseoffs/sizeof(void*)), value);
+		return std::pair<int, int>(get_base_offset<sizeof(T)>(conv.u), value);
 #elif defined(__EDG__)
 	union {
 		T t;
