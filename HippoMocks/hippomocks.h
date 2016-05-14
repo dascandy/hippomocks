@@ -87,7 +87,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 
 #if defined(_M_IX86) || defined(__i386__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL) ||  defined(__x86_64__) || defined(_M_X64)
 #define SOME_X86
-#elif defined(arm) || defined(__arm__) || defined(ARM) || defined(_ARM_)
+#elif defined(arm) || defined(__arm__) || defined(ARM) || defined(_ARM_) || defined(__aarch64__)
 #define SOME_ARM
 #endif
 
