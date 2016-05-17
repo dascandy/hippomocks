@@ -88,7 +88,9 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #if defined(_M_IX86) || defined(__i386__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL) ||  defined(__x86_64__) || defined(_M_X64)
 #define SOME_X86
 #elif defined(arm) || defined(__arm__) || defined(ARM) || defined(_ARM_) || defined(__aarch64__)
-#define SOME_ARM
+#define NOT_SOME_X86
+#elif defined(mips) || defined(__mips__)
+#define NOT_SOME_X86
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -103,7 +105,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #elif defined(__APPLE__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #endif
-#elif defined(SOME_ARM) && defined(__GNUC__)
+#elif defined(NOT_SOME_X86) && defined(__GNUC__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 
 // This clear-cache is *required*. The tests will fail if you remove it.
@@ -293,7 +295,7 @@ public:
 	  *(long long*)(horrible_cast<intptr_t>(origFunc) + 6) = (long long)(horrible_cast<intptr_t>(replacement));
 	}
 #endif
-#elif defined(SOME_ARM)
+#elif defined(NOT_SOME_X86)
 	unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
 	if ((intptr_t)origFunc & 1) {
 	  rawptr[0] = 0x6800A001;
@@ -311,7 +313,7 @@ public:
   {
 	Unprotect _allow_write(origFunc, sizeof(backupData));
 	memcpy(origFunc, backupData, sizeof(backupData));
-#ifdef SOME_ARM
+#ifdef NOT_SOME_X86
 	unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
 	__clear_cache((char *)rawptr, (char *)rawptr+16);
 #endif
@@ -1212,7 +1214,7 @@ std::pair<int, int> virtual_index(T t)
 		} u;
 	} conv;
 	conv.t = t;
-#if defined(SOME_ARM)
+#if defined(NOT_SOME_X86)
 	// ARM ABI says the bit is in bsaeoffs instead, and that the value is shiffted left 1.
 	// This because valid ARM pointers may have the LSB set, so the "is virtual" bit had to be moved.
 	if (conv.u.baseoffs & 1)
