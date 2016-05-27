@@ -6297,7 +6297,7 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 {
    if (repo.expectations.size())
 	{
-		os << "Expections set:" << std::endl;
+		os << "Expectations set:" << std::endl;
 		for (std::list<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
 			os << **exp;
 		os << std::endl;
