@@ -140,9 +140,6 @@ class X{};
 #pragma warning(disable: 4121)
 // No deprecated warnings on functions that really aren't deprecated at all.
 #pragma warning(disable: 4996)
-
-// Tell Microsoft to conform to C++ (as far as is possible...)
-#pragma pointers_to_members(full_generality, virtual_inheritance)
 #endif
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
@@ -1210,7 +1207,7 @@ std::pair<int, int> virtual_index(T t)
 			unsigned long value;
 			unsigned long baseoffs;
 		} u;
-	} conv;
+	} conv = {};
 	conv.t = t;
 #if defined(SOME_ARM)
 	// ARM ABI says the bit is in bsaeoffs instead, and that the value is shiffted left 1.
