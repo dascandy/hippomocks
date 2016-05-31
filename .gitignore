@@ -1,6 +1,12 @@
-*.d
-*.o
-*.exe
-
-*.user
+*~
 *.bak
+*.d
+*.exe
+*.o
+*.tmp
+*.user
+
+debian/*.debhelper.log
+debian/files
+debian/hippomocks*/*
+debian/*.substvars
