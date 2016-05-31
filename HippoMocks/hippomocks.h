@@ -770,6 +770,15 @@ public:
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 
+template <int X>
+class MockRepoInstanceHolder {
+public:
+	static MockRepository *instance;
+};
+
+template <int X>
+MockRepository *MockRepoInstanceHolder<X>::instance;
+
 class BaseException
 #ifndef HM_NO_EXCEPTIONS
 	: public BASE_EXCEPTION
@@ -1309,11 +1318,7 @@ class mock : public base_mock
 	friend class MockRepository;
 	unsigned char remaining[sizeof(T)];
 	void NotImplemented() {
-		mock<T> *realMock = getRealThis();
-		if (realMock->isZombie)
-			RAISEEXCEPTION(ZombieMockException(realMock->repo));
-		MockRepository *repository = realMock->repo;
-		RAISEEXCEPTION(:: HM_NS NotImplementedException(repository));
+		RAISEEXCEPTION(:: HM_NS NotImplementedException(MockRepoInstanceHolder<0>::instance));
 	}
 protected:
 	std::map<int, void (**)()> funcTables;
@@ -3136,15 +3141,6 @@ public:
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
 #endif
 };
-
-template <int X>
-class MockRepoInstanceHolder {
-public:
-	static MockRepository *instance;
-};
-
-template <int X>
-MockRepository *MockRepoInstanceHolder<X>::instance;
 
 inline
 bool satisfied( std::list<Call *> const& previousCalls )
