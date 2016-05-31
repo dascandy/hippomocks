@@ -17,6 +17,6 @@ addons:
       name: "dascandy/hippomocks"
       description: "HippoMocks, C++98 Mocking Framework"
     notification_email: dascandy@gmail.com
-    build_command: mkdir Build; cd Build; cmake -G "Unix Makefiles" ..; make -j8 && make test
+    build_command: make && make test
     branch_pattern: master
 
