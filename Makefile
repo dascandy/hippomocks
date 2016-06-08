@@ -1,9 +1,12 @@
-all:
-	$(MAKE) -C HippoMocksTest/ all
+#!/usr/bin/make -f
 
-clean:
-	$(MAKE) -C HippoMocksTest/ clean
+%:
+	$(MAKE) -C HippoMocksTest/ $@
 
 test:
 	$(MAKE) -C HippoMocksTest/ runtest
 
+
+install: HippoMocks/hippomocks.h
+	install -d ${DESTDIR}/usr/include/${<D}
+	install ${<} ${DESTDIR}/usr/include/${<}
