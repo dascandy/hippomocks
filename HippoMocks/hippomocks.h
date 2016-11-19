@@ -110,17 +110,6 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 extern "C" void __clear_cache(char *beg, char *end);
 #endif
 
-#if defined(__GNUC__) && !defined(__EXCEPTIONS)
-#define HM_NO_EXCEPTIONS
-class X{};
-#define BASE_EXCEPTION X
-#else
-#ifndef BASE_EXCEPTION
-#define BASE_EXCEPTION std::exception
-#include <exception>
-#endif
-#endif
-
 #include <cstdio>
 #include <list>
 #include <map>
@@ -146,44 +135,6 @@ class X{};
 #ifndef NO_HIPPOMOCKS_NAMESPACE
 namespace HippoMocks
 {
-#endif
-
-//Type-safe exception wrapping
-class ExceptionHolder
-{
-public:
-	virtual ~ExceptionHolder() {}
-	virtual void rethrow() = 0;
-	template <typename T>
-	static ExceptionHolder *Create(T ex);
-};
-
-template <class T>
-class ExceptionWrapper : public ExceptionHolder {
-	T exception;
-public:
-	ExceptionWrapper(T ex) : exception(ex) {}
-	void rethrow() { throw exception; }
-};
-
-template <typename T>
-ExceptionHolder *ExceptionHolder::Create(T ex)
-{
-	return new ExceptionWrapper<T>(ex);
-}
-
-#ifdef HM_NO_EXCEPTIONS
-#define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", err.c_str()); \
-	abort(); exit(-1); }
-#define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", err.c_str()); \
-	abort(); exit(-1); }
-#else
-#define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); throw e; }
-#define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(e); if (std::uncaught_exception()) \
-	MockRepoInstanceHolder<0>::instance->SetLatentException(ExceptionHolder::Create(e)); \
-	else throw e; }
 #endif
 
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
@@ -762,137 +713,7 @@ public:
 template <int X>
 MockRepository *MockRepoInstanceHolder<X>::instance;
 
-class BaseException
-#ifndef HM_NO_EXCEPTIONS
-	: public BASE_EXCEPTION
-#endif
-{
-public:
-	~BaseException() throw() {}
-	const char *what() const throw() { return txt.c_str(); }
-protected:
-	std::string txt;
-};
-
-// exception types
-class ExpectationException : public BaseException {
-public:
-	ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
-	{
-		std::stringstream text;
-		text << "Function ";
-		text << funcName;
-		if (tuple)
-			tuple->printTo(text);
-		else
-			text << "(...)";
-		text << " called with mismatching expectation!" << std::endl;
-		text << *repo;
-		txt = text.str();
-	}
-};
-
-#ifdef LINUX_TARGET
-#include <execinfo.h>
-#endif
-
-class NotImplementedException : public BaseException {
-public:
-	NotImplementedException(MockRepository *repo)
-	{
-		std::stringstream text;
-		text << "Function called without expectation!" << std::endl;
-		text << *repo;
-
-#ifdef LINUX_TARGET
-		void* stacktrace[256];
-		size_t size = backtrace( stacktrace, sizeof(stacktrace) );
-		if( size > 0 )
-		{
-			text << "Stackdump:" << std::endl;
-			char **symbols = backtrace_symbols( stacktrace, size );
-			for( size_t i = 0; i < size; i = i + 1 )
-			{
-				text << symbols[i] << std::endl;
-			}
-			free( symbols );
-		}
-#endif
-
-		txt = text.str();
-	}
-};
-
-class CallMissingException : public BaseException {
-public:
-	CallMissingException(MockRepository *repo)
-	{
-		std::stringstream text;
-		text << "Function with expectation not called!" << std::endl;
-		text << *repo;
-		txt = text.str();
-	}
-};
-
-class ZombieMockException : public BaseException {
-public:
-	ZombieMockException(MockRepository *repo)
-	{
-		std::stringstream text;
-		text << "Function called on mock that has already been destroyed!" << std::endl;
-		text << *repo;
-
-#ifdef LINUX_TARGET
-	void* stacktrace[256];
-	size_t size = backtrace( stacktrace, sizeof(stacktrace) );
-	if( size > 0 )
-	{
-	  text << "Stackdump:" << std::endl;
-	  char **symbols = backtrace_symbols( stacktrace, size );
-	  for( size_t i = 0; i < size; i = i + 1 )
-	  {
-		text << symbols[i] << std::endl;
-	  }
-	  free( symbols );
-	}
-#endif
-
-		txt = text.str();
-	}
-};
-
-class NoResultSetUpException : public BaseException {
-public:
-	NoResultSetUpException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
-	{
-		std::stringstream text;
-		text << "No result set up on call to ";
-		text << funcName;
-		if (tuple)
-			tuple->printTo(text);
-		else
-			text << "(...)";
-		text << std::endl;
-		text << *repo;
-
-#ifdef LINUX_TARGET
-	void* stacktrace[256];
-	size_t size = backtrace( stacktrace, sizeof(stacktrace) );
-	if( size > 0 )
-	{
-	  text << "Stackdump:" << std::endl;
-	  char **symbols = backtrace_symbols( stacktrace, size );
-	  for( size_t i = 0; i < size; i = i + 1 )
-	  {
-		text << symbols[i] << std::endl;
-	  }
-	  free( symbols );
-	}
-#endif
-
-		txt = text.str();
-	}
-};
+#include "detail/exceptions.h"
 
 // function-index-of-type
 class func_index {
