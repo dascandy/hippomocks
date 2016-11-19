@@ -130,6 +130,7 @@ class X{};
 #include <cstring>
 #include <algorithm>
 #include <limits>
+#include <functional>
 
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users.
@@ -215,12 +216,12 @@ public:
   : origFunc(location)
   , byteCount(byteCount)
   {
-	VirtualProtect(origFunc, byteCount, PAGE_EXECUTE_READWRITE, &oldprotect);
+    VirtualProtect(origFunc, byteCount, PAGE_EXECUTE_READWRITE, &oldprotect);
   }
   ~Unprotect()
   {
-	unsigned long dontcare;
-	VirtualProtect(origFunc, byteCount, oldprotect, &dontcare);
+    unsigned long dontcare;
+    VirtualProtect(origFunc, byteCount, oldprotect, &dontcare);
   }
 private:
   void *origFunc;
@@ -238,11 +239,11 @@ public:
   : origFunc((intptr_t)location & (~0xFFF))
   , byteCount(count + ((intptr_t)location - origFunc))
   {
-	mprotect((void *)origFunc, this->byteCount, PROT_READ|PROT_WRITE|PROT_EXEC);
+    mprotect((void *)origFunc, this->byteCount, PROT_READ|PROT_WRITE|PROT_EXEC);
   };
   ~Unprotect()
   {
-	mprotect((void *)origFunc, byteCount, PROT_READ|PROT_EXEC);
+    mprotect((void *)origFunc, byteCount, PROT_READ|PROT_EXEC);
   }
 private:
   intptr_t origFunc;
@@ -332,13 +333,9 @@ bool operator==( RegistrationType const& rhs, RegistrationType const& lhs )
    return rhs.minimum == lhs.minimum && rhs.maximum == lhs.maximum;
 }
 
-
 const RegistrationType Any = RegistrationType((std::numeric_limits<unsigned>::min)(), (std::numeric_limits<unsigned>::max)());
 const RegistrationType Never = RegistrationType((std::numeric_limits<unsigned>::min)(), (std::numeric_limits<unsigned>::min)());
 const RegistrationType Once = RegistrationType( 1, 1 );
-
-
-
 
 // base type
 class base_mock {
@@ -362,20 +359,6 @@ public:
 		*(void **)this = (*(void ***)this)[VIRT_FUNC_LIMIT+1];
 	}
 };
-
-template <typename T>
-class ByRef
-{
-public:
-  explicit ByRef(T &argument) : arg(argument) {}
-  void operator()() { arg(); }
-  T &arg;
-};
-
-template <typename T>
-ByRef<T> byRef(T &arg) {
-  return ByRef<T>(arg);
-}
 
 class NullType
 {
@@ -448,8 +431,8 @@ inline std::ostream &operator<<(std::ostream &os, DontCare const&)
 }
 
 template <typename T>
-inline std::ostream &operator<<(std::ostream &os, ByRef<T> &ref) {
-  os << "byRef(" << (T)ref << ")";
+inline std::ostream &operator<<(std::ostream &os, std::reference_wrapper<T> &ref) {
+  os << "ref(" << ref.get() << ")";
   return os;
 }
 
@@ -513,9 +496,9 @@ struct comparer
 		return true;
 	}
   template <typename U>
-  static inline bool compare(const ByRef<U> &a, typename with_const<T>::type b)
+  static inline bool compare(const std::reference_wrapper<U> &a, typename with_const<T>::type b)
   {
-	return &a.arg == &b;
+    return &a.get() == &b;
   }
 };
 
@@ -1641,23 +1624,23 @@ public:
 template <class T>
 class ReturnValueWrapper : public ReturnValueHolder {
 public:
-   virtual T value() = 0;
+  virtual T value() = 0;
 };
 
-template <class T>
-class ReturnValueWrapperCopy : public ReturnValueWrapper<T> {
+template <class Y, class RY>
+class ReturnValueWrapperCopy : public ReturnValueWrapper<Y> {
 public:
-	typename no_cref<T>::type rv;
-	ReturnValueWrapperCopy(T retValue) : rv(retValue) {}
-   virtual T value() { return rv; };
+	typename no_cref<Y>::type rv;
+	ReturnValueWrapperCopy(RY retValue) : rv(retValue) {}
+  virtual Y value() { return rv; };
 };
 
-template <class T>
-class ReturnValueWrapperRef : public ReturnValueWrapper<T> {
+template <class Y, class RY>
+class ReturnValueWrapperCopy<Y, std::reference_wrapper<RY>> : public ReturnValueWrapper<Y> {
 public:
-	T rv;
-	ReturnValueWrapperRef(T retValue) : rv(retValue) {}
-   virtual T value() { return rv; };
+	typename std::reference_wrapper<RY> rv;
+	ReturnValueWrapperCopy(std::reference_wrapper<RY> retValue) : rv(retValue) {}
+  virtual Y value() { return rv; };
 };
 
 //Call wrapping
@@ -1753,8 +1736,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1845,8 +1827,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -1937,8 +1918,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,N,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2029,8 +2009,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,M,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2119,8 +2098,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,L,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2207,8 +2185,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,K,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2295,8 +2272,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,J,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2383,8 +2359,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,I,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2469,8 +2444,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,H,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2553,8 +2527,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,G,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2637,8 +2610,7 @@ public:
 	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,F,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2721,8 +2693,7 @@ public:
 	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,E,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2803,8 +2774,7 @@ public:
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,D,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2883,8 +2853,7 @@ public:
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,C,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -2963,8 +2932,7 @@ public:
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,B,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -3043,8 +3011,7 @@ public:
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
 	template <typename T>
 	TCall<Y,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Match(T function) { matchFunctor = new DoWrapper<T,bool,A,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
@@ -3109,8 +3076,7 @@ public:
 	}
 	template <typename T>
 	TCall<Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType> &Do(T function) { functor = new DoWrapper<T,Y,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType,NullType>(function); return *this; }
-	Call &Return(Y obj) { retVal = new ReturnValueWrapperCopy<Y>(obj); return *this; }
-	Call &ReturnByRef(Y obj) { retVal = new ReturnValueWrapperRef<Y>(obj); return *this; }
+  template <typename RY> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
 	template <typename Ex>
 	Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }

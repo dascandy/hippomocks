@@ -1,5 +1,5 @@
 CXX?=g++
-STDVER?=c++98
+STDVER?=c++11
 WARNFLAGS = -Wall -Wextra -pedantic -Wno-long-long
 CXXOPTS = -I../HippoMocks/ $(WARNFLAGS) -g
 TARGET = $(PREFIX)test.exe 

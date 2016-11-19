@@ -2,8 +2,6 @@
 #include "Framework.h"
 #include <string>
 
-using HippoMocks::byRef;
-
 class IR {
 public:
 	virtual void func() = 0;
@@ -48,7 +46,7 @@ TEST (checkConstRefAbstractClassParam)
 	R r;
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
-	mocks.ExpectCall(iamock, IM::f).With(byRef(r));
+	mocks.ExpectCall(iamock, IM::f).With(std::ref(r));
 	iamock->f(r);
 }
 

@@ -2,8 +2,6 @@
 #include "hippomocks.h"
 #include "Framework.h"
 
-using HippoMocks::byRef;
-
 class IDoFunctor { 
 public:
 	virtual ~IDoFunctor() {}
@@ -65,8 +63,8 @@ TEST (checkFunctorObjectCalled)
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
 	functorClass obj;
-	mocks.ExpectCall(iamock, II::f).Do(byRef(obj));
-	mocks.OnCall(iamock, II::g).Do(byRef(obj));
+	mocks.ExpectCall(iamock, II::f).Do(std::ref(obj));
+	mocks.OnCall(iamock, II::g).Do(std::ref(obj));
 	CHECK(obj.calls == 0);
 	iamock->g();
 	CHECK(obj.calls == 1);

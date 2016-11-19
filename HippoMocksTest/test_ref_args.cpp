@@ -1,8 +1,6 @@
 #include "hippomocks.h"
 #include "Framework.h"
 
-using HippoMocks::byRef;
-
 class IRefArg {
 public:
 	virtual void test() = 0;
@@ -77,7 +75,7 @@ TEST (checkRefReturnValues)
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
 	int x = 0;
-	mocks.ExpectCall(iamock, IK::h).Return(x);
+	mocks.ExpectCall(iamock, IK::h).Return(std::ref(x));
 	mocks.ExpectCall(iamock, IK::k).Return("Hello World");
 	iamock->h() = 1;
 	EQUALS(iamock->k(), "Hello World");
@@ -95,7 +93,7 @@ TEST (checkRefArgCheckedAsReference)
 	IK *iamock = mocks.Mock<IK>();
 	IRefArg *refArg = mocks.Mock<IRefArg>();
 
-	mocks.ExpectCall(iamock, IK::l).With(byRef(*refArg));
+	mocks.ExpectCall(iamock, IK::l).With(std::ref(*refArg));
 	iamock->l(*refArg);
 }
 
@@ -123,7 +121,7 @@ TEST (checkRefReturnAsReference)
 
    IA * a = mocks.Mock<IA>();
 
-   mocks.OnCall(a, IA::getB).ReturnByRef(*b);
+   mocks.OnCall(a, IA::getB).Return(std::reference_wrapper<IB>(*b));
    mocks.ExpectCall(b, IB::doSomething);
 
    CHECK(b == &a->getB());
