@@ -95,6 +95,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #include <algorithm>
 #include <limits>
 #include <functional>
+#include <memory>
 
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users.
@@ -231,22 +232,6 @@ struct printArg<NullType>
   }
 };
 
-template <typename X>
-struct no_cref { typedef X type; };
-
-template <typename X>
-struct no_cref<const X &> { typedef X type; };
-
-template <typename A> struct with_const { typedef const A type; };
-template <typename A> struct with_const<A &> { typedef const A &type; };
-template <typename A> struct with_const<const A> { typedef const A type; };
-template <typename A> struct with_const<const A &> { typedef const A &type; };
-
-template <typename T> struct base_type { typedef T type; };
-template <typename T> struct base_type<T&> { typedef T type; };
-template <typename T> struct base_type<const T> { typedef T type; };
-template <typename T> struct base_type<const T&> { typedef T type; };
-
 template <typename T>
 static inline bool operator==(const DontCare&, const T&)
 {
@@ -254,7 +239,7 @@ static inline bool operator==(const DontCare&, const T&)
 }
 
 template <typename T, typename U>
-static inline bool operator==(const std::reference_wrapper<U> &a, typename with_const<T>::type b)
+static inline bool operator==(const std::reference_wrapper<U> &a, const T b)
 {
   return &a.get() == &b;
 }
@@ -401,6 +386,8 @@ public:
   virtual T value() = 0;
 };
 
+template <typename X> struct no_cref { typedef X type; };
+template <typename X> struct no_cref<const X &> { typedef X type; };
 template <class Y, class RY>
 class ReturnValueWrapperCopy : public ReturnValueWrapper<Y> {
 public:
@@ -421,7 +408,7 @@ template <typename T>
 class ReturnValueHandle {
 public:
   ReturnValueHandle() : wrapper(nullptr) {}
-  ~ReturnValueHandle() {}
+  ~ReturnValueHandle() { delete wrapper; }
   ReturnValueWrapper<T>* wrapper;
   void operator=(ReturnValueWrapper<T>* newValue) {
     delete wrapper;
@@ -605,7 +592,12 @@ public:
   , eHolder(0)
 #endif
   {}
-  ~TCall() { delete args; }
+  ~TCall() { 
+    delete args; 
+#ifndef HM_NO_EXCEPTIONS
+    delete eHolder;
+#endif
+  }
   // This function checks that, given this is a call for this function, whether this call struct matches your call input.
   bool matches(const std::tuple<Args...> &tupl) {
     return (!args || args->equals(tupl)) &&
@@ -671,12 +663,12 @@ private:
   std::vector<base_mock *> mocks;
   std::map<void (*)(), int> staticFuncMap;
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-  std::vector<Replace *> staticReplaces;
+  std::vector<Replace*> staticReplaces;
 #endif
 
-  std::vector<Call *> neverCalls;
-  std::vector<Call *> expectations;
-  std::vector<Call *> optionals;
+  std::vector<Call*> neverCalls;
+  std::vector<Call*> expectations;
+  std::vector<Call*> optionals;
 public:
   bool autoExpect;
 private:
@@ -691,8 +683,7 @@ private:
 
   void addCall( Call* call, RegistrationType expect )
   {
-     if( expect == Never ) {
-      addAutoExpectTo( call );
+    if( expect == Never ) {
       neverCalls.push_back(call);
     }
     else if( expect.minimum == expect.maximum )
@@ -703,7 +694,7 @@ private:
     else
     {
        optionals.push_back(call);
-     }
+    }
   }
 
 #ifndef HM_NO_EXCEPTIONS
