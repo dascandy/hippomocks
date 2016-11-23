@@ -1,13 +1,13 @@
 #include "Framework.h"
 
 template <>
-void check_equal(float a, float b, const char *sa, const char *sb) {
-    if (a != b) throw BaseException("%s(%f) != %s(%f)", sa, a, sb, b);
+void check_equal(float a, float b, const char *sa, const char *sb, const char* file, int line) {
+    if (a != b) throw BaseException("%s:%d: %s(%f) != %s(%f)", file, line, sa, a, sb, b);
 }
 
 template <>
-void check_equal<const char *, const char *>(const char *a, const char *b, const char *sa, const char *sb) {
-    if (strcmp(a, b) != 0) { throw BaseException("%s(%s) != %s(%s)", sa, a, sb, b); }
+void check_equal<const char *, const char *>(const char *a, const char *b, const char *sa, const char *sb, const char* file, int line) {
+    if (strcmp(a, b) != 0) { throw BaseException("%s:%d: %s(%s) != %s(%s)", file, line, sa, a, sb, b); }
 }
 
 bool TestRegistry::RunTests() {

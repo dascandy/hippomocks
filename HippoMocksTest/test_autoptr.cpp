@@ -40,7 +40,7 @@ TEST(checkCanDestroyMock)
 	delete iamock;
 }
 
-TEST(checkAutoptrStability)
+DISABLED_TEST(checkAutoptrStability)
 {
 	int exceptionsCaught = 0;
 	try

@@ -58,5 +58,5 @@ TEST (checkInParamsAreFilledIn_Char)
 	const char* in = "Hello World";
 	iamock->c(in);
 
-	CHECK(strcmp(teststring, in) == 0);
+	CHECK(teststring == in);
 }

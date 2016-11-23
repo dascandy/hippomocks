@@ -36,9 +36,6 @@ class X{};
 #define RAISEEXCEPTION(e) 			{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
 	printf("%s\n", err.c_str()); \
 	abort(); exit(-1); }
-#define RAISELATENTEXCEPTION(e) 	{ std::string err = e.what(); DEBUGBREAK(e); printf("Mock error found - Fatal due to no exception support:\n"); \
-	printf("%s\n", err.c_str()); \
-	abort(); exit(-1); }
 #else
 
 //Type-safe exception wrapping
@@ -66,9 +63,6 @@ ExceptionHolder *ExceptionHolder::Create(T ex)
 }
 
 #define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); throw e; }
-#define RAISELATENTEXCEPTION(e)		{ DEBUGBREAK(e); if (std::uncaught_exception()) \
-	MockRepoInstanceHolder<0>::instance->SetLatentException(ExceptionHolder::Create(e)); \
-	else throw e; }
 #endif
 
 class BaseException
@@ -83,18 +77,24 @@ protected:
 	std::string txt;
 };
 
+template <typename... Args>
+void printTuple(std::ostream& os, const std::tuple<Args...>& tuple) {
+  os << "(";
+  argumentPrinter<0, sizeof...(Args),std::tuple<Args...>>::Print(os, tuple);
+  os << ")";
+}
+
 // exception types
 class ExpectationException : public BaseException {
 public:
-	ExpectationException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
+  template <typename... Args>
+	ExpectationException(MockRepository *repo, const std::tuple<Args...> &args, const char *funcName)
 	{
 		std::stringstream text;
 		text << "Function ";
 		text << funcName;
-		if (tuple)
-			tuple->printTo(text);
-		else
-			text << "(...)";
+		printTuple(text, args);
+
 		text << " called with mismatching expectation!" << std::endl;
 		text << *repo;
 		txt = text.str();
@@ -172,15 +172,13 @@ public:
 
 class NoResultSetUpException : public BaseException {
 public:
-	NoResultSetUpException(MockRepository *repo, const base_tuple *tuple, const char *funcName)
+  template <typename... Args>
+	NoResultSetUpException(MockRepository *repo, const std::tuple<Args...> &args, const char *funcName)
 	{
 		std::stringstream text;
 		text << "No result set up on call to ";
 		text << funcName;
-		if (tuple)
-			tuple->printTo(text);
-		else
-			text << "(...)";
+    printTuple(text, args);
 		text << std::endl;
 		text << *repo;
 
