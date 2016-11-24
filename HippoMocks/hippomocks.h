@@ -284,7 +284,7 @@ protected:
   void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
 public:
   bool isZombie;
-  std::vector<TypeDestructable *> members;
+  std::vector<std::unique_ptr<TypeDestructable>> members;
   MockRepository *repo;
   std::map<std::pair<int, int>, int> funcMap;
   mock(MockRepository *repository)
@@ -308,8 +308,6 @@ public:
   }
   ~mock()
   {
-    for (auto i : members)
-      delete i;
     for (auto& p : funcTables)
       delete [] p.second;
   }
@@ -356,12 +354,9 @@ public:
 template <typename T>
 class ReturnValueHandle {
 public:
-  ReturnValueHandle() : wrapper(nullptr) {}
-  ~ReturnValueHandle() { delete wrapper; }
-  ReturnValueWrapper<T>* wrapper;
+  std::unique_ptr<ReturnValueWrapper<T>> wrapper;
   void operator=(ReturnValueWrapper<T>* newValue) {
-    delete wrapper;
-    wrapper = newValue;
+    wrapper.reset(newValue);
   }
   T value() {
     return wrapper->value();
@@ -521,11 +516,11 @@ template <typename Y, typename... Args>
 class TCall : public Call {
 protected:
   ReturnValueHandle<Y> retVal;
-  ComparableTupleBase<Args...> *args;
+  std::unique_ptr<ComparableTupleBase<Args...>> args;
   std::function<Y(Args...)> doFunctor;
   std::function<bool(Args...)> matchFunctor;
 #ifndef HM_NO_EXCEPTIONS
-  ExceptionHolder* eHolder;
+  std::unique_ptr<ExceptionHolder> eHolder;
 #endif
 public:
   void printArgs(std::ostream& os) const override {
@@ -536,16 +531,9 @@ public:
     else
       os << "(...)";
   }
-  TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file), args(0) 
-#ifndef HM_NO_EXCEPTIONS
-  , eHolder(0)
-#endif
+  TCall(RegistrationType expect, base_mock *baseMock, std::pair<int, int> index, int X, const char *func, const char *file) : Call(expect, baseMock, index, X, func ,file)
   {}
   ~TCall() { 
-    delete args; 
-#ifndef HM_NO_EXCEPTIONS
-    delete eHolder;
-#endif
   }
   // This function checks that, given this is a call for this function, whether this call struct matches your call input.
   bool matches(const std::tuple<Args...> &tupl) {
@@ -588,7 +576,7 @@ public:
   }
   template <typename... CArgs>
   TCall<Y,Args...> &With(CArgs... args) {
-    this->args = new ComparableTuple<std::tuple<Args...>, CArgs...>(args...);
+    this->args.reset(new ComparableTuple<std::tuple<Args...>, CArgs...>(args...));
     return *this;
   }
   TCall<Y,Args...> &After(Call &call) {
@@ -602,22 +590,22 @@ public:
   template <typename RY, typename OY = Y, typename = typename std::enable_if<!std::is_same<OY, void>::value, bool>::type> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
   template <typename Ex>
-  Call &Throw(Ex exception) { eHolder = new ExceptionWrapper<Ex>(exception); return *this; }
+  Call &Throw(Ex exception) { eHolder.reset(new ExceptionWrapper<Ex>(exception)); return *this; }
 #endif
 };
 
 class MockRepository {
 private:
   friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
-  std::vector<base_mock *> mocks;
+  std::vector<base_mock*> mocks;
   std::map<void (*)(), int> staticFuncMap;
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-  std::vector<Replace*> staticReplaces;
+  std::vector<std::unique_ptr<Replace>> staticReplaces;
 #endif
 
-  std::vector<Call*> neverCalls;
-  std::vector<Call*> expectations;
-  std::vector<Call*> optionals;
+  std::vector<std::unique_ptr<Call>> neverCalls;
+  std::vector<std::unique_ptr<Call>> expectations;
+  std::vector<std::unique_ptr<Call>> optionals;
 public:
   bool autoExpect;
 private:
@@ -626,23 +614,23 @@ private:
   {
     if (autoExpect && expectations.size() > 0)
     {
-      call->previousCalls.push_back(expectations.back());
+      call->previousCalls.push_back(expectations.back().get());
     }
   }
 
   void addCall( Call* call, RegistrationType expect )
   {
     if( expect == Never ) {
-      neverCalls.push_back(call);
+      neverCalls.emplace_back(call);
     }
     else if( expect.minimum == expect.maximum )
     {
        addAutoExpectTo( call );
-       expectations.push_back(call);
+       expectations.emplace_back(call);
     }
     else
     {
-       optionals.push_back(call);
+       optionals.emplace_back(call);
     }
   }
 
@@ -694,7 +682,7 @@ public:
     C A::*realMember = (C A::*)member;
     C *realRealMember = &(mck->*realMember);
     mock<A> *realMock = (mock<A> *)mck;
-    realMock->members.push_back(new MemberWrap<C>(realRealMember));
+    realMock->members.emplace_back(new MemberWrap<C>(realRealMember));
   }
   template <int X, typename Z2>
   TCall<void> &RegisterExpectDestructor(Z2 *mck, RegistrationType expect, const char *fileName, unsigned long lineNo);
@@ -749,7 +737,7 @@ public:
     if (staticFuncMap.find(func) == staticFuncMap.end())
     {
       staticFuncMap[func] = X;
-      staticReplaces.push_back(new Replace(func, fp));
+      staticReplaces.emplace_back(new Replace(func, fp));
     }
     return staticFuncMap[func];
   }
@@ -785,7 +773,7 @@ public:
     for (auto& c : reverse_order(neverCalls)) {
       if (!c->applies(mock, funcno)) continue;
 
-      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
+      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
       if (tc->matches(tuple)) {
         tc->handle(tuple);
         return;
@@ -794,7 +782,7 @@ public:
     for (auto& c : reverse_order(expectations)) {
       if (!c->applies(mock, funcno)) continue;
 
-      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
+      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
       if (!tc->isSatisfied() && tc->matches(tuple)) {
         tc->handle(tuple);
         return;
@@ -803,7 +791,7 @@ public:
     for (auto& c : reverse_order(optionals)) {
       if (!c->applies(mock, funcno)) continue;
 
-      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
+      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
       if (tc->matches(tuple)) {
         tc->handle(tuple);
         return;
@@ -835,8 +823,7 @@ public:
         for (auto& i : mocks)
           i->destroy();
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-        for (auto& i : staticReplaces)
-          delete i;
+        staticReplaces.clear();
 #endif
         throw;
       }
@@ -845,16 +832,9 @@ public:
     reset();
     for (auto& i : mocks) 
       i->destroy();
-#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-    for (auto& i : staticReplaces)
-      delete i;
-#endif
   }
   void reset()
   {
-    for (auto e : expectations) delete e;
-    for (auto n : neverCalls) delete n;
-    for (auto o : optionals) delete o;
     expectations.clear();
     neverCalls.clear();
     optionals.clear();
@@ -1086,7 +1066,7 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
   {
     if (!c->applies(mock, funcno)) continue;
 
-    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
+    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
     if (tc->matches(tuple)) {
       return tc->handle(tuple);
     }
@@ -1095,7 +1075,7 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
   {
     if (!c->applies(mock, funcno)) continue;
 
-    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
+    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
     if (!tc->isSatisfied() && tc->matches(tuple)) {
       return tc->handle(tuple);
     }
@@ -1104,7 +1084,7 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
   {
     if (!c->applies(mock, funcno)) continue;
 
-    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
+    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
     if (tc->matches(tuple)) {
       return tc->handle(tuple);
     }
