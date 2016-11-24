@@ -109,30 +109,29 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #endif
 
 #include "detail/replace.h"
-#include "detail/reverse.h"
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
 namespace HippoMocks {
 #endif
 
+#include "detail/reverse.h"
+
 class MockRepository;
 
-struct
-RegistrationType
+struct RegistrationType
 {
-   RegistrationType( unsigned min, unsigned max ) : minimum( min ), maximum( max ) {}
-   unsigned minimum;
-   unsigned maximum;
+   RegistrationType( unsigned int min, unsigned int max ) : minimum( min ), maximum( max ) {}
+   unsigned int minimum;
+   unsigned int maximum;
 };
 
-inline
-bool operator==( RegistrationType const& rhs, RegistrationType const& lhs )
+inline bool operator==( RegistrationType const& rhs, RegistrationType const& lhs )
 {
    return rhs.minimum == lhs.minimum && rhs.maximum == lhs.maximum;
 }
 
-const RegistrationType Any = RegistrationType( 1, (std::numeric_limits<unsigned>::max)());
-const RegistrationType Never = RegistrationType((std::numeric_limits<unsigned>::min)(), (std::numeric_limits<unsigned>::min)());
+const RegistrationType Any = RegistrationType( 1, (std::numeric_limits<unsigned int>::max)());
+const RegistrationType Never = RegistrationType((std::numeric_limits<unsigned int>::min)(), (std::numeric_limits<unsigned int>::min)());
 const RegistrationType Once = RegistrationType( 1, 1 );
 
 // base type
@@ -146,24 +145,9 @@ public:
     *(void **)this = newVf;
     return oldVf;
   }
-  void reset()
-  {
-    unwriteVft();
-    mock_reset();
-  }
-  virtual void mock_reset() = 0;
   void unwriteVft()
   {
     *(void **)this = (*(void ***)this)[VIRT_FUNC_LIMIT+1];
-  }
-};
-
-class NullType
-{
-public:
-  bool operator==(const NullType &) const
-  {
-    return true;
   }
 };
 
@@ -225,14 +209,6 @@ struct printArg
   }
 };
 
-template <>
-struct printArg<NullType>
-{
-  static void print(std::ostream &, NullType , bool)
-  {
-  }
-};
-
 template <typename T>
 static inline bool operator==(const DontCare&, const T&)
 {
@@ -244,21 +220,6 @@ static inline bool operator==(const std::reference_wrapper<U> &a, const T b)
 {
   return &a.get() == &b;
 }
-
-template <typename T> struct no_array { typedef T type; };
-template <typename T, int N> struct no_array<T[N]> { typedef T* type; };
-
-template <typename B>
-struct store_as
-{
-  typedef typename no_array<B>::type type;
-};
-
-template <typename B>
-struct store_as<B&>
-{
-  typedef typename no_array<B>::type type;
-};
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 
@@ -351,13 +312,6 @@ public:
       delete i;
     for (auto& p : funcTables)
       delete [] p.second;
-  }
-  void mock_reset()
-  {
-    MockRepository *repository = this->repo;
-    // ugly but simple
-    this->~mock<T>();
-    new (this) mock<T>(repository);
   }
   mock<T> *getRealThis()
   {
@@ -904,8 +858,6 @@ public:
     expectations.clear();
     neverCalls.clear();
     optionals.clear();
-    for (auto& i : mocks)
-      i->reset();
   }
   void VerifyAll()
   {
