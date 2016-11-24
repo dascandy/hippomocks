@@ -109,6 +109,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #endif
 
 #include "detail/replace.h"
+#include "detail/reverse.h"
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
 namespace HippoMocks {
@@ -346,14 +347,10 @@ public:
   }
   ~mock()
   {
-    for (std::vector<TypeDestructable *>::iterator i = members.begin(); i != members.end(); ++i)
-    {
-      delete *i;
-    }
-    for (std::map<int, void (**)()>::iterator i = funcTables.begin(); i != funcTables.end(); ++i)
-    {
-      delete [] i->second;
-    }
+    for (auto i : members)
+      delete i;
+    for (auto& p : funcTables)
+      delete [] p.second;
   }
   void mock_reset()
   {
@@ -369,10 +366,8 @@ public:
   }
   std::pair<int, int> translateX(int x)
   {
-    for (std::map<std::pair<int, int>, int>::iterator i = funcMap.begin(); i != funcMap.end(); ++i)
-    {
-      if (i->second == x+1) return i->first;
-    }
+    for (auto& f : funcMap)
+      if (f.second == x+1) return f.first;
     return std::pair<int, int>(-1, 0);
   }
   template <int X>
@@ -697,16 +692,7 @@ private:
     }
   }
 
-#ifndef HM_NO_EXCEPTIONS
-  ExceptionHolder *latentException;
-#endif
 public:
-#ifndef HM_NO_EXCEPTIONS
-  void SetLatentException(ExceptionHolder *holder)
-  {
-    latentException = holder;
-  }
-#endif
 #ifdef _MSC_VER
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Any, #func, __FILE__, __LINE__)
@@ -818,29 +804,22 @@ public:
 
   const char *funcName( base_mock *mock, std::pair<int, int> funcno )
   {
-    const char *name = NULL;
-    for (std::vector<Call *>::iterator i = expectations.begin(); i != expectations.end() && !name; ++i)
-    {
-     Call *call = *i;
-     if (call->mock == mock &&
-         call->funcIndex == funcno)
-     name = call->funcName;
-    }
-    for (std::vector<Call *>::iterator i = optionals.begin(); i != optionals.end() && !name; ++i)
-    {
-     Call *call = *i;
-     if (call->mock == mock &&
-         call->funcIndex == funcno)
-     name = call->funcName;
-    }
-    for (std::vector<Call *>::iterator i = neverCalls.begin(); i != neverCalls.end() && !name; ++i)
-    {
-     Call *call = *i;
-     if (call->mock == mock &&
-         call->funcIndex == funcno)
-         name = call->funcName;
-    }
-    return name;
+    for (auto& i : expectations) 
+      if (i->mock == mock &&
+          i->funcIndex == funcno)
+        return i->funcName;
+
+    for (auto& i : optionals) 
+      if (i->mock == mock &&
+          i->funcIndex == funcno)
+        return i->funcName;
+    
+    for (auto& i : neverCalls)
+      if (i->mock == mock &&
+          i->funcIndex == funcno)
+        return i->funcName;
+
+    return nullptr;
   }
 
   template <typename Y, typename... Args>
@@ -849,9 +828,7 @@ public:
   template <typename... Args>
   inline void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, std::tuple<Args...> &tuple)
   {
-    for (std::vector<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
-    {
-      Call* c = *i;
+    for (auto& c : reverse_order(neverCalls)) {
       if (!c->applies(mock, funcno)) continue;
 
       TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
@@ -860,9 +837,7 @@ public:
         return;
       }
     }
-    for (std::vector<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
-    {
-      Call* c = *i;
+    for (auto& c : reverse_order(expectations)) {
       if (!c->applies(mock, funcno)) continue;
 
       TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
@@ -871,9 +846,7 @@ public:
         return;
       }
     }
-    for (std::vector<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
-    {
-      Call* c = *i;
+    for (auto& c : reverse_order(optionals)) {
       if (!c->applies(mock, funcno)) continue;
 
       TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c);
@@ -887,9 +860,6 @@ public:
   }
   MockRepository()
     : autoExpect(DEFAULT_AUTOEXPECT)
-#ifndef HM_NO_EXCEPTIONS
-    , latentException(0)
-#endif
   {
     MockRepoInstanceHolder<0>::instance = this;
   }
@@ -907,44 +877,23 @@ public:
       }
       catch(...)
       {
-        delete latentException;
         reset();
-        for (std::vector<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
-        {
-          (*i)->destroy();
-        }
+        for (auto& i : mocks)
+          i->destroy();
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-        for (std::vector<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
-        {
-          delete *i;
-        }
+        for (auto& i : staticReplaces)
+          delete i;
 #endif
         throw;
       }
     }
-    if (latentException)
-    {
-      try
-      {
-        latentException->rethrow();
-      }
-      catch(BASE_EXCEPTION e)
-      {
-        printf("Latent exception masked!\nException:\n%s\n", e.what());
-      }
-      delete latentException;
-    }
 #endif
     reset();
-    for (std::vector<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
-    {
-      (*i)->destroy();
-    }
+    for (auto& i : mocks) 
+      i->destroy();
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-    for (std::vector<Replace *>::iterator i = staticReplaces.begin(); i != staticReplaces.end(); i++)
-    {
-      delete *i;
-    }
+    for (auto& i : staticReplaces)
+      delete i;
 #endif
   }
   void reset()
@@ -955,39 +904,24 @@ public:
     expectations.clear();
     neverCalls.clear();
     optionals.clear();
-    for (std::vector<base_mock *>::iterator i = mocks.begin(); i != mocks.end(); i++)
-    {
-      (*i)->reset();
-    }
+    for (auto& i : mocks)
+      i->reset();
   }
   void VerifyAll()
   {
-#ifndef HM_NO_EXCEPTIONS
-    if (latentException)
-      latentException->rethrow();
-#endif
-
-    for (std::vector<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
-    {
-      if (!(*i)->isSatisfied()) {
+    for (auto& i : expectations)
+      if (!i->isSatisfied()) {
         RAISEEXCEPTION(CallMissingException(this));
       }
-    }
   }
   void VerifyPartial(base_mock *obj)
   {
-#ifndef HM_NO_EXCEPTIONS
-    if (latentException)
-      return;
-#endif
-    for (std::vector<Call *>::iterator i = expectations.begin(); i != expectations.end(); i++)
-    {
-      if ((*i)->mock == (base_mock *)obj &&
-        !(*i)->isSatisfied() )
+    for (auto& i : expectations)
+      if (i->mock == (base_mock *)obj &&
+        !i->isSatisfied() )
       {
         RAISEEXCEPTION(CallMissingException(this));
       }
-    }
   }
   template <typename base>
   base *Mock();
@@ -1013,7 +947,7 @@ public:
   static Y static_expectation(Args... args)
   {
     std::tuple<Args...> argT(args...);
-    return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), argT);
+    return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(nullptr, std::pair<int, int>(0, X), argT);
   }
 #ifdef _MSC_VER
   template <int X, typename... Args>
@@ -1031,7 +965,7 @@ public:
   static Y __stdcall static_stdcallexpectation(Args... args)
   {
     std::tuple<Args...> argT(args...);
-    return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(NULL, std::pair<int, int>(0, X), argT);
+    return MockRepoInstanceHolder<0>::instance->template DoExpectation<Y>(nullptr, std::pair<int, int>(0, X), argT);
   }
 #endif
 #endif
@@ -1056,7 +990,7 @@ public:
   static void static_expectation(Args... args)
   {
     std::tuple<Args...> argT(args...);
-    MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), argT);
+    MockRepoInstanceHolder<0>::instance->DoVoidExpectation(nullptr, std::pair<int, int>(0, X), argT);
   }
 
 #ifdef _MSC_VER
@@ -1075,7 +1009,7 @@ public:
   static void __stdcall static_stdcallexpectation(Args... args)
   {
     std::tuple<Args...> argT(args...);
-    return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(NULL, std::pair<int, int>(0, X), argT);
+    return MockRepoInstanceHolder<0>::instance->DoVoidExpectation(nullptr, std::pair<int, int>(0, X), argT);
   }
 #endif
 #endif
@@ -1159,7 +1093,7 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Y (*func)(Args...), Registrati
   Y (*fp)(Args...);
   fp = &mockFuncs<char, Y>::template static_expectation<X,Args...>;
   int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
-  TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, nullptr, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
   addCall( call, expect );
   return *call;
 }
@@ -1171,7 +1105,7 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Y (__stdcall *func)(Args...), 
   Y (__stdcall *fp)(Args...);
   fp = &mockFuncs<char, Y>::template static_stdcallexpectation<X,Args...>;
   int index = BasicStaticRegisterExpect(reinterpret_cast<void (*)()>(func), reinterpret_cast<void (*)()>(fp),X);
-  TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, NULL, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
+  TCall<Y,Args...> *call = new TCall<Y,Args...>(expect, nullptr, std::pair<int, int>(0, index), lineNo, funcName ,fileName);
   addCall( call, expect );
   return *call;
 }
@@ -1196,9 +1130,8 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...)
 template <typename Y, typename... Args>
 Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std::tuple<Args...> &tuple)
 {
-  for (std::vector<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
+  for (auto& c : reverse_order(neverCalls))
   {
-    Call *c = *i;
     if (!c->applies(mock, funcno)) continue;
 
     TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
@@ -1206,9 +1139,8 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
       return tc->handle(tuple);
     }
   }
-  for (std::vector<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
+  for (auto& c : reverse_order(expectations))
   {
-    Call *c = *i;
     if (!c->applies(mock, funcno)) continue;
 
     TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
@@ -1216,9 +1148,8 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
       return tc->handle(tuple);
     }
   }
-  for (std::vector<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
+  for (auto& c : reverse_order(optionals))
   {
-    Call *c = *i;
     if (!c->applies(mock, funcno)) continue;
 
     TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c);
@@ -1266,24 +1197,24 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
   if (repo.expectations.size())
   {
     os << "Expectations set:" << std::endl;
-    for (std::vector<Call *>::const_iterator exp = repo.expectations.begin(); exp != repo.expectations.end(); ++exp)
-      os << **exp;
+    for (auto& exp : repo.expectations)
+      os << *exp;
     os << std::endl;
   }
 
   if (repo.neverCalls.size())
   {
     os << "Functions explicitly expected to not be called:" << std::endl;
-    for (std::vector<Call *>::const_iterator exp = repo.neverCalls.begin(); exp != repo.neverCalls.end(); ++exp)
-      os << **exp;
+    for (auto& nc : repo.neverCalls)
+      os << *nc;
     os << std::endl;
   }
 
   if (repo.optionals.size())
   {
     os << "Optional results set up:" << std::endl;
-    for (std::vector<Call *>::const_iterator exp = repo.optionals.begin(); exp != repo.optionals.end(); ++exp)
-      os << **exp;
+    for (auto& opt : repo.optionals)
+      os << *opt;
     os << std::endl;
   }
   return os;
@@ -1306,7 +1237,6 @@ using HippoMocks::In;
 #undef DEBUGBREAK
 #undef BASE_EXCEPTION
 #undef RAISEEXCEPTION
-#undef RAISELATENTEXCEPTION
 #undef DONTCARE_NAME
 #undef VIRT_FUNC_LIMIT
 #undef EXTRA_DESTRUCTOR
