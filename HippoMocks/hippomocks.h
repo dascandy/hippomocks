@@ -223,14 +223,18 @@ static inline bool operator==(const std::reference_wrapper<U> &a, const T b)
 
 inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
 
+class Reporter;
 template <int X>
 class MockRepoInstanceHolder {
 public:
   static MockRepository *instance;
+  static Reporter *reporter;
 };
 
 template <int X>
 MockRepository *MockRepoInstanceHolder<X>::instance;
+template <int X>
+Reporter *MockRepoInstanceHolder<X>::reporter;
 
 template <int index, int limit, typename Tuple>
 struct argumentPrinter {
@@ -244,8 +248,45 @@ template <int limit, typename Tuple>
 struct argumentPrinter<limit, limit, Tuple> {
   static void Print(std::ostream&, const Tuple&) {}
 };
+template <typename... Args>
+void printTuple(std::ostream& os, const std::tuple<Args...>& tuple) {
+  os << "(";
+  argumentPrinter<0, sizeof...(Args),std::tuple<Args...>>::Print(os, tuple);
+  os << ")";
+}
 
-#include "detail/exceptions.h"
+
+#if defined(__GNUC__) && !defined(__EXCEPTIONS)
+#define HM_NO_EXCEPTIONS
+#endif
+
+#ifndef HM_NO_EXCEPTIONS
+//Type-safe exception wrapping
+class ExceptionHolder
+{
+  public:
+    virtual ~ExceptionHolder() {}
+      virtual void rethrow() = 0;
+        template <typename T>
+          static ExceptionHolder *Create(T ex);
+};
+
+template <class T>
+class ExceptionWrapper : public ExceptionHolder {
+    T exception;
+    public:
+      ExceptionWrapper(T ex) : exception(ex) {}
+        void rethrow() { throw exception; }
+};
+
+template <typename T>
+ExceptionHolder *ExceptionHolder::Create(T ex)
+{
+    return new ExceptionWrapper<T>(ex);
+}
+#endif
+
+#include "detail/reporter.h"
 #include "detail/func_index.h"
 
 class TypeDestructable {
@@ -277,7 +318,7 @@ class mock : public base_mock
   friend class MockRepository;
   unsigned char remaining[sizeof(T)];
   void NotImplemented() {
-    RAISEEXCEPTION(:: HM_NS NotImplementedException(MockRepoInstanceHolder<0>::instance));
+    MockRepoInstanceHolder<0>::reporter->UnknownFunction(*MockRepoInstanceHolder<0>::instance);
   }
 protected:
   std::map<int, void (**)()> funcTables;
@@ -494,9 +535,7 @@ public:
   ~ComparableTuple() {
   }
   void print(std::ostream& os) const override {
-    os << "(";
-    argumentPrinter<0, sizeof...(CArgs),std::tuple<CArgs...>>::Print(os, *this);
-    os << ")";
+    printTuple(os, *this);
   }
   bool equals(const std::tuple<Args...>& rhs) override {
     // this effectively makes operator== virtual
@@ -545,7 +584,9 @@ public:
     // If we have too many calls, this is the first to handle.
     ++called;
     if (called > expectation.maximum) {
-      RAISEEXCEPTION(ExpectationException(MockRepoInstanceHolder<0>::instance, args, funcName));
+      std::stringstream argstr;
+      printTuple(argstr, args);
+      MockRepoInstanceHolder<0>::reporter->ExpectationExceeded(*this, *MockRepoInstanceHolder<0>::instance, argstr.str(), funcName);
       std::abort(); // There's no way to return a Y from here without knowing how to make one. Only way out is an exception, so if you don't have those...
     }
 
@@ -570,7 +611,9 @@ public:
 
     // If not, we have to have a return value to give back. Void is folded into this as always being set.
     if (!retVal.set()) {
-      RAISEEXCEPTION(NoResultSetUpException(MockRepoInstanceHolder<0>::instance, args, funcName));
+      std::stringstream argstr;
+      printTuple(argstr, args);
+      MockRepoInstanceHolder<0>::reporter->NoResultSetUp(*this, *MockRepoInstanceHolder<0>::instance, argstr.str(), funcName);
     }
     return retVal.value();
   }
@@ -598,15 +641,14 @@ class MockRepository {
 private:
   friend inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo);
   std::vector<base_mock*> mocks;
-  std::map<void (*)(), int> staticFuncMap;
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
   std::vector<std::unique_ptr<Replace>> staticReplaces;
 #endif
-
+  std::map<void (*)(), int> staticFuncMap;
+public:
   std::vector<std::unique_ptr<Call>> neverCalls;
   std::vector<std::unique_ptr<Call>> expectations;
   std::vector<std::unique_ptr<Call>> optionals;
-public:
   bool autoExpect;
 private:
 
@@ -743,7 +785,6 @@ public:
   }
 #endif
 
-
   const char *funcName( base_mock *mock, std::pair<int, int> funcno )
   {
     for (auto& i : expectations) 
@@ -797,13 +838,17 @@ public:
         return;
       }
     }
-
-    RAISEEXCEPTION(ExpectationException(MockRepoInstanceHolder<0>::instance, tuple, funcName(mock, funcno)));
+    std::stringstream args;
+    printTuple(args, tuple);
+    MockRepoInstanceHolder<0>::reporter->NoExpectationMatches(*this, args.str(), funcName(mock, funcno));
+    // If this did not throw an exception or somehow got me out of here, crash.
+    std::terminate();
   }
-  MockRepository()
+  MockRepository(Reporter* reporter = GetDefaultReporter())
     : autoExpect(DEFAULT_AUTOEXPECT)
   {
     MockRepoInstanceHolder<0>::instance = this;
+    MockRepoInstanceHolder<0>::reporter = reporter;
   }
   ~MockRepository() noexcept(false)
   {
@@ -843,7 +888,7 @@ public:
   {
     for (auto& i : expectations)
       if (!i->isSatisfied()) {
-        RAISEEXCEPTION(CallMissingException(this));
+        MockRepoInstanceHolder<0>::reporter->CallMissing(*i, *this);
       }
   }
   void VerifyPartial(base_mock *obj)
@@ -852,7 +897,7 @@ public:
       if (i->mock == (base_mock *)obj &&
         !i->isSatisfied() )
       {
-        RAISEEXCEPTION(CallMissingException(this));
+        MockRepoInstanceHolder<0>::reporter->CallMissing(*i, *this);
       }
   }
   template <typename base>
@@ -870,9 +915,12 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    if (realMock->isZombie)
-      RAISEEXCEPTION(ZombieMockException(realMock->repo));
     MockRepository *repo = realMock->repo;
+    if (realMock->isZombie) {
+      std::stringstream argstr;
+      printTuple(argstr, argT);
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+    }
     return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
   }
   template <int X, typename... Args>
@@ -887,9 +935,12 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    if (realMock->isZombie)
-      RAISEEXCEPTION(ZombieMockException(realMock->repo));
     MockRepository *repo = realMock->repo;
+    if (realMock->isZombie) {
+      std::stringstream argstr;
+      printTuple(argstr, argT);
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+    }
     return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
   }
 #if defined(_MSC_VER) && !defined(_WIN64)
@@ -913,9 +964,12 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    if (realMock->isZombie)
-      RAISEEXCEPTION(ZombieMockException(realMock->repo));
     MockRepository *repo = realMock->repo;
+    if (realMock->isZombie) {
+      std::stringstream argstr;
+      printTuple(argstr, argT);
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+    }
     repo->DoVoidExpectation(realMock, realMock->translateX(X), argT);
   }
   template <int X, typename... Args>
@@ -931,9 +985,12 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    if (realMock->isZombie)
-      RAISEEXCEPTION(ZombieMockException(realMock->repo));
     MockRepository *repo = realMock->repo;
+    if (realMock->isZombie) {
+      std::stringstream argstr;
+      printTuple(argstr, argT);
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+    }
     repo->DoVoidExpectation(this, mock<Z>::translateX(X), argT);
   }
 #if defined(_MSC_VER) && !defined(_WIN64)
@@ -960,8 +1017,8 @@ void mock<T>::mockedDestructor(int)
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
 {
-  if (funcIndex > VIRT_FUNC_LIMIT) RAISEEXCEPTION(NotImplementedException(this));
-  if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) RAISEEXCEPTION(NotImplementedException(this));
+  if (funcIndex > VIRT_FUNC_LIMIT) MockRepoInstanceHolder<0>::reporter->InvalidFuncIndex(funcIndex, *this);
+  if ((unsigned int)baseOffset * sizeof(void*) + sizeof(void*)-1 > sizeof(Z)) MockRepoInstanceHolder<0>::reporter->InvalidBaseOffset(baseOffset, *this);
   if (zMock->funcMap.find(std::make_pair(baseOffset, funcIndex)) == zMock->funcMap.end())
   {
     if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
@@ -1089,7 +1146,11 @@ Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std
       return tc->handle(tuple);
     }
   }
-  RAISEEXCEPTION(ExpectationException(MockRepoInstanceHolder<0>::instance, tuple, funcName(mock,funcno)));
+  std::stringstream args;
+  printTuple(args, tuple);
+  MockRepoInstanceHolder<0>::reporter->NoExpectationMatches(*this, args.str(), funcName(mock, funcno));
+  // If this did not throw an exception or somehow got me out of here, crash.
+  std::terminate();
 }
 
 template <typename base>
@@ -1099,62 +1160,11 @@ base *MockRepository::Mock() {
   return reinterpret_cast<base *>(m);
 }
 
-inline std::ostream &operator<<(std::ostream &os, const Call &call)
-{
-  os << call.fileName << "(" << call.lineno << ") ";
-  if (call.expectation == Once)
-    os << "Expectation for ";
-  else
-    os << "Result set for ";
-
-  os << call.funcName;
-
-  call.printArgs(os);
-
-  os << " on the mock at 0x" << call.mock << " was ";
-
-  if (!call.isSatisfied())
-    os << "not ";
-
-  if (call.expectation == Once)
-    os << "satisfied." << std::endl;
-  else
-    os << "used." << std::endl;
-
-  return os;
-}
-
-inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
-{
-  if (repo.expectations.size())
-  {
-    os << "Expectations set:" << std::endl;
-    for (auto& exp : repo.expectations)
-      os << *exp;
-    os << std::endl;
-  }
-
-  if (repo.neverCalls.size())
-  {
-    os << "Functions explicitly expected to not be called:" << std::endl;
-    for (auto& nc : repo.neverCalls)
-      os << *nc;
-    os << std::endl;
-  }
-
-  if (repo.optionals.size())
-  {
-    os << "Optional results set up:" << std::endl;
-    for (auto& opt : repo.optionals)
-      os << *opt;
-    os << std::endl;
-  }
-  return os;
-}
-
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+
+#include "detail/defaultreporter.h"
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
 }
