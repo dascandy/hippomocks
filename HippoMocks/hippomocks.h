@@ -335,7 +335,7 @@ class mock : public base_mock
     MockRepoInstanceHolder<0>::reporter->UnknownFunction(*MockRepoInstanceHolder<0>::instance);
   }
 #ifndef HM_NO_RTTI
-  RttiInfo* rttiinfo;
+  std::unique_ptr<RttiInfo> rttiinfo;
 #endif
 protected:
   std::map<int, void (**)()> funcTables;
@@ -358,8 +358,8 @@ public:
     ((void **)funcTable)[VIRT_FUNC_LIMIT] = this;
     ((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
 #ifndef HM_NO_RTTI
-    rttiinfo = new RttiInfo(typeid(*this), typeid(T));
-    ((void **)funcTable)[-1] = rttiinfo;
+    rttiinfo.reset(new RttiInfo(typeid(*this), typeid(T)));
+    ((void **)funcTable)[-1] = rttiinfo.get();
     ((void **)funcTable)[-2] = 0;
 #endif
     funcTables[0] = funcTable;
@@ -863,18 +863,17 @@ public:
     std::stringstream args;
     printTuple(args, tuple);
     MockRepoInstanceHolder<0>::reporter->NoExpectationMatches(*this, args.str(), funcName(mock, funcno));
-    // If this did not throw an exception or somehow got me out of here, crash.
-    std::terminate();
+    // We reported it, but we can return here since this is always a void expectation. 
   }
   MockRepository(Reporter* reporter = GetDefaultReporter())
     : autoExpect(DEFAULT_AUTOEXPECT)
   {
     MockRepoInstanceHolder<0>::instance = this;
     MockRepoInstanceHolder<0>::reporter = reporter;
+    reporter->TestStarted();
   }
   ~MockRepository() noexcept(false)
   {
-    MockRepoInstanceHolder<0>::instance = nullptr;
 #ifndef HM_NO_EXCEPTIONS
     if (!std::uncaught_exception())
     {
@@ -892,13 +891,25 @@ public:
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
         staticReplaces.clear();
 #endif
+        Reporter* reporter = MockRepoInstanceHolder<0>::reporter;
+        MockRepoInstanceHolder<0>::instance = nullptr;
+        MockRepoInstanceHolder<0>::reporter = nullptr;
+        reporter->TestFinished();
         throw;
       }
     }
 #endif
+
     reset();
     for (auto& i : mocks) 
       i->destroy();
+#ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
+    staticReplaces.clear();
+#endif
+    Reporter* reporter = MockRepoInstanceHolder<0>::reporter;
+    MockRepoInstanceHolder<0>::instance = nullptr;
+    MockRepoInstanceHolder<0>::reporter = nullptr;
+    reporter->TestFinished();
   }
   void reset()
   {
@@ -1049,7 +1060,7 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int fun
       funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+4]+2;
       memcpy(funcTable, zMock->notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
 #ifndef HM_NO_RTTI
-      ((void **)funcTable)[-1] = zMock->rttiinfo;
+      ((void **)funcTable)[-1] = zMock->rttiinfo.get();
       ((size_t *)funcTable)[-2] = baseOffset*sizeof(void*);
 #endif
       ((void **)funcTable)[VIRT_FUNC_LIMIT] = zMock;

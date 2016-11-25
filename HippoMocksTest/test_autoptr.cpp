@@ -40,7 +40,7 @@ TEST(checkCanDestroyMock)
 	delete iamock;
 }
 
-DISABLED_TEST(checkAutoptrStability)
+TEST(checkAutoptrStability)
 {
 	int exceptionsCaught = 0;
 	try
@@ -60,7 +60,7 @@ DISABLED_TEST(checkAutoptrStability)
 			exceptionsCaught++;
 		}
 	}
-	catch(HippoMocks::ExpectationException)
+	catch(HippoMocks::CallMissingException&)
 	{
 		exceptionsCaught++;
 	}

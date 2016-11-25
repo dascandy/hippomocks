@@ -25,9 +25,9 @@
 #ifdef _MSC_VER
 extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
 extern "C" __declspec(dllimport) void WINCALL DebugBreak();
-#define DEBUGBREAK(e) if (IsDebuggerPresent()) DebugBreak(); else (void)0
+#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
-#define DEBUGBREAK(e)
+#define DEBUGBREAK()
 #endif
 #endif
 
@@ -93,7 +93,7 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 #ifndef BASE_EXCEPTION
 #define BASE_EXCEPTION std::exception
 #endif
-#define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); throw e; }
+#define RAISEEXCEPTION(e)			{ DEBUGBREAK(); if (std::uncaught_exception()) latentException = [=, &repo]{ throw e; }; else throw e; }
 
 class BaseException
 	: public BASE_EXCEPTION
@@ -105,10 +105,8 @@ protected:
 	std::string txt;
 };
 
-// exception types
 class ExpectationException : public BaseException {
 public:
-  template <typename... Args>
 	ExpectationException(MockRepository &repo, const std::string &args, const char *funcName)
 	{
 		std::stringstream text;
@@ -189,7 +187,6 @@ public:
 
 class NoResultSetUpException : public BaseException {
 public:
-  template <typename... Args>
 	NoResultSetUpException(MockRepository &repo, const std::string& args, const char *funcName)
 	{
 		std::stringstream text;
@@ -216,6 +213,8 @@ public:
 
 inline Reporter* GetDefaultReporter() {
   static struct DefaultReporter : Reporter {
+    DefaultReporter() : latentException([]{}) {}
+    std::function<void()> latentException;
     void CallMissing(Call& call, MockRepository& repo) override {
       (void)call;
       RAISEEXCEPTION(CallMissingException(repo));
@@ -231,12 +230,12 @@ inline Reporter* GetDefaultReporter() {
     void InvalidBaseOffset(size_t baseOffset, MockRepository& repo) override {
       (void)baseOffset;
       (void)repo;
-      RAISEEXCEPTION(std::runtime_error("Invalid base offset found creating expectation"));
+      std::terminate();
     }
     void InvalidFuncIndex(size_t funcIndex, MockRepository& repo) override {
       (void)funcIndex;
       (void)repo;
-      RAISEEXCEPTION(std::runtime_error("Invalid function index found creating expectation"));
+      std::terminate();
     }
     void NoExpectationMatches(MockRepository& repo, const std::string& args, const char* funcName) override {
       RAISEEXCEPTION(ExpectationException(repo, args, funcName));
@@ -247,6 +246,14 @@ inline Reporter* GetDefaultReporter() {
     }
     void UnknownFunction(MockRepository& repo) override {
       RAISEEXCEPTION(NotImplementedException(repo));
+    }
+    void TestStarted() override {
+      latentException = []{};
+    }
+    void TestFinished() override {
+      if (!std::uncaught_exception() && latentException) {
+        latentException();
+      }
     }
   } defaultReporter;
   return &defaultReporter;

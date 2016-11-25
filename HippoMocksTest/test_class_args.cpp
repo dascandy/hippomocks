@@ -6,7 +6,7 @@
 class IC {
 public:
 	virtual ~IC() {}
-	virtual void f(std::string s) {}
+	virtual void f(std::string ) {}
 	virtual void g(std::string s) = 0;
 };
 

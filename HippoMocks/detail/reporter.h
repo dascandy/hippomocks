@@ -32,6 +32,8 @@ struct Reporter {
   virtual void NoExpectationMatches(MockRepository& repo, const std::string& args, const char* funcName) = 0;
   virtual void NoResultSetUp(Call& call, MockRepository& repo, const std::string& args, const char* funcName) = 0;
   virtual void UnknownFunction(MockRepository& repo) = 0;
+  virtual void TestStarted() = 0;
+  virtual void TestFinished() = 0;
 };
 
 Reporter* GetDefaultReporter();
