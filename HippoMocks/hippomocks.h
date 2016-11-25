@@ -264,19 +264,26 @@ void printTuple(std::ostream& os, const std::tuple<Args...>& tuple) {
 //Type-safe exception wrapping
 class ExceptionHolder
 {
-  public:
-    virtual ~ExceptionHolder() {}
-      virtual void rethrow() = 0;
-        template <typename T>
-          static ExceptionHolder *Create(T ex);
+public:
+  virtual ~ExceptionHolder() {}
+  virtual void rethrow() = 0;
+  template <typename T>
+  static ExceptionHolder *Create(T ex);
 };
 
 template <class T>
 class ExceptionWrapper : public ExceptionHolder {
-    T exception;
-    public:
-      ExceptionWrapper(T ex) : exception(ex) {}
-        void rethrow() { throw exception; }
+  T exception;
+public:
+  ExceptionWrapper(T ex) : exception(ex) {}
+  void rethrow() { throw exception; }
+};
+
+class ExceptionFunctor : public ExceptionHolder {
+public:
+  std::function<void()> func;
+  ExceptionFunctor(std::function<void()> func) : func(func) {}
+  void rethrow() { func(); }
 };
 
 template <typename T>
@@ -655,7 +662,9 @@ public:
   template <typename RY, typename OY = Y, typename = typename std::enable_if<!std::is_same<OY, void>::value, bool>::type> Call &Return(RY obj) { retVal = new ReturnValueWrapperCopy<Y, RY>(obj); return *this; }
 #ifndef HM_NO_EXCEPTIONS
   template <typename Ex>
-  Call &Throw(Ex exception) { eHolder.reset(new ExceptionWrapper<Ex>(exception)); return *this; }
+  Call& Throw(Ex exception) { eHolder.reset(new ExceptionWrapper<Ex>(exception)); return *this; }
+  template <typename F>
+  Call& ThrowFunc(F functor) { eHolder.reset(new ExceptionFunctor(functor)); return *this; }
 #endif
 };
 

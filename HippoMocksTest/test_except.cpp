@@ -36,6 +36,25 @@ public:
 	const char *what() const throw() { return text; }
 };
 
+TEST (checkThrowFuncWorks)
+{
+	const char *sText = "someText";
+	MockRepository mocks;
+	IE *iamock = mocks.Mock<IE>();
+	mocks.ExpectCall(iamock, IE::f).ThrowFunc([&]{ throw SomeException(sText); });
+	bool exceptionCaught = false;
+	try 
+	{
+		iamock->f();
+	}
+	catch(SomeException &a)
+	{
+		CHECK(a.what() == sText);
+		exceptionCaught = true;
+	}
+	CHECK(exceptionCaught);
+}
+
 TEST (checkClassTypeExceptionWithContent)
 {
 	const char *sText = "someText";
