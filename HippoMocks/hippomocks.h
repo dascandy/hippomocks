@@ -310,6 +310,20 @@ public:
   }
 };
 
+#ifndef HM_NO_RTTI
+struct RttiInfo {
+  void* baseRttiInfoType;
+  const char* typeName;
+  const std::type_info* baseClassName;
+  RttiInfo(const std::type_info &base, const std::type_info &actualType) {
+    RttiInfo* baseR = (RttiInfo*)&base;
+    baseRttiInfoType = baseR->baseRttiInfoType; // Single-inheritance
+    typeName = baseR->typeName;                 // Mock<T> class
+    baseClassName = &actualType;                // that now inherits from actualType.
+  }
+};
+#endif
+
 // mock types
 template <class T>
 class mock : public base_mock
@@ -320,6 +334,9 @@ class mock : public base_mock
   void NotImplemented() {
     MockRepoInstanceHolder<0>::reporter->UnknownFunction(*MockRepoInstanceHolder<0>::instance);
   }
+#ifndef HM_NO_RTTI
+  RttiInfo* rttiinfo;
+#endif
 protected:
   std::map<int, void (**)()> funcTables;
   void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
@@ -336,10 +353,15 @@ public:
     {
       notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
     }
-    funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+2];
+    funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+4] + 2;
     memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
     ((void **)funcTable)[VIRT_FUNC_LIMIT] = this;
     ((void **)funcTable)[VIRT_FUNC_LIMIT+1] = *(void **)this;
+#ifndef HM_NO_RTTI
+    rttiinfo = new RttiInfo(typeid(*this), typeid(T));
+    ((void **)funcTable)[-1] = rttiinfo;
+    ((void **)funcTable)[-2] = 0;
+#endif
     funcTables[0] = funcTable;
     *(void **)this = funcTable;
     for (unsigned int i = 1; i < sizeof(remaining) / sizeof(funcptr); i++)
@@ -350,7 +372,7 @@ public:
   ~mock()
   {
     for (auto& p : funcTables)
-      delete [] p.second;
+      delete [] (p.second-2);
   }
   mock<T> *getRealThis()
   {
@@ -1024,8 +1046,12 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int fun
     if (zMock->funcTables.find(baseOffset) == zMock->funcTables.end())
     {
       typedef void (*funcptr)();
-      funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+1];
+      funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+4]+2;
       memcpy(funcTable, zMock->notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
+#ifndef HM_NO_RTTI
+      ((void **)funcTable)[-1] = zMock->rttiinfo;
+      ((size_t *)funcTable)[-2] = baseOffset*sizeof(void*);
+#endif
       ((void **)funcTable)[VIRT_FUNC_LIMIT] = zMock;
       zMock->funcTables[baseOffset] = funcTable;
       ((void **)zMock)[baseOffset] = funcTable;

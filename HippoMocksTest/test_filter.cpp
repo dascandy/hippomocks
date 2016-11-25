@@ -3,7 +3,7 @@
 
 class IAA { 
 public:
-	virtual int f(int a, int b, int c);
+	virtual int f(int a, int b, int c) { (void)a; (void)b; (void)c; return 0; }
 };
 
 bool allEven(int a, int b, int c) { return (a % 2 == 0) && (b % 2 == 0) && (c % 2 == 0); }

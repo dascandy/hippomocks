@@ -4,9 +4,11 @@
 class IArrayArgs {
 public:
 	virtual ~IArrayArgs() {}
-	virtual void f(std::string);
+	virtual void f(std::string) {}
 	virtual void g(std::wstring) = 0;
 };
+
+//void IArrayArgs::g(std::wstring) {}
 
 TEST (checkArrayArgumentsAccepted)
 {

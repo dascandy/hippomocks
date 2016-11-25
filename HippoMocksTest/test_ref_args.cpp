@@ -9,7 +9,7 @@ public:
 class IK {
 public:
 	virtual ~IK() {}
-	virtual void f(int &);
+	virtual void f(int &) {}
 	virtual void g(int &) = 0;
 	virtual int &h() = 0;
 	virtual const std::string &k() = 0;

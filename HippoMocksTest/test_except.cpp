@@ -6,7 +6,7 @@
 class IE {
 public:
 	virtual ~IE() {}
-	virtual int f();
+	virtual int f() { return 0; }
 	virtual std::string g() = 0;
 };
 

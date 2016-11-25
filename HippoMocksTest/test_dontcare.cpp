@@ -8,7 +8,7 @@ public:
 
 class IY {
 public:
-	virtual bool test(int a, IZ &b);
+	virtual bool test(int a, IZ &b) { (void)a; (void)b; return false; }
 };
 
 bool operator==(const IZ &, const IZ &)

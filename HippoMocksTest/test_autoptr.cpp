@@ -8,9 +8,9 @@ class X {};
 class IQ {
 public:
 	virtual ~IQ() {}
-	virtual void f();
-	virtual auto_ptr<X> g();
-	virtual auto_ptr<IQ> getSelf();
+	virtual void f() {}
+	virtual auto_ptr<X> g() { return auto_ptr<X>(new X()); }
+	virtual auto_ptr<IQ> getSelf() { return auto_ptr<IQ>(this); }
 };
 
 TEST (checkAutoptrReturnable)
