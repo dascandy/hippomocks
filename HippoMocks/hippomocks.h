@@ -717,13 +717,13 @@ public:
   // COM only support - you can duplicate this for cdecl and fastcall if you want to, but those are not as common as COM.
   template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (__stdcall Z::* func)(Args...), RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo);
-  template <int X, typename Z2, typename Y, typename Z>
+  template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(Args...) volatile, RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo) 
-  { return RegisterExpect_<X>(mck, (Y(__stdcall Z::*)(Args....))(func), expect, functionName ,fileName, lineNo); }
-  template <int X, typename Z2, typename Y, typename Z>
+  { return RegisterExpect_<X>(mck, (Y(__stdcall Z::*)(Args...))(func), expect, functionName ,fileName, lineNo); }
+  template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(Args...) const volatile, RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo) 
   { return RegisterExpect_<X>(mck, (Y(__stdcall Z::*)(Args...))(func), expect, functionName ,fileName, lineNo); }
-  template <int X, typename Z2, typename Y, typename Z>
+  template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (__stdcall Z::*func)(Args...) const, RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo) 
   { return RegisterExpect_<X>(mck, (Y(__stdcall Z::*)(Args...))(func), expect, functionName ,fileName, lineNo); }
 #endif

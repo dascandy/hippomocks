@@ -347,7 +347,7 @@ std::pair<int, int> virtual_index(T t)
 			unsigned char *value;
 			unsigned long baseoffs;
 		} u;
-	} conv;
+	} conv = {};
 	conv.t = t;
 
 	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
