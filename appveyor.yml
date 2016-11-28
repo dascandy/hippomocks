@@ -6,9 +6,23 @@ build_script:
   - cd C:\dev\hippomocks 
   - md build
   - cd build
-  - cmake -G"Visual Studio 14" ..
-  - msbuild /m /p:Configuration=Debug /p:Platform="Win32" hippomocks.sln
+  - cmake -G"Visual Studio %vs_version%" ..
+  - msbuild /m /p:Configuration=Debug hippomocks.sln
 
 test_script:
   - cmd: ctest -C Debug -VV
  
+matrix:
+- vs_version: 12
+- vs_version: 14
+- vs_version: 15
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Debug
+
+matrix:
+  fast_finish: true
