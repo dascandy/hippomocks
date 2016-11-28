@@ -24,6 +24,7 @@
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4510) // MSVC 2013 says: Cannot generate default constructor. This is fine, as we won't use it.
+#pragma warning(disable: 4512) // MSVC 2013 says: Cannot generate assignment operator. This is fine, as we won't use it.
 #pragma warning(disable: 4610) // MSVC 2013 says: Cannot create object. It's wrong.
 #endif
 template <typename T>

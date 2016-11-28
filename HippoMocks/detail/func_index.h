@@ -387,6 +387,10 @@ T getNonvirtualMemberFunctionAddress(U u)
 	  U u;
 	} conv;
 #else
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4121)  // MSVC 2013/2015/2017 think this union has a misaligned member.
+#endif
 	// Visual Studio, GCC, others
 	union {
 	  struct {
@@ -394,6 +398,9 @@ T getNonvirtualMemberFunctionAddress(U u)
 		} mfp_structure;
 		U u;
 	} conv;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 #endif
 	conv.u = u;
 	return conv.mfp_structure.t;

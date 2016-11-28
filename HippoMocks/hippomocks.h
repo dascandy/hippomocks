@@ -97,17 +97,6 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #include <functional>
 #include <memory>
 
-#ifdef _MSC_VER
-// these warnings are pointless and huge, and will confuse new users.
-#pragma warning(push)
-// If you can't generate an assignment operator the least you can do is shut up.
-#pragma warning(disable: 4512)
-// Alignment not right in a union?
-#pragma warning(disable: 4121)
-// No deprecated warnings on functions that really aren't deprecated at all.
-#pragma warning(disable: 4996)
-#endif
-
 #include "detail/replace.h"
 
 #ifndef NO_HIPPOMOCKS_NAMESPACE
@@ -506,21 +495,21 @@ namespace detail
 		}
 	};
 
-	template <typename F, typename Tuple, int Total, int... N>
-	struct call_impl<F, Tuple, true, Total, N...>
-	{
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4100) // False positive on "args" not being used.
 #endif
+	template <typename F, typename Tuple, int Total, int... N>
+	struct call_impl<F, Tuple, true, Total, N...>
+	{
 		static typename F::result_type call(F f, Tuple && t)
 		{
 			return f(std::get<N>(std::forward<Tuple>(t))...);
 		}
+	};
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-	};
 }
 
 template <typename F, typename Tuple>
@@ -1241,10 +1230,6 @@ base *MockRepository::Mock() {
   mocks.push_back(m);
   return reinterpret_cast<base *>(m);
 }
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 #include "detail/defaultreporter.h"
 

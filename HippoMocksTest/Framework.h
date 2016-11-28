@@ -14,7 +14,11 @@ public:
     va_list l;
     static char buffer[4096];
     va_start(l, fmt);
-    vsnprintf(buffer, 4096, fmt.c_str(), l);
+#ifdef _MSC_VER
+	vsnprintf_s(buffer, 4096, fmt.c_str(), l);
+#else
+	vsnprintf(buffer, 4096, fmt.c_str(), l);
+#endif
     va_end(l);
     error = buffer;
   }
