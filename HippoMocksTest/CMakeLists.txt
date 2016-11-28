@@ -41,7 +41,7 @@ target_link_libraries(HippoMocksTest64
 	PRIVATE 
 		HippoMocks
 )
-add_test(test HippoMocksTest64)
+add_test(HippoMocks64 HippoMocksTest64)
 
 if (NOT WIN32)
   add_executable(HippoMocksTest32
@@ -52,5 +52,5 @@ if (NOT WIN32)
       HippoMocks
   )
   set_target_properties(HippoMocksTest32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-  add_test(test HippoMocksTest32)
+  add_test(HippoMocks32 HippoMocksTest32)
 endif()
