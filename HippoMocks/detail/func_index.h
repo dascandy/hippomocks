@@ -329,7 +329,7 @@ std::pair<int, int> virtual_index(T t)
 	} conv = {};
 	conv.t = t;
 #if defined(SOME_ARM)
-	// ARM ABI says the bit is in bsaeoffs instead, and that the value is shiffted left 1.
+	// ARM ABI says the bit is in baseoffs instead, and that the value is shifted left 1.
 	// This because valid ARM pointers may have the LSB set, so the "is virtual" bit had to be moved.
 	if (conv.u.baseoffs & 1)
 		return std::pair<int, int>(conv.u.baseoffs / (sizeof(void*) * 2), conv.u.value / sizeof(void *));
