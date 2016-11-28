@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-add_executable(HippoMocksTest
+set(SOURCES
 	Framework.cpp
 	is_virtual.cpp
 	main.cpp
@@ -33,8 +33,24 @@ add_executable(HippoMocksTest
 	test_transaction.cpp
 	test_zombie.cpp
 )
-target_link_libraries(HippoMocksTest
+
+add_executable(HippoMocksTest64
+  ${SOURCES}
+)
+target_link_libraries(HippoMocksTest64
 	PRIVATE 
 		HippoMocks
 )
-add_test(test HippoMocksTest)
+add_test(test HippoMocksTest64)
+
+if (NOT WIN32)
+  add_executable(HippoMocksTest32
+    ${SOURCES}
+  )
+  target_link_libraries(HippoMocksTest32
+    PRIVATE 
+      HippoMocks
+  )
+  set_target_properties(HippoMocksTest32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+  add_test(test HippoMocksTest32)
+endif()
