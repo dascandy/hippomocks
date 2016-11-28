@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(HippoMocksTests CXX)
-
-add_executable(${PROJECT_NAME}
+add_executable(HippoMocksTest
 	Framework.cpp
 	is_virtual.cpp
 	main.cpp
@@ -35,8 +33,8 @@ add_executable(${PROJECT_NAME}
 	test_transaction.cpp
 	test_zombie.cpp
 )
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(HippoMocksTest
 	PRIVATE 
 		HippoMocks
 )
-add_test(test ${PROJECT_NAME})
+add_test(test HippoMocksTest)
