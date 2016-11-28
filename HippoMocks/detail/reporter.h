@@ -23,7 +23,8 @@
 
 class Call;
 
-struct Reporter {
+class Reporter {
+public:
   virtual void CallMissing(Call& call, MockRepository& repo) = 0;
   virtual void ExpectationExceeded(Call& call, MockRepository& repo, const std::string& args, const char* funcName) = 0;
   virtual void FunctionCallToZombie(MockRepository& repo, const std::string& args) = 0;

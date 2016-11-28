@@ -3,7 +3,7 @@
 
 #ifdef _MSC_VER
 
-#include <ComSupport.h>
+#include <comsupport.h>
 #include <atlbase.h>
 #include <atlcom.h>
 

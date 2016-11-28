@@ -239,8 +239,15 @@ Reporter *MockRepoInstanceHolder<X>::reporter;
 template <int index, int limit, typename Tuple>
 struct argumentPrinter {
   static void Print(std::ostream& os, const Tuple& t) {
-    if (index != 0) os << ",";
-    os << std::get<index>(t);
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4127)
+#endif
+	if (index != 0) os << ",";
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+	os << std::get<index>(t);
     argumentPrinter<index+1, limit, Tuple>::Print(os, t);
   }
 };
@@ -488,20 +495,39 @@ protected:
 
 std::ostream &operator<<(std::ostream &os, const Call &call);
 
-template <int...> struct seq {};
-template <int N, int... Ns> struct gen : gen<N-1, N-1, Ns...> {};
-template <int... Ns> struct gen<0, Ns...> {
-  typedef seq<Ns...> type;
-};
+namespace detail
+{
+	template <typename F, typename Tuple, bool Done, int Total, int... N>
+	struct call_impl
+	{
+		static typename F::result_type call(F f, Tuple && t)
+		{
+			return call_impl<F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call(f, std::forward<Tuple>(t));
+		}
+	};
 
-template <typename Y, typename... Args, int... Nums>
-Y _invoke(const std::function<Y(Args...)> &func, seq<Nums...>, const std::tuple<Args...>& args) {
-  return func(std::get<Nums>(args)...);
+	template <typename F, typename Tuple, int Total, int... N>
+	struct call_impl<F, Tuple, true, Total, N...>
+	{
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4100) // False positive on "args" not being used.
+#endif
+		static typename F::result_type call(F f, Tuple && t)
+		{
+			return f(std::get<N>(std::forward<Tuple>(t))...);
+		}
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+	};
 }
 
-template <typename Y, typename... Args>
-Y invoke(const std::function<Y(Args...)> &func, const std::tuple<Args...>& args) {
-  return _invoke<Y, Args...>(func, typename gen<sizeof...(Args)>::type(), args);
+template <typename F, typename Tuple>
+typename F::result_type invoke(F f, Tuple && t)
+{
+	typedef typename std::decay<Tuple>::type ttype;
+	return detail::call_impl<F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
 }
 
 template <typename A, typename B>
@@ -592,8 +618,15 @@ protected:
 #endif
 public:
   void printArgs(std::ostream& os) const override {
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4127)
+#endif
     if (sizeof...(Args) == 0)
-      os << "()";
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+		os << "()";
     else if (args)
       args->print(os);
     else
@@ -609,27 +642,27 @@ public:
            (!matchFunctor || invoke(matchFunctor, tupl));
   }
   // This function handles your call. You have to check it at least applies before you call this.
-  Y handle(std::tuple<Args...>& args) {
+  Y handle(std::tuple<Args...>& callArgs) {
     // If we have too many calls, this is the first to handle.
     ++called;
     if (called > expectation.maximum) {
       std::stringstream argstr;
-      printTuple(argstr, args);
+      printTuple(argstr, callArgs);
       MockRepoInstanceHolder<0>::reporter->ExpectationExceeded(*this, *MockRepoInstanceHolder<0>::instance, argstr.str(), funcName);
       std::abort(); // There's no way to return a Y from here without knowing how to make one. Only way out is an exception, so if you don't have those...
     }
 
     // Handle in/out arguments
-    if(this->args) {
-      this->args->assignInOut(args);
+    if(args) {
+      args->assignInOut(callArgs);
     }
 
     // If there's a doFunctor to invoke, invoke it now. A retVal overrides the functor return.
     if (doFunctor) {
       if (!retVal.set()) {
-        return invoke(doFunctor, args);
+        return invoke(doFunctor, callArgs);
       }
-      invoke(doFunctor, args);
+      invoke(doFunctor, callArgs);
     }
 
     // If we have an exception to throw, let's throw it.
@@ -641,7 +674,7 @@ public:
     // If not, we have to have a return value to give back. Void is folded into this as always being set.
     if (!retVal.set()) {
       std::stringstream argstr;
-      printTuple(argstr, args);
+      printTuple(argstr, callArgs);
       MockRepoInstanceHolder<0>::reporter->NoResultSetUp(*this, *MockRepoInstanceHolder<0>::instance, argstr.str(), funcName);
     }
     return retVal.value();
@@ -881,7 +914,10 @@ public:
     MockRepoInstanceHolder<0>::reporter = reporter;
     reporter->TestStarted();
   }
-  ~MockRepository() noexcept(false)
+  ~MockRepository() 
+#if !defined(_MSC_VER) || _MSC_VER > 1800
+	  noexcept(false)
+#endif
   {
 #ifndef HM_NO_EXCEPTIONS
     if (!std::uncaught_exception())
@@ -957,13 +993,13 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    MockRepository *repo = realMock->repo;
+    MockRepository *myRepo = realMock->repo;
     if (realMock->isZombie) {
       std::stringstream argstr;
       printTuple(argstr, argT);
-      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*myRepo, argstr.str());
     }
-    return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
+    return myRepo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
   }
   template <int X, typename... Args>
   static Y static_expectation(Args... args)
@@ -977,13 +1013,13 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    MockRepository *repo = realMock->repo;
+    MockRepository *myRepo = realMock->repo;
     if (realMock->isZombie) {
       std::stringstream argstr;
       printTuple(argstr, argT);
-      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*myRepo, argstr.str());
     }
-    return repo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
+    return myRepo->template DoExpectation<Y>(realMock, realMock->translateX(X), argT);
   }
 #if defined(_MSC_VER) && !defined(_WIN64)
   template <int X, typename... Args>
@@ -1006,13 +1042,13 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    MockRepository *repo = realMock->repo;
+    MockRepository *myRepo = realMock->repo;
     if (realMock->isZombie) {
       std::stringstream argstr;
       printTuple(argstr, argT);
-      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*myRepo, argstr.str());
     }
-    repo->DoVoidExpectation(realMock, realMock->translateX(X), argT);
+	myRepo->DoVoidExpectation(realMock, realMock->translateX(X), argT);
   }
   template <int X, typename... Args>
   static void static_expectation(Args... args)
@@ -1027,13 +1063,13 @@ public:
   {
     std::tuple<Args...> argT(args...);
     mock<Z> *realMock = mock<Z>::getRealThis();
-    MockRepository *repo = realMock->repo;
+    MockRepository *myRepo = realMock->repo;
     if (realMock->isZombie) {
       std::stringstream argstr;
       printTuple(argstr, argT);
-      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*repo, argstr.str());
+      MockRepoInstanceHolder<0>::reporter->FunctionCallToZombie(*myRepo, argstr.str());
     }
-    repo->DoVoidExpectation(this, mock<Z>::translateX(X), argT);
+	myRepo->DoVoidExpectation(this, mock<Z>::translateX(X), argT);
   }
 #if defined(_MSC_VER) && !defined(_WIN64)
   template <int X, typename... Args>

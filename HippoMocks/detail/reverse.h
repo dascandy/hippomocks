@@ -21,8 +21,18 @@
 #ifndef HIPPOMOCKS_REVERSE_H
 #define HIPPOMOCKS_REVERSE_H
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4510) // MSVC 2013 says: Cannot generate default constructor. This is fine, as we won't use it.
+#pragma warning(disable: 4610) // MSVC 2013 says: Cannot create object. It's wrong.
+#endif
 template <typename T>
-struct reversed_container { T& container; };
+struct reversed_container {
+	T& container; 
+};
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 template <typename T>
 auto begin(reversed_container<T> container) -> decltype(container.container.rbegin()) { return container.container.rbegin(); }
