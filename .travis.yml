@@ -30,6 +30,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-4.9
+            - g++-4.9-multilib
             - cmake
       env: CXX=g++-4.9
     - compiler: gcc
@@ -40,6 +41,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
+            - g++-5-multilib
             - cmake
       env: CXX=g++-5
     - compiler: gcc
@@ -50,6 +52,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
+            - g++-6-multilib
             - cmake
       env: CXX=g++-6
     - compiler: clang
@@ -61,6 +64,7 @@ matrix:
             - llvm-toolchain-precise-3.6
           packages:
             - clang-3.6
+            - libc++-dev
             - cmake
       env: CXX=clang++-3.6
     - compiler: clang
@@ -72,6 +76,7 @@ matrix:
             - llvm-toolchain-precise-3.7
           packages:
             - clang-3.7
+            - libc++-dev
             - cmake
       env: CXX=clang++-3.7
 
