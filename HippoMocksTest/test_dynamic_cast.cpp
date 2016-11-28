@@ -21,6 +21,8 @@ public:
   virtual void d() {}
 };
 
+// MSVC implementation incomplete
+#ifndef _MSC_VER
 TEST (checkCanDynamicCastAround)
 {
 	MockRepository mocks;
@@ -31,4 +33,6 @@ TEST (checkCanDynamicCastAround)
   CHECK(bC == b); // dynamic_cast worked and got the right offsets
   CHECK((void*)b != (void*)a);
 }
+#endif
+
 
