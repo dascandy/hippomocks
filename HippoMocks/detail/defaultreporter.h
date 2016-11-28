@@ -25,9 +25,9 @@
 #ifdef _MSC_VER
 extern "C" __declspec(dllimport) int WINCALL IsDebuggerPresent();
 extern "C" __declspec(dllimport) void WINCALL DebugBreak();
-#define DEBUGBREAK() if (IsDebuggerPresent()) DebugBreak(); else (void)0
+#define DEBUGBREAK(e) if (IsDebuggerPresent()) DebugBreak(); else (void)0
 #else
-#define DEBUGBREAK()
+#define DEBUGBREAK(e)
 #endif
 #endif
 
@@ -93,7 +93,7 @@ inline std::ostream &operator<<(std::ostream &os, const MockRepository &repo)
 #ifndef BASE_EXCEPTION
 #define BASE_EXCEPTION std::exception
 #endif
-#define RAISEEXCEPTION(e)			{ DEBUGBREAK(); if (std::uncaught_exception()) latentException = [=, &repo]{ throw e; }; else throw e; }
+#define RAISEEXCEPTION(e)			{ DEBUGBREAK(e); if (std::uncaught_exception()) latentException = [=, &repo]{ throw e; }; else throw e; }
 
 class BaseException
 	: public BASE_EXCEPTION
