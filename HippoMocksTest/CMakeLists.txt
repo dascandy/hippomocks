@@ -17,6 +17,7 @@ add_executable(${PROJECT_NAME}
 	test_cv_funcs.cpp
 	test_do.cpp
 	test_dontcare.cpp
+	test_dynamic_cast.cpp
 	test_except.cpp
 	test_exception_quality.cpp
 	test_filter.cpp
