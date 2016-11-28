@@ -794,9 +794,6 @@ public:
 
   template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...), RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo);
-
-  //GCC 3.x doesn't seem to understand overloading on const or non-const member function.
-#if !defined(__GNUC__) || __GNUC__ > 3
   template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...) volatile, RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo) 
   { return RegisterExpect_<X>(mck, (Y(Z::*)(Args...))(func), expect, functionName ,fileName, lineNo); }
@@ -806,7 +803,6 @@ public:
   template <int X, typename Z2, typename Y, typename Z, typename... Args>
   TCall<Y,Args...> &RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...) const, RegistrationType expect, const char *functionName, const char *fileName, unsigned long lineNo)
   { return RegisterExpect_<X>(mck, (Y(Z::*)(Args...))(func), expect, functionName ,fileName, lineNo); }
-#endif
 
 #if defined(_MSC_VER) && !defined(_WIN64)
   // COM only support - you can duplicate this for cdecl and fastcall if you want to, but those are not as common as COM.
