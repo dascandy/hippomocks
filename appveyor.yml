@@ -4,19 +4,24 @@ clone_folder: C:\dev\hippomocks
 
 build_script:
   - cd C:\dev\hippomocks 
-  - md build
-  - cd build
-  - cmake -G"Visual Studio %vs_version%" ..
+  - md build12
+  - cd build12
+  - cmake -G"Visual Studio 12" ..
+  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - cd C:\dev\hippomocks 
+  - md build14
+  - cd build14
+  - cmake -G"Visual Studio 14" ..
+  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - cd C:\dev\hippomocks 
+  - md build15
+  - cd build15
+  - cmake -G"Visual Studio 15" ..
   - msbuild /m /p:Configuration=Debug hippomocks.sln
 
 test_script:
   - cmd: ctest -C Debug -VV
  
-matrix:
-- vs_version: 12
-- vs_version: 14
-- vs_version: 15
-
 platform:
   - x86
   - x64
