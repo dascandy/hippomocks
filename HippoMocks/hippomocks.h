@@ -1241,8 +1241,17 @@ std::pair<int, int> virtual_index(T t)
 	conv.t = t;
 
 	int value = virtual_function_index<0>((unsigned char *)conv.u.value);
-	if (value != -1)
+	if (value != -1) {
+		// http://www.codeproject.com/Articles/7150/Member-Function-Pointers-and-the-Fastest-Possible
+		// single inheritance -> base offset = 0
+		bool single=sizeof(t)==sizeof(void*);
+		if(single)
+			return std::pair<int,int>(0,value);
+		// multiple inheritance -> base offset in baseoffs
 		return std::pair<int, int>((int)(conv.u.baseoffs/sizeof(void*)), value);
+		// virtual inheritance -> TODO?
+		// unknown inheritance -> TODO?
+	}
 #elif defined(__EDG__)
 	union {
 		T t;
