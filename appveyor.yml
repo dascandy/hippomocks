@@ -23,7 +23,7 @@ test_script:
   - cmd: ctest -C Debug -VV
  
 platform:
-  - x86
+  - Win32
   - x64
 
 configuration:
