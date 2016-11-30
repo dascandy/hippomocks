@@ -7,25 +7,25 @@ build_script:
   - md build12
   - cd build12
   - cmake -G"Visual Studio 12" ..
-  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - msbuild /m /p:Configuration=Debug /p:Platform=Win32 hippomocks.sln
   - ctest -C Debug -VV
   - cd C:\dev\hippomocks 
   - md build14
   - cd build14
   - cmake -G"Visual Studio 14" ..
-  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - msbuild /m /p:Configuration=Debug /p:Platform=Win32 hippomocks.sln
   - ctest -C Debug -VV
   - cd C:\dev\hippomocks 
   - md build12_64
   - cd build12_64
   - cmake -G"Visual Studio 12 Win64" ..
-  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - msbuild /m /p:Configuration=Debug /p:Platform=x64 hippomocks.sln
   - ctest -C Debug -VV
   - cd C:\dev\hippomocks 
   - md build14_64
   - cd build14_64
   - cmake -G"Visual Studio 14 Win64" ..
-  - msbuild /m /p:Configuration=Debug hippomocks.sln
+  - msbuild /m /p:Configuration=Debug /p:Platform=x64 hippomocks.sln
   - ctest -C Debug -VV
 
 platform:
