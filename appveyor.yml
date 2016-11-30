@@ -16,14 +16,14 @@ build_script:
   - msbuild /m /p:Configuration=Debug hippomocks.sln
   - ctest -C Debug -VV
   - cd C:\dev\hippomocks 
-  - md build12
-  - cd build12
+  - md build12_64
+  - cd build12_64
   - cmake -G"Visual Studio 12 Win64" ..
   - msbuild /m /p:Configuration=Debug hippomocks.sln
   - ctest -C Debug -VV
   - cd C:\dev\hippomocks 
-  - md build14
-  - cd build14
+  - md build14_64
+  - cd build14_64
   - cmake -G"Visual Studio 14 Win64" ..
   - msbuild /m /p:Configuration=Debug hippomocks.sln
   - ctest -C Debug -VV
