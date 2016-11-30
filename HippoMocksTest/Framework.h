@@ -10,14 +10,14 @@
 
 class BaseException : public std::exception {
 public:
-  BaseException(std::string fmt, ...) {
+  BaseException(const char*fmt, ...) {
     va_list l;
     static char buffer[4096];
     va_start(l, fmt);
 #ifdef _MSC_VER
-	vsnprintf_s(buffer, 4096, fmt.c_str(), l);
+	vsnprintf_s(buffer, 4096, fmt, l);
 #else
-	vsnprintf(buffer, 4096, fmt.c_str(), l);
+	vsnprintf(buffer, 4096, fmt, l);
 #endif
     va_end(l);
     error = buffer;
