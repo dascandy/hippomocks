@@ -80,15 +80,12 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #ifdef __EDG__
 #define FUNCTION_BASE 3
 #define FUNCTION_STRIDE 2
+#elif defined (__SUNPRO_CC) //Tested with SUN CC v12.1 on x86
+#define FUNCTION_BASE 2
+#define FUNCTION_STRIDE 1
 #else
 #define FUNCTION_BASE 0
 #define FUNCTION_STRIDE 1
-#endif
-
-#if defined (__SUNPRO_CC)
-#define SUNPRO_CC_VTABLE_INDEX 2
-#else
-#define SUNPRO_CC_VTABLE_INDEX 0
 #endif
 
 #if defined(_M_IX86) || defined(__i386__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL) ||  defined(__x86_64__) || defined(_M_X64)
@@ -1279,7 +1276,7 @@ std::pair<int, int> virtual_index(T t)
             0x04, 0x89, 0x5d, 0xfc,
             0x8b, 0x45};//, 0x08, 0x8b, 0x40, 0x00,
             //0x8b, 0x40}; //movl <index>
-    unsigned char* opcodes = (unsigned char*)(*(unsigned int*)&t);
+	unsigned char* opcodes = conv.u.value;
     if (0 == memcmp(opcodes, prolog, sizeof(prolog)))
     {
         if (opcodes[11] == 0x08 || opcodes[11] == 0x0c)
@@ -5292,7 +5289,7 @@ TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType 
 {
 	func_index idx;
 	((Z2 *)&idx)->~Z2();
-	int funcIndex = idx.lci * FUNCTION_STRIDE + FUNCTION_BASE + SUNPRO_CC_VTABLE_INDEX;
+	int funcIndex = idx.lci * FUNCTION_STRIDE + FUNCTION_BASE;
 	void (mock<Z2>::*member)(int);
 	member = &mock<Z2>::template mockedDestructor<X>;
 	BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
@@ -6393,7 +6390,7 @@ using HippoMocks::In;
 #undef DONTCARE_NAME
 #undef VIRT_FUNC_LIMIT
 #undef EXTRA_DESTRUCTOR
-#undef FUNCTION_BASE
+//#undef FUNCTION_BASE // needed for test
 #undef FUNCTION_STRIDE
 #undef CFUNC_MOCK_PLATFORMIS64BIT
 
