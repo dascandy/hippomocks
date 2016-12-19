@@ -6,6 +6,12 @@
 *.tmp
 *.user
 
+*.obj
+*.pdb
+
+Debug/
+Release/
+
 debian/*.debhelper.log
 debian/files
 debian/hippomocks*/*

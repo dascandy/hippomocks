@@ -270,16 +270,27 @@ public:
   Replace(T funcptr, T replacement)
 	  : origFunc(horrible_cast<void *>(funcptr))
   {
-	Unprotect _allow_write(origFunc, sizeof(backupData));
-	memcpy(backupData, origFunc, sizeof(backupData));
 #ifdef SOME_X86
 #ifdef CMOCK_FUNC_PLATFORMIS64BIT
 	if (llabs((long long)origFunc - (long long)replacement) < 0x80000000LL) {
 #endif
+	  Unprotect _allow_write(origFunc, sizeof(backupData));
+	  memcpy(backupData, origFunc, sizeof(backupData));
+
 	  *(unsigned char *)origFunc = 0xE9;
 	  *(e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1) = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
 #ifdef CMOCK_FUNC_PLATFORMIS64BIT
 	} else {
+	  if (*(unsigned char *)origFunc == 0xE9) {
+		// If this is a jmp instruction (rip + 32-bit signed) then most likely this is a entry into the import table, 
+		// overwriting it will corrupt the next entry in the table, we need to find the real address and replace the content in there.
+		unsigned char *pFunc = (unsigned char *)origFunc;
+		pFunc += *(e9ptrsize_t*)(pFunc + 1) + sizeof(e9ptrsize_t) + 1;
+		origFunc = horrible_cast<void *>(pFunc);
+	  }
+	  Unprotect _allow_write(origFunc, sizeof(backupData));
+	  memcpy(backupData, origFunc, sizeof(backupData));
+
 	  unsigned char *func = (unsigned char *)origFunc;
 	  func[0] = 0xFF; // jmp (rip + imm32)
 	  func[1] = 0x25;
@@ -291,6 +302,9 @@ public:
 	}
 #endif
 #elif defined(SOME_ARM)
+	Unprotect _allow_write(origFunc, sizeof(backupData));
+	memcpy(backupData, origFunc, sizeof(backupData));
+
 	unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
 	if ((intptr_t)origFunc & 1) {
 	  rawptr[0] = 0x6800A001;
