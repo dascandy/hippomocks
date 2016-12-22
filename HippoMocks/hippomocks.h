@@ -80,6 +80,9 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #ifdef __EDG__
 #define FUNCTION_BASE 3
 #define FUNCTION_STRIDE 2
+#elif defined (__SUNPRO_CC) //Tested with SUN CC v12.1 on x86
+#define FUNCTION_BASE 2
+#define FUNCTION_STRIDE 1
 #else
 #define FUNCTION_BASE 0
 #define FUNCTION_STRIDE 1
@@ -87,6 +90,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 
 #if defined(_M_IX86) || defined(__i386__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL) ||  defined(__x86_64__) || defined(_M_X64)
 #define SOME_X86
+#elif defined (sparc)
 #elif defined(arm) || defined(__arm__) || defined(ARM) || defined(_ARM_) || defined(__aarch64__)
 #define SOME_ARM
 #endif
@@ -1270,6 +1274,57 @@ std::pair<int, int> virtual_index(T t)
 
 	if (conv.u.vindex != 0)
 		return std::pair<int, int>((conv.u.delta + conv.u.vtordisp)/sizeof(void*), conv.u.vindex * 2 + 1);
+	
+#elif defined (__SUNPRO_CC)
+    union {
+        T t;
+        struct
+        {
+            unsigned char *value;
+            unsigned long baseoffs;
+        } u;
+    } conv;
+    conv.t = t;
+   //is virtual call
+    unsigned char prolog[]= {0x55, 0x8b, 0xec, 0x83, 0xec,
+            0x04, 0x89, 0x5d, 0xfc,
+            0x8b, 0x45};//, 0x08, 0x8b, 0x40, 0x00,
+            //0x8b, 0x40}; //movl <index>
+	unsigned char* opcodes = conv.u.value;
+    if (0 == memcmp(opcodes, prolog, sizeof(prolog)))
+    {
+        if (opcodes[11] == 0x08 || opcodes[11] == 0x0c)
+        {
+            unsigned char epilogue[] = { 0x8b, 0x5d, 0xfc, 0xc9, 0xff, 0xe0 };
+
+            int i;
+            for (i = 0; i < 4; i++)
+            {
+                if (0 == memcmp(&opcodes[18 + i], epilogue, sizeof(epilogue)))
+                {
+                    break;
+                }
+            }
+            //is virtual call prologue
+            int index = 0;// = opcodes[17] / 4; //offset of function index
+
+            switch (i)
+            {
+                case 3:
+                    index += static_cast<unsigned int>(opcodes[17 + 3]) << (8 * 3);
+                case 2:
+                    index += static_cast<unsigned int>(opcodes[17 + 2]) << (8 * 2);
+                case 1:
+                    index += static_cast<unsigned int>(opcodes[17 + 1]) << (8 * 1);
+                case 0:
+                default:
+                    index += static_cast<unsigned int>(opcodes[17]);
+            }
+            index = index / 4;
+
+            return std::pair<int, int>(conv.u.baseoffs / 4, index);
+        }
+    }
 #else
 #error No virtual indexing found for this compiler! Please contact the maintainers of HippoMocks
 #endif
@@ -6274,7 +6329,7 @@ base *MockRepository::Mock() {
 }
 inline std::ostream &operator<<(std::ostream &os, const Call &call)
 {
-	os << call.fileName << "(" << call.lineno << ") ";
+	os << call.fileName << "(" << call.lineno << "): "; //format for Visual studio, enables doubleclick on output line
 	if (call.expectation == Once)
 		os << "Expectation for ";
 	else
@@ -6349,7 +6404,7 @@ using HippoMocks::In;
 #undef DONTCARE_NAME
 #undef VIRT_FUNC_LIMIT
 #undef EXTRA_DESTRUCTOR
-#undef FUNCTION_BASE
+//#undef FUNCTION_BASE // needed for test
 #undef FUNCTION_STRIDE
 #undef CFUNC_MOCK_PLATFORMIS64BIT
 
