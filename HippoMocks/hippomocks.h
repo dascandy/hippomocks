@@ -860,20 +860,20 @@ public:
   template <typename... Args>
   inline void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, std::tuple<Args...> &tuple)
   {
-    for (auto& c : reverse_order(neverCalls)) {
-      if (!c->applies(mock, funcno)) continue;
-
-      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
-      if (tc->matches(tuple)) {
-        tc->handle(tuple);
-        return;
-      }
-    }
     for (auto& c : reverse_order(expectations)) {
       if (!c->applies(mock, funcno)) continue;
 
       TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
       if (!tc->isSatisfied() && tc->matches(tuple)) {
+        tc->handle(tuple);
+        return;
+      }
+    }
+    for (auto& c : reverse_order(neverCalls)) {
+      if (!c->applies(mock, funcno)) continue;
+
+      TCall<void, Args...>* tc = static_cast<TCall<void, Args...>*>(c.get());
+      if (tc->matches(tuple)) {
         tc->handle(tuple);
         return;
       }
@@ -1186,21 +1186,21 @@ TCall<Y,Args...> &MockRepository::RegisterExpect_(Z2 *mck, Y (Z::*func)(Args...)
 template <typename Y, typename... Args>
 Y MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, std::tuple<Args...> &tuple)
 {
-  for (auto& c : reverse_order(neverCalls))
-  {
-    if (!c->applies(mock, funcno)) continue;
-
-    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
-    if (tc->matches(tuple)) {
-      return tc->handle(tuple);
-    }
-  }
   for (auto& c : reverse_order(expectations))
   {
     if (!c->applies(mock, funcno)) continue;
 
     TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
     if (!tc->isSatisfied() && tc->matches(tuple)) {
+      return tc->handle(tuple);
+    }
+  }
+  for (auto& c : reverse_order(neverCalls))
+  {
+    if (!c->applies(mock, funcno)) continue;
+
+    TCall<Y, Args...>* tc = static_cast<TCall<Y, Args...>*>(c.get());
+    if (tc->matches(tuple)) {
       return tc->handle(tuple);
     }
   }

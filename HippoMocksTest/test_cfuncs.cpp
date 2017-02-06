@@ -27,6 +27,14 @@ TEST (checkFunctionReturnedToOriginal)
 	EQUALS(a(), 1);
 }
 
+TEST(ExpectCallOverridesNeverCall)
+{
+    MockRepository mocks;
+    mocks.NeverCallFunc(a);
+    mocks.ExpectCallFunc(a).Return(42);
+    a();
+}
+
 #ifdef _WIN32
 #include <windows.h>
 TEST (checkCanMockGetSystemTime) {
