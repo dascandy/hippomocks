@@ -176,10 +176,10 @@ public:
 #  endif
   }
 };
-# endif
 
-# ifndef NO_HIPPOMOCKS_NAMESPACE
+#  ifndef NO_HIPPOMOCKS_NAMESPACE
 }
+#  endif
 # endif
 
 #endif
