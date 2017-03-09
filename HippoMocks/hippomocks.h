@@ -102,7 +102,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #ifdef SOME_X86
 #if defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64))
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-#elif defined(__linux__) && defined(__GNUC__)
+#elif (defined(__linux__) || defined(__FreeBSD__)) && defined(__GNUC__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #elif defined(__APPLE__)
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
