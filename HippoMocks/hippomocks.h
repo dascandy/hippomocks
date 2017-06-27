@@ -111,7 +111,9 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 
 // This clear-cache is *required*. The tests will fail if you remove it.
+#ifndef __clear_cache
 extern "C" void __clear_cache(char *beg, char *end);
+#endif
 #endif
 
 #if defined(__GNUC__) && !defined(__EXCEPTIONS)
