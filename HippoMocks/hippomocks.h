@@ -1451,6 +1451,18 @@ public:
 	void mockedDestructor(int);
 };
 
+#ifndef HM_NO_UNIQUE_PTR
+template <class T>
+class unique_mock : public mock<T>
+{
+	void destroy() { this->unwriteVft(); /* do not delete unique_ptr will take care */ }
+public:
+	unique_mock(MockRepository *repository)
+	    : mock<T>(repository) {}
+	~unique_mock();
+};
+#endif
+
 // Do() function wrapping
 class VirtualDestructable { public: virtual ~VirtualDestructable() {} };
 
@@ -4390,6 +4402,10 @@ noexcept(false)
 	}
 	template <typename base>
 	base *Mock();
+#ifndef HM_NO_UNIQUE_PTR
+	template <typename base>
+	std::unique_ptr<base> UniqueMock();
+#endif
 };
 
 // mock function providers
@@ -5276,6 +5292,15 @@ void mock<T>::mockedDestructor(int)
 	repo->VerifyPartial(this);
 	isZombie = true;
 }
+
+#ifndef HM_NO_UNIQUE_PTR
+template <typename T>
+unique_mock<T>::~unique_mock()
+{
+	this->repo->VerifyPartial(this);
+	this->isZombie = true;
+}
+#endif
 
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
@@ -6327,6 +6352,15 @@ base *MockRepository::Mock() {
 		mocks.push_back(m);
 	return reinterpret_cast<base *>(m);
 }
+#ifndef HM_NO_UNIQUE_PTR
+template <typename base>
+std::unique_ptr<base> MockRepository::UniqueMock() {
+	mock<base> *m = new unique_mock<base>(this);
+	// do not register the unique mock - expectations are checked on destruction
+	return std::unique_ptr<base>{reinterpret_cast<base *>(m)};
+}
+#endif
+
 inline std::ostream &operator<<(std::ostream &os, const Call &call)
 {
 	os << call.fileName << "(" << call.lineno << "): "; //format for Visual studio, enables doubleclick on output line
