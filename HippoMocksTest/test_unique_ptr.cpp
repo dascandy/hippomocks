@@ -4,8 +4,8 @@
 
 class IU {
 public:
-	virtual ~IU() { std::cout << "deleting  " << std::endl;}
-	virtual void f() = 0;// {}
+	virtual ~IU() {}
+	virtual void f() = 0;
 	virtual void g() {}
 	virtual int h() { return 0; }
 	virtual void i(std::string ) {}
@@ -35,7 +35,7 @@ TEST (checkMissingExpectationsWorksOnUniquePtr)
     {
         iu->f();
     }
-    catch (HippoMocks::NotImplementedException const& e)
+    catch (HippoMocks::NotImplementedException const&)
     {
         exceptionCaught = true;
     }
