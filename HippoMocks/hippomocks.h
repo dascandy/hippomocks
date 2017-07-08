@@ -1105,7 +1105,7 @@ unique_mock<T>::unique_mock(MockRepository *repository) : mock<T>(repository)
     // restore function table from mock<T>
     *(void **)this = this->funcTables[0];
     // setup destructor - since MockRepository is not the owner of the object
-    this->repo->template SetupDefaultDestructor(reinterpret_cast<T*>(this), -1);
+    this->repo->SetupDefaultDestructor(reinterpret_cast<T*>(this), -1);
 }
 
 template <typename Z>
