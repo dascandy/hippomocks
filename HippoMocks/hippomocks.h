@@ -978,6 +978,8 @@ public:
   base *Mock();
   template <typename base>
   std::unique_ptr<base> UniqueMock();
+  template <typename base, typename D>
+  std::unique_ptr<base, D> UniqueMock(D deleter);
 };
 
 // mock function providers
@@ -1285,6 +1287,11 @@ base *MockRepository::Mock() {
 template <typename base>
 std::unique_ptr<base> MockRepository::UniqueMock() {
   return std::move(std::unique_ptr<base>{reinterpret_cast<base *>(new unique_mock<base>(this))});
+}
+
+template <typename base, typename Deleter>
+std::unique_ptr<base,Deleter> MockRepository::UniqueMock(Deleter deleter) {
+  return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this)), deleter});
 }
 
 
