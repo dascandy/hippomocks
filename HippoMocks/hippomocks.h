@@ -1294,6 +1294,12 @@ std::unique_ptr<base,Deleter> MockRepository::UniqueMock(Deleter deleter) {
   return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this)), deleter});
 }
 
+template<typename base, typename d>
+std::unique_ptr<base,d> tee(base*& capture, std::unique_ptr<base,d> && obj) {
+    capture = obj.get();
+    return std::move(obj);
+}
+
 
 #include "detail/defaultreporter.h"
 
