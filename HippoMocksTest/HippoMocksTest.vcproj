@@ -352,6 +352,10 @@
 		<File
 			RelativePath=".\test_autoptr.cpp"
 			>
+                </File>
+		<File
+			RelativePath=".\test_unique_ptr.cpp"
+			>
 		</File>
 		<File
 			RelativePath=".\test_cfuncs.cpp"
@@ -436,7 +440,12 @@
 		<File
 			RelativePath=".\test_zombie.cpp"
 			>
+                </File>
+		<File
+			RelativePath=".\test_nice_mock.cpp"
+			>
 		</File>
+
 	</Files>
 	<Globals>
 	</Globals>

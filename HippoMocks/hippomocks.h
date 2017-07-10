@@ -337,6 +337,8 @@ class mock : public base_mock
   void NotImplemented() {
     MockRepoInstanceHolder<0>::reporter->UnknownFunction(*MockRepoInstanceHolder<0>::instance);
   }
+  void Ignored() {
+  }
 #ifndef HM_NO_RTTI
   std::unique_ptr<RttiInfo> rttiinfo;
 #endif
@@ -344,17 +346,24 @@ protected:
   std::map<int, void (**)()> funcTables;
   void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
 public:
+  enum class InitialExpectations {
+    Restrictive,
+    Nice
+  };
   bool isZombie;
   std::vector<std::unique_ptr<TypeDestructable>> members;
   MockRepository *repo;
   std::map<std::pair<int, int>, int> funcMap;
-  mock(MockRepository *repository)
+  mock(MockRepository *repository, InitialExpectations default_setup = InitialExpectations::Restrictive)
     : isZombie(false)
     , repo(repository)
   {
+    auto fun = &mock<T>::NotImplemented;
+    if (default_setup == InitialExpectations::Nice)
+      fun = &mock<T>::Ignored;
     for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
     {
-      notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
+      notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(fun);
     }
     funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+4] + 2;
     memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
@@ -390,6 +399,14 @@ public:
   }
   template <int X>
   void mockedDestructor(int);
+  void defaultDestructor(int);
+};
+
+template <typename T>
+struct unique_mock : mock<T>
+{
+  using InitialExpectations = typename mock<T>::InitialExpectations;
+  unique_mock(MockRepository *repository, InitialExpectations default_setup = InitialExpectations::Restrictive);
 };
 
 template <class T>
@@ -779,6 +796,10 @@ public:
     mock<A> *realMock = (mock<A> *)mck;
     realMock->members.emplace_back(new MemberWrap<C>(realRealMember));
   }
+  template <typename Z2>
+  void SetupDefaultDestructor(Z2 *mck, int x);
+  template <int X, typename Z2>
+  int SetupMockedDestructor(Z2 *mck);
   template <int X, typename Z2>
   TCall<void> &RegisterExpectDestructor(Z2 *mck, RegistrationType expect, const char *fileName, unsigned long lineNo);
 
@@ -965,6 +986,16 @@ public:
   }
   template <typename base>
   base *Mock();
+  template <typename base>
+  base *NiceMock();
+  template <typename base>
+  std::unique_ptr<base> UniqueMock();
+  template <typename base>
+  std::unique_ptr<base> UniqueNiceMock();
+  template <typename base, typename D>
+  std::unique_ptr<base, D> UniqueMock(D deleter);
+  template <typename base, typename D>
+  std::unique_ptr<base, D> UniqueNiceMock(D deleter);
 };
 
 // mock function providers
@@ -1077,6 +1108,22 @@ void mock<T>::mockedDestructor(int)
   isZombie = true;
 }
 
+template <typename T>
+void mock<T>::defaultDestructor(int)
+{
+  repo->VerifyPartial(this);
+  isZombie = true;
+}
+
+template <typename T>
+unique_mock<T>::unique_mock(MockRepository *repository, InitialExpectations default_setup) : mock<T>(repository, default_setup)
+{
+    // restore function table from mock<T>
+    *(void **)this = this->funcTables[0];
+    // setup destructor - since MockRepository is not the owner of the object
+    this->repo->SetupDefaultDestructor(reinterpret_cast<T*>(this), -1);
+}
+
 template <typename Z>
 void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int funcIndex, void (base_mock::*func)(), int X)
 {
@@ -1102,8 +1149,26 @@ void MockRepository::BasicRegisterExpect(mock<Z> *zMock, int baseOffset, int fun
   }
 }
 
+template <typename Z2>
+void MockRepository::SetupDefaultDestructor(Z2 *mck, int X)
+{
+  func_index idx;
+  ((Z2 *)&idx)->~Z2();
+  int funcIndex = idx.lci * FUNCTION_STRIDE + FUNCTION_BASE;
+  void (mock<Z2>::*member)(int);
+  member = &mock<Z2>::defaultDestructor;
+  BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+            0, funcIndex,
+            reinterpret_cast<void (base_mock::*)()>(member), X);
+#ifdef EXTRA_DESTRUCTOR
+  BasicRegisterExpect(reinterpret_cast<mock<Z2> *>(mck),
+            0, funcIndex+1,
+            reinterpret_cast<void (base_mock::*)()>(member), X);
+#endif
+}
+
 template <int X, typename Z2>
-TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType expect, const char *fileName, unsigned long lineNo)
+int MockRepository::SetupMockedDestructor(Z2 *mck)
 {
   func_index idx;
   ((Z2 *)&idx)->~Z2();
@@ -1118,10 +1183,18 @@ TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType 
             0, funcIndex+1,
             reinterpret_cast<void (base_mock::*)()>(member), X);
 #endif
+  return funcIndex;
+}
+
+template <int X, typename Z2>
+TCall<void> &MockRepository::RegisterExpectDestructor(Z2 *mck, RegistrationType expect, const char *fileName, unsigned long lineNo)
+{
+  int funcIndex = this->template SetupMockedDestructor<X>(mck);
   TCall<void> *call = new TCall<void>(Once, reinterpret_cast<base_mock *>(mck), std::pair<int, int>(0, funcIndex), lineNo, "destructor", fileName);
   addCall( call, expect );
   return *call;
 }
+
 
 #if defined(_MSC_VER) && !defined(_WIN64)
 // Support for COM, see declarations
@@ -1226,6 +1299,40 @@ base *MockRepository::Mock() {
   mocks.push_back(m);
   return reinterpret_cast<base *>(m);
 }
+
+template <typename base>
+base *MockRepository::NiceMock() {
+  mock<base> *m = new mock<base>(this, mock<base>::InitialExpectations::Nice);
+  mocks.push_back(m);
+  return reinterpret_cast<base *>(m);
+}
+
+template <typename base>
+std::unique_ptr<base> MockRepository::UniqueMock() {
+  return std::move(std::unique_ptr<base>{reinterpret_cast<base *>(new unique_mock<base>(this))});
+}
+
+template <typename base>
+std::unique_ptr<base> MockRepository::UniqueNiceMock() {
+  return std::move(std::unique_ptr<base>{reinterpret_cast<base *>(new unique_mock<base>(this, mock<base>::InitialExpectations::Nice))});
+}
+
+template <typename base, typename Deleter>
+std::unique_ptr<base,Deleter> MockRepository::UniqueMock(Deleter deleter) {
+  return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this)), deleter});
+}
+
+template <typename base, typename Deleter>
+std::unique_ptr<base,Deleter> MockRepository::UniqueNiceMock(Deleter deleter) {
+  return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this, mock<base>::InitialExpectations::Nice)), deleter});
+}
+
+template<typename base, typename d>
+std::unique_ptr<base,d> tee(base*& capture, std::unique_ptr<base,d> && obj) {
+    capture = obj.get();
+    return std::move(obj);
+}
+
 
 #include "detail/defaultreporter.h"
 
