@@ -33,6 +33,7 @@ set(SOURCES
 	test_transaction.cpp
 	test_zombie.cpp
 	test_unique_ptr.cpp
+	test_nice_mock.cpp
 )
 
 add_executable(HippoMocksTest64

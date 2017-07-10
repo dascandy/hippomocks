@@ -337,6 +337,8 @@ class mock : public base_mock
   void NotImplemented() {
     MockRepoInstanceHolder<0>::reporter->UnknownFunction(*MockRepoInstanceHolder<0>::instance);
   }
+  void Ignored() {
+  }
 #ifndef HM_NO_RTTI
   std::unique_ptr<RttiInfo> rttiinfo;
 #endif
@@ -344,17 +346,24 @@ protected:
   std::map<int, void (**)()> funcTables;
   void (*notimplementedfuncs[VIRT_FUNC_LIMIT])();
 public:
+  enum class InitialExpectations {
+    Restrictive,
+    Nice
+  };
   bool isZombie;
   std::vector<std::unique_ptr<TypeDestructable>> members;
   MockRepository *repo;
   std::map<std::pair<int, int>, int> funcMap;
-  mock(MockRepository *repository)
+  mock(MockRepository *repository, InitialExpectations default_setup = InitialExpectations::Restrictive)
     : isZombie(false)
     , repo(repository)
   {
+    auto fun = &mock<T>::NotImplemented;
+    if (default_setup == InitialExpectations::Nice)
+      fun = &mock<T>::Ignored;
     for (int i = 0; i < VIRT_FUNC_LIMIT; i++)
     {
-      notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(&mock<T>::NotImplemented);
+      notimplementedfuncs[i] = getNonvirtualMemberFunctionAddress<void (*)()>(fun);
     }
     funcptr *funcTable = new funcptr[VIRT_FUNC_LIMIT+4] + 2;
     memcpy(funcTable, notimplementedfuncs, sizeof(funcptr) * VIRT_FUNC_LIMIT);
@@ -396,7 +405,8 @@ public:
 template <typename T>
 struct unique_mock : mock<T>
 {
-  unique_mock(MockRepository *repository);
+  using InitialExpectations = typename mock<T>::InitialExpectations;
+  unique_mock(MockRepository *repository, InitialExpectations default_setup = InitialExpectations::Restrictive);
 };
 
 template <class T>
@@ -977,9 +987,15 @@ public:
   template <typename base>
   base *Mock();
   template <typename base>
+  base *NiceMock();
+  template <typename base>
   std::unique_ptr<base> UniqueMock();
+  template <typename base>
+  std::unique_ptr<base> UniqueNiceMock();
   template <typename base, typename D>
   std::unique_ptr<base, D> UniqueMock(D deleter);
+  template <typename base, typename D>
+  std::unique_ptr<base, D> UniqueNiceMock(D deleter);
 };
 
 // mock function providers
@@ -1100,7 +1116,7 @@ void mock<T>::defaultDestructor(int)
 }
 
 template <typename T>
-unique_mock<T>::unique_mock(MockRepository *repository) : mock<T>(repository)
+unique_mock<T>::unique_mock(MockRepository *repository, InitialExpectations default_setup) : mock<T>(repository, default_setup)
 {
     // restore function table from mock<T>
     *(void **)this = this->funcTables[0];
@@ -1285,13 +1301,30 @@ base *MockRepository::Mock() {
 }
 
 template <typename base>
+base *MockRepository::NiceMock() {
+  mock<base> *m = new mock<base>(this, mock<base>::InitialExpectations::Nice);
+  mocks.push_back(m);
+  return reinterpret_cast<base *>(m);
+}
+
+template <typename base>
 std::unique_ptr<base> MockRepository::UniqueMock() {
   return std::move(std::unique_ptr<base>{reinterpret_cast<base *>(new unique_mock<base>(this))});
+}
+
+template <typename base>
+std::unique_ptr<base> MockRepository::UniqueNiceMock() {
+  return std::move(std::unique_ptr<base>{reinterpret_cast<base *>(new unique_mock<base>(this, mock<base>::InitialExpectations::Nice))});
 }
 
 template <typename base, typename Deleter>
 std::unique_ptr<base,Deleter> MockRepository::UniqueMock(Deleter deleter) {
   return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this)), deleter});
+}
+
+template <typename base, typename Deleter>
+std::unique_ptr<base,Deleter> MockRepository::UniqueNiceMock(Deleter deleter) {
+  return std::move(std::unique_ptr<base,Deleter>{reinterpret_cast<base *>(new unique_mock<base>(this, mock<base>::InitialExpectations::Nice)), deleter});
 }
 
 template<typename base, typename d>

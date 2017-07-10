@@ -1,7 +1,7 @@
 [Project]
 FileName=HippoMocks.dev
 Name=HippoMocks
-UnitCount=13
+UnitCount=14
 Type=1
 Ver=1
 ObjFiles=
@@ -169,6 +169,16 @@ BuildCmd=
 
 [Unit13]
 FileName=test_unique_ptr.cpp
+CompileCpp=1
+Folder=HippoMocks
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit14]
+FileName=test_nice_mock.cpp
 CompileCpp=1
 Folder=HippoMocks
 Compile=1

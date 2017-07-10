@@ -440,7 +440,12 @@
 		<File
 			RelativePath=".\test_zombie.cpp"
 			>
+                </File>
+		<File
+			RelativePath=".\test_nice_mock.cpp"
+			>
 		</File>
+
 	</Files>
 	<Globals>
 	</Globals>
