@@ -188,6 +188,7 @@
     <ClCompile Include="test_com_support_stdcall.cpp" />
     <ClCompile Include="test_transaction.cpp" />
     <ClCompile Include="test_zombie.cpp" />
+    <ClCompile Include="test_unique_ptr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Framework.h" />
