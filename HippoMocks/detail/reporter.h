@@ -38,6 +38,7 @@ public:
 };
 
 Reporter* GetDefaultReporter();
+
 #endif
 
 
