@@ -139,7 +139,8 @@ public:
 	if (llabs((long long)origFunc - (long long)replacement) < 0x80000000LL) {
 #   endif
 	  *(unsigned char *)origFunc = 0xE9;
-	  *(e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1) = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
+	  e9ptrsize_t temp_address = (e9ptrsize_t)(horrible_cast<intptr_t>(replacement) - horrible_cast<intptr_t>(origFunc) - sizeof(e9ptrsize_t) - 1);
+	  memcpy((e9ptrsize_t*)(horrible_cast<intptr_t>(origFunc) + 1), &temp_address, sizeof(e9ptrsize_t));
 #   ifdef CMOCK_FUNC_PLATFORMIS64BIT
 	} else {
 	  unsigned char *func = (unsigned char *)origFunc;
