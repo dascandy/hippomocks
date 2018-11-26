@@ -32,6 +32,7 @@ set(SOURCES
 	test_retval.cpp
 	test_transaction.cpp
 	test_zombie.cpp
+	test_unique_ptr.cpp
 )
 
 add_executable(HippoMocksTest64
