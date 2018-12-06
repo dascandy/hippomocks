@@ -286,7 +286,7 @@ public:
 #ifdef CMOCK_FUNC_PLATFORMIS64BIT
 	} else {
 	  if (*(unsigned char *)origFunc == 0xE9) {
-		// If this is a jmp instruction (rip + 32-bit signed) then most likely this is a entry into the import table, 
+		// If this is a jmp instruction (rip + 32-bit signed) then most likely this is a entry into the import table,
 		// overwriting it will corrupt the next entry in the table, we need to find the real address and replace the content in there.
 		unsigned char *pFunc = (unsigned char *)origFunc;
 		pFunc += *(e9ptrsize_t*)(pFunc + 1) + sizeof(e9ptrsize_t) + 1;
@@ -1209,7 +1209,7 @@ int virtual_function_index(unsigned char *func)
 		{ // mov ecx, this; jump [eax + v/Ib/Iw]
 		case 0x20ff018b: return 0;
 #ifdef _WIN32
-		case 0x0424448b: 
+		case 0x0424448b:
 			if (func[7] == 0x20)
 				return 0;
 			return *(unsigned char *)(func + 8) / sizeof(void*);
@@ -1274,7 +1274,7 @@ std::pair<int, int> virtual_index(T t)
 
 	if (conv.u.vindex != 0)
 		return std::pair<int, int>((conv.u.delta + conv.u.vtordisp)/sizeof(void*), conv.u.vindex * 2 + 1);
-	
+
 #elif defined (__SUNPRO_CC)
     union {
         T t;
@@ -4317,7 +4317,7 @@ noexcept(false)
 			{
 				latentException->rethrow();
 			}
-			catch(BASE_EXCEPTION e)
+			catch(BASE_EXCEPTION & e)
 			{
 				printf("Latent exception masked!\nException:\n%s\n", e.what());
 			}
