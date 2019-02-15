@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}
 	Framework.cpp
 	is_virtual.cpp
 	main.cpp
+	target_cfuncs.c
 	test_args.cpp
 	test_array.cpp
 	test_autoptr.cpp
@@ -34,8 +35,8 @@ add_executable(${PROJECT_NAME}
 	test_transaction.cpp
 	test_zombie.cpp
 )
-target_link_libraries(${PROJECT_NAME} 
-	PRIVATE 
+target_link_libraries(${PROJECT_NAME}
+	PRIVATE
 		HippoMocks
 )
 add_test(test ${PROJECT_NAME})
