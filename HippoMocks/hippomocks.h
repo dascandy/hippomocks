@@ -4092,7 +4092,7 @@ public:
 	if (staticFuncMap.find(func) == staticFuncMap.end())
 	{
 	  staticFuncMap[func] = X;
-	  staticReplaces.push_back(new Replace(func, fp));
+	  staticReplaces.push_front(new Replace(func, fp));
 	}
 	return staticFuncMap[func];
   }

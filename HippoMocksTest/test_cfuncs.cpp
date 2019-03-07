@@ -1,30 +1,53 @@
 #include "hippomocks.h"
 #include "Framework.h"
+#include "target_cfuncs.h"
 
 // If it's not supported, then don't test it.
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
-int a()
-{
-  return 1;
-}
 
 TEST (checkFunctionReplacedAndChecked)
 {
-	EQUALS(a(), 1);
+	EQUALS(ret_2(), 2);
 	MockRepository mocks;
-	mocks.ExpectCallFunc(a).Return(2);
-	EQUALS(a(), 2);
+	mocks.ExpectCallFunc(ret_2).Return(7);
+	EQUALS(ret_2(), 7);
 }
 
 TEST (checkFunctionReturnedToOriginal)
 {
 	{
-		EQUALS(a(), 1);
+		EQUALS(ret_1(), 1);
 		MockRepository mocks;
-		mocks.ExpectCallFunc(a).Return(2);
-		EQUALS(a(), 2);
+		mocks.ExpectCallFunc(ret_1).Return(5);
+		EQUALS(ret_1(), 5);
 	}
-	EQUALS(a(), 1);
+	EQUALS(ret_1(), 1);
+}
+
+TEST (checkOrderFunctionReturnedToOriginal)
+{
+	{
+        EQUALS(ret_1(), 1);
+        EQUALS(ret_2(), 2);
+		MockRepository mocks;
+		mocks.ExpectCallFunc(ret_2).Return(7);
+		mocks.ExpectCallFunc(ret_1).Return(5);
+		EQUALS(ret_2(), 7);
+		EQUALS(ret_1(), 5);
+	}
+    EQUALS(ret_1(), 1);
+    EQUALS(ret_2(), 2);
+
+    /* In reversed order */
+    {
+        MockRepository mocks;
+        mocks.ExpectCallFunc(ret_1).Return(5);
+        mocks.ExpectCallFunc(ret_2).Return(7);
+        EQUALS(ret_1(), 5);
+        EQUALS(ret_2(), 7);
+    }
+    EQUALS(ret_1(), 1);
+    EQUALS(ret_2(), 2);;
 }
 
 #ifdef _WIN32
