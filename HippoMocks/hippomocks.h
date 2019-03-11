@@ -46,12 +46,10 @@
 #define HM_NS HippoMocks::
 #endif
 
-#ifdef _MSC_VER
 #ifdef _WIN64
 #define WINCALL
 #else
 #define WINCALL __stdcall
-#endif
 #endif
 #ifndef DEBUGBREAK
 #ifdef _MSC_VER
