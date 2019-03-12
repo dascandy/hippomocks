@@ -11,6 +11,9 @@ all: $(TARGETS)
 clean:
 	$(RM) $(OBJECTS) $(TARGETS) $(OBJECTS:%.o=%.d)
 
+distclean: clean
+	${RM} ${TARGET}
+
 runtest: $(TARGET)
 	./$(TARGET)
 
