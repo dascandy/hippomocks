@@ -37,6 +37,14 @@ set(SOURCES
 add_executable(HippoMocksTest64
   ${SOURCES}
 )
+
+if (NOT WIN32)
+  target_compile_options(HippoMocksTest64
+    PRIVATE
+      -Wall -Wextra -pedantic -Wno-long-long
+  )
+endif()
+
 target_link_libraries(HippoMocksTest64
 	PRIVATE 
 		HippoMocks
