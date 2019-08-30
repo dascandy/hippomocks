@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.0)
 
 project(HippoMocksTests CXX)
 
+if (NOT WIN32)
+  target_compile_options(HippoMocksTests
+    PRIVATE
+      -Wall -Wextra -pedantic -Wno-long-long
+  )
+endif()
+
 add_executable(${PROJECT_NAME}
 	Framework.cpp
 	is_virtual.cpp
