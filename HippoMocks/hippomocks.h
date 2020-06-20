@@ -93,7 +93,7 @@ extern "C" __declspec(dllimport) void WINCALL DebugBreak();
 #define SOME_ARM
 #endif
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__)
 #define CMOCK_FUNC_PLATFORMIS64BIT
 #endif
 
@@ -307,6 +307,12 @@ public:
 	Unprotect _allow_write(origFunc, sizeof(backupData));
 	memcpy(backupData, origFunc, sizeof(backupData));
 
+#ifdef CMOCK_FUNC_PLATFORMIS64BIT
+	unsigned int *rawptr = (unsigned int *)origFunc;
+	rawptr[0] = 0x58000051;
+	rawptr[1] = 0xD61F0220;
+	*(long long*)(horrible_cast<intptr_t>(origFunc) + 8) = (long long)(horrible_cast<intptr_t>(replacement));
+#else
 	unsigned int *rawptr = (unsigned int *)((intptr_t)(origFunc) & (~3));
 	if ((intptr_t)origFunc & 1) {
 	  rawptr[0] = 0x6800A001;
@@ -317,6 +323,8 @@ public:
 	  rawptr[1] = (intptr_t)replacement;
 	  rawptr[2] = (intptr_t)replacement;
 	}
+#endif
+
 	__clear_cache((char *)rawptr, (char *)rawptr+16);
 #endif
   }
