@@ -3280,6 +3280,7 @@ public:
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Any, #func, __FILE__, __LINE__)
 #define ExpectCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Once, #func, __FILE__, __LINE__)
+#define ExpectCallsFunc(func, num) RegisterExpect_<__COUNTER__>(&func, HM_NS RegistrationType(num,num), #func, __FILE__, __LINE__)
 #define NeverCallFunc(func) RegisterExpect_<__COUNTER__>(&func, HM_NS Never, #func, __FILE__, __LINE__)
 #define OnCallFuncOverload(func) RegisterExpect_<__COUNTER__>(func, HM_NS Any, #func, __FILE__, __LINE__)
 #define ExpectCallFuncOverload(func) RegisterExpect_<__COUNTER__>(func, HM_NS Once, #func, __FILE__, __LINE__)
@@ -3300,6 +3301,7 @@ public:
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 #define OnCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Any, #func, __FILE__, __LINE__)
 #define ExpectCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Once, #func, __FILE__, __LINE__)
+#define ExpectCallsFunc(func, num) RegisterExpect_<__COUNTER__>(&func, HM_NS RegistrationType(num,num), #func, __FILE__, __LINE__)
 #define NeverCallFunc(func) RegisterExpect_<__LINE__>(&func, HM_NS Never, #func, __FILE__, __LINE__)
 #define OnCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Any, #func,  __FILE__, __LINE__)
 #define ExpectCallFuncOverload(func) RegisterExpect_<__LINE__>(func, HM_NS Once, #func, __FILE__, __LINE__)
