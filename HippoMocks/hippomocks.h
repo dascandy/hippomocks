@@ -449,11 +449,29 @@ InParam<T, false> In(T& t) { return InParam<T, false>(t); }
 template <typename T>
 InParam<T, true> In(T*& t) { return InParam<T, true>(t); }
 
+template <typename T>
+struct DerefParam
+{
+  explicit DerefParam(T val): value(val) {}
+  T value;
+};
+
+template <typename T>
+DerefParam<T> Deref(T t) { return DerefParam<T>(t); }
+
+
 struct NotPrintable { template <typename T> NotPrintable(T const&) {} };
 
 inline std::ostream &operator<<(std::ostream &os, NotPrintable const&)
 {
 	os << "???";
+	return os;
+}
+
+template <typename T>
+inline std::ostream &operator<<(std::ostream &os, DerefParam<T> deref)
+{
+	os << "Deref(" << deref.value << ")";
 	return os;
 }
 
@@ -532,6 +550,11 @@ struct comparer
   static inline bool compare(const ByRef<U> &a, typename with_const<T>::type b)
   {
 	return &a.arg == &b;
+  }
+  template <typename U>
+  static inline bool compare(const DerefParam<U> a, typename with_const<T>::type b)
+  {
+	return b && (a.value == *b);
   }
 };
 
@@ -6395,6 +6418,7 @@ using HippoMocks::DONTCARE_NAME;
 using HippoMocks::Call;
 using HippoMocks::Out;
 using HippoMocks::In;
+using HippoMocks::Deref;
 #endif
 
 #undef DEBUGBREAK

@@ -17,6 +17,7 @@ add_executable(${PROJECT_NAME}
 	test_constref_params.cpp
 	test.cpp
 	test_cv_funcs.cpp
+    test_derefparam.cpp
 	test_do.cpp
 	test_dontcare.cpp
 	test_except.cpp
@@ -30,7 +31,7 @@ add_executable(${PROJECT_NAME}
 	test_optional.cpp
 	test_outparam.cpp
 	test_overload.cpp
-	test_ref_args.cpp
+    test_ref_args.cpp
 	test_regression_arg_count.cpp
 	test_retval.cpp
 	test_transaction.cpp
