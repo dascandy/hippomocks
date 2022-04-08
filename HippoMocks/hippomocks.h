@@ -600,6 +600,17 @@ struct do_assign<T1, T2&, true>
 };
 
 template <typename T1, typename T2>
+struct do_assign<T1, T2, true>
+{
+  static void assign_to(T1 outparam, T2 &refparam){}
+  // Spy on a pass-by-value parameter being issued.
+  static void assign_from(T1 inparam, T2 refparam)
+  {
+  inparam.value = refparam;
+  }
+};
+
+template <typename T1, typename T2>
 struct do_assign<T1, T2, false>
 {
   static void assign_to(T1, T2) {}

@@ -5,9 +5,19 @@
 class IInParam { 
 public:
 	virtual ~IInParam() {}
+
 	virtual void a(const std::string& in) = 0;
 	virtual void b(std::string* in) = 0;
-	virtual void c(const char* in) = 0;
+    virtual void c(std::string in) = 0;
+
+    void a1() {
+        this->a("Hello World");
+    }
+
+    void testC() {
+        std::string in("Hello World");
+        this->c(in);
+    }
 };
 
 TEST (checkInParamsAreFilledIn_ConstChar)
@@ -17,12 +27,12 @@ TEST (checkInParamsAreFilledIn_ConstChar)
 	std::string teststring;
 	mocks.ExpectCall(iamock, IInParam::a).With(In(teststring));
 	
-	iamock->a("Hello World");
+	iamock->a1();
 
 	CHECK(teststring == "Hello World");
 }
 
-TEST (checkInParamsAreFilledIn_String)
+TEST (checkInParamsAreFilledIn_StringByReference)
 {
 	MockRepository mocks;
 	IInParam *iamock = mocks.Mock<IInParam>();
@@ -35,7 +45,7 @@ TEST (checkInParamsAreFilledIn_String)
 	CHECK(teststring == in);
 }
 
-TEST (checkInParamsAreFilledIn_PointerToString)
+TEST (checkInParamsAreFilledIn_PointerAddressMatch)
 {
 	MockRepository mocks;
 	IInParam *iamock = mocks.Mock<IInParam>();
@@ -48,15 +58,15 @@ TEST (checkInParamsAreFilledIn_PointerToString)
 	CHECK(teststring == &in);
 }
 
-TEST (checkInParamsAreFilledIn_Char)
-{
-	MockRepository mocks;
-	IInParam *iamock = mocks.Mock<IInParam>();
-	const char* teststring = NULL;
-	mocks.ExpectCall(iamock, IInParam::c).With(In(teststring));
-	
-	const char* in = "Hello World";
-	iamock->c(in);
 
-	CHECK(strcmp(teststring, in) == 0);
+TEST (CheckInParamsAreFilled_StringByValue)
+{
+    MockRepository mocks;
+    IInParam *iamock = mocks.Mock<IInParam>();
+    std::string teststring = "";
+    mocks.ExpectCall(iamock, IInParam::c).With(In(teststring));
+
+    iamock->testC();
+
+    CHECK(teststring == "Hello World");
 }
