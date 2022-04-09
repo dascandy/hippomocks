@@ -17,7 +17,7 @@
   * [Out() Method](#out-method)
   * [Deref() Method](#deref-method)
 - [Further Examples](#further-examples)
-- [Recognitions](#recognitions)
+- [Special Thanks](#special-thanks)
 
 
 # Introduction
@@ -413,5 +413,5 @@ For more examples of how to use all of these methods, refer to the [tests folder
 
 For testing Variadic Functions, please see [this Stack Overflow comment](https://stackoverflow.com/questions/36749410/hippomocks-mocking-function-with-variable-count-of-args/38769627#38769627).
 
-# Recognitions
-Thanks to @SttIntc & @jacobkir for battle testing this wiki. 
+# Special Thanks
+Thanks to [Steven Taylor](https://github.com/SttIntc) & [Jacob Kirby](https://github.com/jacobkir) for battle testing this wiki. 
