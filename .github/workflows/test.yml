@@ -1,0 +1,24 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  Build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    # Build Project
+    - name: Generate build files
+      run: cmake -Bbuild -H.
+    - name: Build HippoMocks
+      run: cmake --build build/ --target all
+    # Run Unit Tests
+  Unit Tests:
+    - name: Run Unit Tests
+      run: build/HippoMocksTest/HippoMocksTests
