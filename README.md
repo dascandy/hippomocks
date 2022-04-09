@@ -1,3 +1,5 @@
+[![Unit Tests](https://github.com/jeremy-ir/hippomocks/actions/workflows/test.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/test.yml)
+
 # Table of Contents
 - [Introduction](#introduction)
 - [To-Do](#to-do)
@@ -29,7 +31,7 @@ HippoMocks is a C-compatible, C++-based, single-header mocking framework origina
 - [ ] Enable OnCallsFunc() (C-style mock setting a minimum number of expectations)
 - [x] Migrate test framework to Google Test
 - [ ] Increase the number of unit tests
-- [ ] Enable CI to gate checkins on the unit tests
+- [x] Enable CI to gate checkins on the unit tests
 - [ ] Add general comments to hippomocks.h to make it more understandable
 - [ ] Add doxygen comments for the functions and classes
 

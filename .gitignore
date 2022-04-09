@@ -21,6 +21,7 @@ _deps
 *.obj
 *.pdb
 
+build/
 Debug/
 Release/
 
