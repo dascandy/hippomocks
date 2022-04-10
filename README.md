@@ -1,4 +1,5 @@
 [![GCC](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml)
+[![Clang](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml)
 [![MSVC](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml)
 
 # Table of Contents

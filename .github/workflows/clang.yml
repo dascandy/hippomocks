@@ -1,0 +1,27 @@
+name: Clang
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  unit-tests:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Clang
+      uses: egor-tensin/setup-clang@v1
+      with:
+        version: latest
+        platform: x64
+    - name: Generate build files
+      run: cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -Bbuild
+    - name: Build HippoMocks
+      run: cmake --build build --config Debug --target all
+    - name: Run Unit Tests
+      run: build/HippoMocksTest/HippoMocksTests
