@@ -27,7 +27,7 @@ HippoMocks is a C-compatible, C++-based, single-header mocking framework origina
 - [ ] Update documentation with C++ usage model
 - [ ] Test and (if not working) enable With() filtering for NeverCallFunc()
 - [ ] Enable OnCallsFunc() (C-style mock setting a minimum number of expectations)
-- [ ] Migrate test framework to Google Test
+- [x] Migrate test framework to Google Test
 - [ ] Increase the number of unit tests
 - [ ] Enable CI to gate checkins on the unit tests
 - [ ] Add general comments to hippomocks.h to make it more understandable

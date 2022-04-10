@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class II { 
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g() = 0;
 };
 
-TEST (checkBaseCaseOptionalOk)
+TEST (TestOptional, checkBaseCaseOptionalOk)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -18,7 +18,7 @@ TEST (checkBaseCaseOptionalOk)
 	iamock->f();
 }
 
-TEST (checkBaseCaseOptionalNotRequired)
+TEST (TestOptional, checkBaseCaseOptionalNotRequired)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -27,7 +27,7 @@ TEST (checkBaseCaseOptionalNotRequired)
 	iamock->f();
 }
 
-TEST (checkBaseCaseOptionalTwiceIsOK)
+TEST (TestOptional, checkBaseCaseOptionalTwiceIsOK)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();

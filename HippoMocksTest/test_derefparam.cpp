@@ -1,6 +1,6 @@
 #include <string>
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IDerefParam { 
 public:
@@ -24,7 +24,7 @@ public:
 };
 
 
-TEST (checkDerefMatch_String)
+TEST (TestDerefParam, checkDerefMatch_String)
 {
 	MockRepository mocks;
 	IDerefParam *iamock = mocks.Mock<IDerefParam>();
@@ -34,7 +34,7 @@ TEST (checkDerefMatch_String)
 	iamock->testA();
 }
 
-TEST (checkDerefMatch_Char)
+TEST (TestDerefParam, checkDerefMatch_Char)
 {
 	MockRepository mocks;
 	IDerefParam *iamock = mocks.Mock<IDerefParam>();
@@ -43,7 +43,7 @@ TEST (checkDerefMatch_Char)
 	iamock->testB();
 }
 
-TEST (checkDerefMatch_Int)
+TEST (TestDerefParam, checkDerefMatch_Int)
 {
 	MockRepository mocks;
 	IDerefParam *iamock = mocks.Mock<IDerefParam>();

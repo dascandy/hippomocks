@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class Argument
 {
@@ -14,7 +14,7 @@ public:
     virtual Argument getValue() = 0;
 };
 
-TEST(checkUnexpectedCall)
+TEST (TestObjectReturn, checkUnexpectedCall)
 {
     MockRepository mocks;
 
@@ -30,5 +30,5 @@ TEST(checkUnexpectedCall)
         unexpectedCall = true;
     }
 
-    CHECK(unexpectedCall == true);
+    EXPECT_TRUE(unexpectedCall);
 }

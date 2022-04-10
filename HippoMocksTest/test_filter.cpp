@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include "hippomocks.h"
 
 class IAA { 
@@ -11,7 +11,7 @@ bool oeo(int a, int b, int c) { return (a % 2 == 1) && (b % 2 == 0) && (c % 2 ==
 bool eod(int a, int b, int) { return (a % 2 == 0) && (b % 2 == 1); }
 bool never(int, int, int) { return false; }
 
-TEST (checkFilterIsApplied)
+TEST (TestFilter, checkFilterIsApplied)
 {
 	MockRepository mocks;
 	IAA *iamock = mocks.Mock<IAA>();
@@ -20,13 +20,13 @@ TEST (checkFilterIsApplied)
 	mocks.OnCall(iamock, IAA::f).Match(eod).Return(2);
 	mocks.OnCall(iamock, IAA::f).Match(oeo).Return(1);
 	mocks.OnCall(iamock, IAA::f).Match(allEven).Return(5);
-	EQUALS(5, iamock->f(0, 0, 0));
-	EQUALS(4, iamock->f(0, 0, 1));
-	EQUALS(2, iamock->f(0, 1, 0));
-	EQUALS(2, iamock->f(0, 1, 1));
-	EQUALS(4, iamock->f(1, 0, 0));
-	EQUALS(1, iamock->f(1, 0, 1));
-	EQUALS(4, iamock->f(1, 1, 0));
-	EQUALS(4, iamock->f(1, 1, 1));
+	EXPECT_EQ(5, iamock->f(0, 0, 0));
+	EXPECT_EQ(4, iamock->f(0, 0, 1));
+	EXPECT_EQ(2, iamock->f(0, 1, 0));
+	EXPECT_EQ(2, iamock->f(0, 1, 1));
+	EXPECT_EQ(4, iamock->f(1, 0, 0));
+	EXPECT_EQ(1, iamock->f(1, 0, 1));
+	EXPECT_EQ(4, iamock->f(1, 1, 0));
+	EXPECT_EQ(4, iamock->f(1, 1, 1));
 }
 

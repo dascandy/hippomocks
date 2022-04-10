@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IA { 
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g() = 0;
 };
 
-TEST (checkBaseCase)
+TEST (BasicTest, checkBaseCase)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -18,7 +18,7 @@ TEST (checkBaseCase)
 	iamock->g();
 }
 
-TEST (checkMultiCall)
+TEST (BasicTest, checkMultiCall)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -30,7 +30,7 @@ TEST (checkMultiCall)
 	iamock->f();
 }
 
-TEST (checkMultiCallNotCalled)
+TEST (BasicTest, checkMultiCallNotCalled)
 {
 	bool exceptionCaught = false;
 	try {
@@ -46,10 +46,10 @@ TEST (checkMultiCallNotCalled)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkMultiCallWrongOrder)
+TEST (BasicTest, checkMultiCallWrongOrder)
 {
 	MockRepository mocks;
 	IA *iamock = mocks.Mock<IA>();
@@ -65,11 +65,11 @@ TEST (checkMultiCallWrongOrder)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 	mocks.reset();
 }
 
-TEST (checkExpectationsNotCompleted)
+TEST (BasicTest, checkExpectationsNotCompleted)
 {
 	bool exceptionCaught = false;
 	try {
@@ -83,10 +83,10 @@ TEST (checkExpectationsNotCompleted)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkOvercompleteExpectations)
+TEST (BasicTest, checkOvercompleteExpectations)
 {
 	bool exceptionCaught = false;
 	try {
@@ -102,10 +102,10 @@ TEST (checkOvercompleteExpectations)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkExpectationsAreInOrder)
+TEST (BasicTest, checkExpectationsAreInOrder)
 {
 	bool exceptionCaught = false;
 	try {
@@ -119,6 +119,6 @@ TEST (checkExpectationsAreInOrder)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 

@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IZombie { 
 public:
@@ -7,7 +7,7 @@ public:
 	virtual void a() = 0;
 };
 
-TEST (checkZombieCallsAreReported)
+TEST (TestZombie, checkZombieCallsAreReported)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -24,6 +24,6 @@ TEST (checkZombieCallsAreReported)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 

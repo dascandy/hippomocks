@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include <string>
 
 using HippoMocks::byRef;
@@ -22,7 +22,7 @@ public:
 	virtual void f(const IR &arg) = 0;
 };
 
-TEST (checkTemporaryClassParam)
+TEST (TestConstRefParams, checkTemporaryClassParam)
 {
   MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -30,7 +30,7 @@ TEST (checkTemporaryClassParam)
 	iamock->d("Hello");
 }
 
-TEST (checkConstRefClassParam)
+TEST (TestConstRefParams, checkConstRefClassParam)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -43,7 +43,7 @@ bool operator==(const IR &objA, const IR &objB)
 	return &objA == &objB;
 }
 
-TEST (checkConstRefAbstractClassParam)
+TEST (TestConstRefParams, checkConstRefAbstractClassParam)
 {
 	R r;
 	MockRepository mocks;

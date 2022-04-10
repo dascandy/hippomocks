@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 // For obvious reasons, the Throw is not present when you disable exceptions.
 #ifndef HM_NO_EXCEPTIONS
@@ -10,7 +10,7 @@ public:
 	virtual std::string g() = 0;
 };
 
-TEST (checkPrimitiveExceptionAcceptedAndThrown)
+TEST (TestExcept, checkPrimitiveExceptionAcceptedAndThrown)
 {
 	MockRepository mocks;
 	IE *iamock = mocks.Mock<IE>();
@@ -22,10 +22,10 @@ TEST (checkPrimitiveExceptionAcceptedAndThrown)
 	}
 	catch(int a)
 	{
-		CHECK(a == 42);
+		EXPECT_EQ(a, 42);
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
 class SomeException : public std::exception {
@@ -36,7 +36,7 @@ public:
 	const char *what() const throw() { return text; }
 };
 
-TEST (checkClassTypeExceptionWithContent)
+TEST (TestExcept, checkClassTypeExceptionWithContent)
 {
 	const char *sText = "someText";
 	MockRepository mocks;
@@ -49,13 +49,13 @@ TEST (checkClassTypeExceptionWithContent)
 	}
 	catch(SomeException &a)
 	{
-		CHECK(a.what() == sText);
+		EXPECT_EQ(a.what(), sText);
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST(checkMockRepoVerifyDoesNotThrowDuringException)
+TEST (TestExcept, checkMockRepoVerifyDoesNotThrowDuringException)
 {
 	bool exceptionCaught = false;
 	try
@@ -68,7 +68,7 @@ TEST(checkMockRepoVerifyDoesNotThrowDuringException)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 	exceptionCaught = false;
 	try
 	{
@@ -81,7 +81,7 @@ TEST(checkMockRepoVerifyDoesNotThrowDuringException)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 #endif
 

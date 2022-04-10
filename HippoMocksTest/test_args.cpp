@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IB {
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g(int) = 0;
 };
 
-TEST (checkArgumentsAccepted)
+TEST (TestArgs, checkArgumentsAccepted)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.Mock<IB>();
@@ -18,22 +18,14 @@ TEST (checkArgumentsAccepted)
 	iamock->g(2);
 }
 
-TEST (checkArgumentsChecked)
+TEST (TestArgs, checkArgumentsChecked)
 {
 	MockRepository mocks;
 	IB *iamock = mocks.Mock<IB>();
 	mocks.ExpectCall(iamock, IB::f).With(1);
 	mocks.ExpectCall(iamock, IB::g).With(1);
-	bool exceptionCaught = false;
-	try 
-	{
-		iamock->f(2);
-	}
-	catch (HippoMocks::ExpectationException)
-	{
-		exceptionCaught = true;
-	}
-	CHECK(exceptionCaught);
+
+	EXPECT_THROW(iamock->f(2), HippoMocks::ExpectationException);
 	mocks.reset();
 }
 

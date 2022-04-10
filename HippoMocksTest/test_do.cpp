@@ -1,6 +1,6 @@
 #include <string>
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 using HippoMocks::byRef;
 
@@ -11,14 +11,14 @@ public:
 };
 
 #if __cplusplus > 199711L
-TEST (checkDoFunctorCanBeLambdaWithContent)
+TEST (TestDo, checkDoFunctorCanBeLambdaWithContent)
 {
 	MockRepository mocks;
 	IDoFunctor *iamock = mocks.Mock<IDoFunctor>();
   {
     std::string value = "Hello World";
     mocks.ExpectCall(iamock, IDoFunctor::a).Do([=](std::string arg){
-      CHECK(arg == value);
+      EXPECT_EQ(arg, value);
     });
   }
 
@@ -43,7 +43,7 @@ public:
 	void operator()() { ++calls; }
 };
 
-TEST (checkFunctorsCalled)
+TEST (TestDo, checkFunctorsCalled)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
@@ -51,29 +51,29 @@ TEST (checkFunctorsCalled)
 	mocks.OnCall(iamock, II::g).Do(setChecked);
 	checked = false;
 	iamock->g();
-	CHECK(checked == true);
+	EXPECT_TRUE(checked);
 	checked = false;
 	iamock->f();
-	CHECK(checked == true);
+	EXPECT_TRUE(checked);
 	checked = false;
 	iamock->g();
-	CHECK(checked == true);
+	EXPECT_TRUE(checked);
 }
 
-TEST (checkFunctorObjectCalled)
+TEST (TestDo, checkFunctorObjectCalled)
 {
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
 	functorClass obj;
 	mocks.ExpectCall(iamock, II::f).Do(byRef(obj));
 	mocks.OnCall(iamock, II::g).Do(byRef(obj));
-	CHECK(obj.calls == 0);
+	EXPECT_EQ(obj.calls, 0);
 	iamock->g();
-	CHECK(obj.calls == 1);
+	EXPECT_EQ(obj.calls, 1);
 	iamock->f();
-	CHECK(obj.calls == 2);
+	EXPECT_EQ(obj.calls, 2);
 	iamock->g();
-	CHECK(obj.calls == 3);
+	EXPECT_EQ(obj.calls, 3);
 }
 
 class functorByVal {
@@ -85,20 +85,20 @@ private:
   functorByVal &operator=(const functorByVal&); // Silence VS
 };
 
-TEST (checkFunctorObjectByvalCalled)
+TEST (TestDo, checkFunctorObjectByvalCalled)
 {
   int count = 0;
 	MockRepository mocks;
 	II *iamock = mocks.Mock<II>();
 	mocks.ExpectCall(iamock, II::f).Do(functorByVal(count));
 	mocks.OnCall(iamock, II::g).Do(functorByVal(count));
-	CHECK(count == 0);
+	EXPECT_EQ(count, 0);
 	iamock->g();
-	CHECK(count == 1);
+	EXPECT_EQ(count, 1);
 	iamock->f();
-	CHECK(count == 2);
+	EXPECT_EQ(count, 2);
 	iamock->g();
-	CHECK(count == 3);
+	EXPECT_EQ(count, 3);
 }
 
 

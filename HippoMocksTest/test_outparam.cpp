@@ -1,6 +1,6 @@
 #include <string>
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IOutParam { 
 public:
@@ -10,7 +10,7 @@ public:
 	virtual void c(char** out) = 0;
 };
 
-TEST (checkOutParamsAreFilledIn_ConstChar)
+TEST (TestOutParam, checkOutParamsAreFilledIn_ConstChar)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -19,10 +19,10 @@ TEST (checkOutParamsAreFilledIn_ConstChar)
 	std::string out;
 	iamock->a(out);
 
-	CHECK(out == "Hello World");
+	EXPECT_EQ(out, "Hello World");
 }
 
-TEST (checkOutParamsAreFilledIn_String)
+TEST (TestOutParam, checkOutParamsAreFilledIn_String)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -32,10 +32,10 @@ TEST (checkOutParamsAreFilledIn_String)
 	std::string out;
 	iamock->a(out);
 
-	CHECK(out == teststring);
+	EXPECT_EQ(out, teststring);
 }
 
-TEST (checkOutParamsAreFilledIn_PointerToString)
+TEST (TestOutParam, checkOutParamsAreFilledIn_PointerToString)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -46,12 +46,12 @@ TEST (checkOutParamsAreFilledIn_PointerToString)
 	std::string* out = 0;
 	iamock->b(&out);
 
-	CHECK(*out == teststring);
+	EXPECT_EQ(*out, teststring);
 
   delete outString;
 }
 
-TEST (checkOutParamsAreFilledIn_Char)
+TEST (TestOutParam, checkOutParamsAreFilledIn_Char)
 {
 	MockRepository mocks;
 	IOutParam *iamock = mocks.Mock<IOutParam>();
@@ -61,5 +61,5 @@ TEST (checkOutParamsAreFilledIn_Char)
 	char* out = 0;
 	iamock->c(&out);
 
-	CHECK(strcmp(out, teststring) == 0);
+	EXPECT_EQ(strcmp(out, teststring), 0);
 }

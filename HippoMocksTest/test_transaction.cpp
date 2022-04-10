@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IM { 
 public:
@@ -10,7 +10,7 @@ public:
 	virtual void b() = 0;
 };
 
-TEST (checkTransactionStyleWorks)
+TEST (TestTransaction, checkTransactionStyleWorks)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -25,7 +25,7 @@ TEST (checkTransactionStyleWorks)
 	iamock->end();
 }
 
-TEST (checkTransactionStyleFailIfOneSkipped)
+TEST (TestTransaction, checkTransactionStyleFailIfOneSkipped)
 {
 	MockRepository mocks;
 	IM *iamock = mocks.Mock<IM>();
@@ -44,7 +44,7 @@ TEST (checkTransactionStyleFailIfOneSkipped)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 	mocks.reset();
 }
 

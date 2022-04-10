@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include "hippomocks.h"
 #include <stdio.h>
 
@@ -18,7 +18,7 @@ public:
 	virtual void i(int, const X &) = 0;
 };
 
-TEST (checkNoResultContainsFuncName)
+TEST (TestExceptionQuality, checkNoResultContainsFuncName)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -28,12 +28,12 @@ TEST (checkNoResultContainsFuncName)
 		iamock->f();
 	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
-		CHECK(strstr(ex.what(), "IS::f") != NULL);
+		EXPECT_NE(strstr(ex.what(), "IS::f"), nullptr);
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkNoResultContainsBlankArgSpec)
+TEST (TestExceptionQuality, checkNoResultContainsBlankArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -43,13 +43,13 @@ TEST (checkNoResultContainsBlankArgSpec)
 		iamock->g(1,2);
 	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
-		CHECK(strstr(ex.what(), "IS::g") != NULL);
-		CHECK(strstr(ex.what(), "(...)") != NULL);
+		EXPECT_NE(strstr(ex.what(), "IS::g"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "(...)"), nullptr);
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkNoResultContainsActualArgSpec)
+TEST (TestExceptionQuality, checkNoResultContainsActualArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -59,13 +59,13 @@ TEST (checkNoResultContainsActualArgSpec)
 		iamock->g(1,2);
 	} catch(HippoMocks::NoResultSetUpException &ex) {
 		exceptionCaught = true;
-		CHECK(strstr(ex.what(), "IS::g") != NULL);
-		CHECK(strstr(ex.what(), "(1,2)") != NULL);
+		EXPECT_NE(strstr(ex.what(), "IS::g"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "(1,2)"), nullptr);
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkNoResultContainsActualUnprintableArgSpec)
+TEST (TestExceptionQuality, checkNoResultContainsActualUnprintableArgSpec)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -75,13 +75,13 @@ TEST (checkNoResultContainsActualUnprintableArgSpec)
 		iamock->h();
 	} catch(HippoMocks::NotImplementedException &ex) {
 		exceptionCaught = true;
-		CHECK(strstr(ex.what(), "IS::i") != NULL);
-		CHECK(strstr(ex.what(), "(42,??\?)") != NULL);
+		EXPECT_NE(strstr(ex.what(), "IS::i"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "(42,??\?)"), nullptr);
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkNoResultDoesNotComplainIfNotCalled)
+TEST (TestExceptionQuality, checkNoResultDoesNotComplainIfNotCalled)
 {
 	MockRepository mocks;
 	IS *iamock = mocks.Mock<IS>();
@@ -90,7 +90,7 @@ TEST (checkNoResultDoesNotComplainIfNotCalled)
 	iamock->g(3,4);
 }
 
-TEST(checkNotImplementedExceptionToContainInfo)
+TEST (TestExceptionQuality, checkNotImplementedExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -108,19 +108,19 @@ TEST(checkNotImplementedExceptionToContainInfo)
 	}
 	catch (HippoMocks::NotImplementedException &ex)
 	{
-		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
-		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::g(1,2)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(...)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(3,4)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), __FILE__), nullptr);
 		exceptionCaught = true;
 	}
 	mocks.reset();
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST(checkExpectationExceptionToContainInfo)
+TEST (TestExceptionQuality, checkExpectationExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -139,21 +139,21 @@ TEST(checkExpectationExceptionToContainInfo)
 	}
 	catch (HippoMocks::ExpectationException &ex)
 	{
-		CHECK(strstr(ex.what(), "Function IS::g(0,1) called") != NULL);
-		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(2,3)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::h()") != NULL);
-		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		EXPECT_NE(strstr(ex.what(), "Function IS::g(0,1) called"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::g(1,2)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(2,3)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(3,4)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::h()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), __FILE__), nullptr);
 		exceptionCaught = true;
 	}
 	mocks.reset();
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST(checkCallMissingExceptionToContainInfo)
+TEST (TestExceptionQuality, checkCallMissingExceptionToContainInfo)
 {
 	bool exceptionCaught = false;
 	try
@@ -169,14 +169,14 @@ TEST(checkCallMissingExceptionToContainInfo)
 	}
 	catch (HippoMocks::CallMissingException &ex)
 	{
-		CHECK(strstr(ex.what(), "Expectation for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::f()") != NULL);
-		CHECK(strstr(ex.what(), "Expectation for IS::g(1,2)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(...)") != NULL);
-		CHECK(strstr(ex.what(), "Result set for IS::g(3,4)") != NULL);
-		CHECK(strstr(ex.what(), __FILE__) != NULL);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::f()"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Expectation for IS::g(1,2)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(...)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), "Result set for IS::g(3,4)"), nullptr);
+		EXPECT_NE(strstr(ex.what(), __FILE__), nullptr);
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 

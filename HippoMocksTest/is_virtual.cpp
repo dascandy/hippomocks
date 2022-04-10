@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include <iostream>
 #include "hippomocks.h"
 
@@ -27,47 +27,47 @@ class ILD : public IL, public SecondBase, public ThirdBase
 {
 };
 
-TEST(checkNonVirtual) 
+TEST (IsVirtual, checkNonVirtual) 
 {
-	EQUALS(HippoMocks::virtual_index(&ILD::f).first, -1);
+	EXPECT_EQ(HippoMocks::virtual_index(&ILD::f).first, -1);
 }
 
-TEST(checkFirstVirtual) 
+TEST (IsVirtual, checkFirstVirtual) 
 {
-	EQUALS(HippoMocks::virtual_index(&ILD::g).first, 0);
-	EQUALS(HippoMocks::virtual_index(&ILD::g).second, 0 + FUNCTION_BASE);
+	EXPECT_EQ(HippoMocks::virtual_index(&ILD::g).first, 0);
+	EXPECT_EQ(HippoMocks::virtual_index(&ILD::g).second, 0 + FUNCTION_BASE);
 }
 
-TEST(checkSecondVirtual) 
+TEST (IsVirtual, checkSecondVirtual) 
 {
-	EQUALS(HippoMocks::virtual_index(&ILD::h).first, 0);
-	EQUALS(HippoMocks::virtual_index(&ILD::h).second, 1 + FUNCTION_BASE);
+	EXPECT_EQ(HippoMocks::virtual_index(&ILD::h).first, 0);
+	EXPECT_EQ(HippoMocks::virtual_index(&ILD::h).second, 1 + FUNCTION_BASE);
 }
 
-TEST(checkSecondBaseFirstVirtual) 
+TEST (IsVirtual, checkSecondBaseFirstVirtual) 
 {
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).first, 1);
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).second, 0 + FUNCTION_BASE);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).first, 1);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())&ILD::k).second, 0 + FUNCTION_BASE);
 }
 
-TEST(checkThirdBaseSecondVirtualAfterInt) 
+TEST (IsVirtual, checkThirdBaseSecondVirtualAfterInt) 
 {
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).first, 3);
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).second, 1 + FUNCTION_BASE);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).first, 3);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())&ILD::m).second, 1 + FUNCTION_BASE);
 }
 
 using HippoMocks::func_index;
 
-TEST (checkVirtualIndexGreater64_BecauseLengthOfOpcodeGrows)
+TEST (IsVirtual, checkVirtualIndexGreater64_BecauseLengthOfOpcodeGrows)
 {
-    EQUALS(0, HippoMocks::virtual_index((int (func_index::*)())&func_index::f66).first);
-    EQUALS(66 + FUNCTION_BASE, HippoMocks::virtual_index((int (func_index::*)())&func_index::f66).second);
+    EXPECT_EQ(0, HippoMocks::virtual_index((int (func_index::*)())&func_index::f66).first);
+    EXPECT_EQ(66 + FUNCTION_BASE, HippoMocks::virtual_index((int (func_index::*)())&func_index::f66).second);
 }
 
-TEST(checkPointerConversionIsOk) 
+TEST (IsVirtual, checkPointerConversionIsOk) 
 {
 	void (ThirdBase::*f)() = &ThirdBase::m;
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())f).first, 3);
-	EQUALS(HippoMocks::virtual_index((void (ILD::*)())f).second, 1 + FUNCTION_BASE);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())f).first, 3);
+	EXPECT_EQ(HippoMocks::virtual_index((void (ILD::*)())f).second, 1 + FUNCTION_BASE);
 }
 

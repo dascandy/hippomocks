@@ -1,6 +1,6 @@
 #include <string>
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IInParam { 
 public:
@@ -20,7 +20,7 @@ public:
     }
 };
 
-TEST (checkInParamsAreFilledIn_ConstChar)
+TEST (TestInParam, checkInParamsAreFilledIn_ConstChar)
 {
 	MockRepository mocks;
 	IInParam *iamock = mocks.Mock<IInParam>();
@@ -29,10 +29,10 @@ TEST (checkInParamsAreFilledIn_ConstChar)
 	
 	iamock->a1();
 
-	CHECK(teststring == "Hello World");
+	EXPECT_EQ(teststring, "Hello World");
 }
 
-TEST (checkInParamsAreFilledIn_StringByReference)
+TEST (TestInParam, checkInParamsAreFilledIn_StringByReference)
 {
 	MockRepository mocks;
 	IInParam *iamock = mocks.Mock<IInParam>();
@@ -42,10 +42,10 @@ TEST (checkInParamsAreFilledIn_StringByReference)
 	std::string in("Hello World");
 	iamock->a(in);
 
-	CHECK(teststring == in);
+	EXPECT_EQ(teststring, in);
 }
 
-TEST (checkInParamsAreFilledIn_PointerAddressMatch)
+TEST (TestInParam, checkInParamsAreFilledIn_PointerAddressMatch)
 {
 	MockRepository mocks;
 	IInParam *iamock = mocks.Mock<IInParam>();
@@ -55,11 +55,11 @@ TEST (checkInParamsAreFilledIn_PointerAddressMatch)
 	std::string in("Hello World");
 	iamock->b(&in);
 
-	CHECK(teststring == &in);
+	EXPECT_EQ(teststring, &in);
 }
 
 
-TEST (CheckInParamsAreFilled_StringByValue)
+TEST (TestInParam, CheckInParamsAreFilled_StringByValue)
 {
     MockRepository mocks;
     IInParam *iamock = mocks.Mock<IInParam>();
@@ -68,5 +68,5 @@ TEST (CheckInParamsAreFilled_StringByValue)
 
     iamock->testC();
 
-    CHECK(teststring == "Hello World");
+    EXPECT_EQ(teststring, "Hello World");
 }

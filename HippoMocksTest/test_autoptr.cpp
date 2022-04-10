@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include <utility>
 using std::auto_ptr;
 
@@ -13,26 +13,26 @@ public:
 	virtual auto_ptr<IQ> getSelf();
 };
 
-TEST (checkAutoptrReturnable)
+TEST (TestAutoPtr, checkAutoptrReturnable)
 {
 	X *_t = new X;
 
 	MockRepository mocks;
 	IQ *iamock = mocks.Mock<IQ>();
 	mocks.ExpectCall(iamock, IQ::g).Return(auto_ptr<X>(_t));
-	CHECK(_t == iamock->g().get());
+	EXPECT_EQ(_t, iamock->g().get());
 }
 
-TEST (checkAutoptrCanReturnMock)
+TEST (TestAutoPtr, checkAutoptrCanReturnMock)
 {
 	MockRepository mocks;
 	IQ *iamock = mocks.Mock<IQ>();
 	mocks.ExpectCall(iamock, IQ::getSelf).Return(auto_ptr<IQ>(iamock));
 	mocks.ExpectCallDestructor(iamock);
-	CHECK(iamock == iamock->getSelf().get());
+	EXPECT_EQ(iamock, iamock->getSelf().get());
 }
 
-TEST(checkCanDestroyMock)
+TEST (TestAutoPtr, checkCanDestroyMock)
 {
 	MockRepository mocks;
 	IQ *iamock = mocks.Mock<IQ>();
@@ -40,7 +40,7 @@ TEST(checkCanDestroyMock)
 	delete iamock;
 }
 
-TEST(checkAutoptrStability)
+TEST (TestAutoPtr, checkAutoptrStability)
 {
 	int exceptionsCaught = 0;
 	try
@@ -64,6 +64,6 @@ TEST(checkAutoptrStability)
 	{
 		exceptionsCaught++;
 	}
-	CHECK(exceptionsCaught == 2);
+	EXPECT_EQ(2, exceptionsCaught);
 }
 

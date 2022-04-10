@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class BaseA { 
 public:
@@ -16,7 +16,7 @@ public:
 	virtual void c() = 0;
 };
 
-TEST (checkMICallsWork)
+TEST (TestMi, checkMICallsWork)
 {
 	MockRepository mocks;
 	ClassC *iamock = mocks.Mock<ClassC>();

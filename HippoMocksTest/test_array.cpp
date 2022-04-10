@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 class IArrayArgs {
 public:
@@ -8,7 +8,7 @@ public:
 	virtual void g(std::wstring) = 0;
 };
 
-TEST (checkArrayArgumentsAccepted)
+TEST (TestArray, checkArrayArgumentsAccepted)
 {
 	MockRepository mocks;
 	IArrayArgs *iamock = mocks.Mock<IArrayArgs>();

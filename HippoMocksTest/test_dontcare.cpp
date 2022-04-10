@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include "hippomocks.h"
 
 class IZ { 
@@ -16,14 +16,14 @@ bool operator==(const IZ &, const IZ &)
 	return false;
 }
 
-TEST (checkDontcareIsIgnored)
+TEST (TestDontCare, checkDontcareIsIgnored)
 {
 	MockRepository mocks;
 	IY *iamock = mocks.Mock<IY>();
 	mocks.OnCall(iamock, IY::test).Return(false);
 	mocks.OnCall(iamock, IY::test).With(42, _).Return(true);
 	IZ iz;
-	EQUALS(true, iamock->test(42, iz));
-	EQUALS(false, iamock->test(40, iz));
+	EXPECT_EQ(true, iamock->test (42, iz));
+	EXPECT_EQ(false, iamock->test (40, iz));
 }
 

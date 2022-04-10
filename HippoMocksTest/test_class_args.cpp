@@ -1,5 +1,5 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include <string>
 
 // non-reference is bad, but should work
@@ -10,7 +10,7 @@ public:
 	virtual void g(std::string s) = 0;
 };
 
-TEST (checkClassArgumentsAccepted)
+TEST (TestClassArgs, checkClassArgumentsAccepted)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();
@@ -20,7 +20,7 @@ TEST (checkClassArgumentsAccepted)
 	iamock->g("bye");
 }
 
-TEST (checkClassArgumentsChecked)
+TEST (TestClassArgs, checkClassArgumentsChecked)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();
@@ -35,11 +35,11 @@ TEST (checkClassArgumentsChecked)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 	mocks.reset();
 }
 
-TEST (checkClassArgumentsIgnored)
+TEST (TestClassArgs, checkClassArgumentsIgnored)
 {
 	MockRepository mocks;
 	IC *iamock = mocks.Mock<IC>();

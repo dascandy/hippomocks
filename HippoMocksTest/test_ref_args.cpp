@@ -1,11 +1,11 @@
 #include "hippomocks.h"
-#include "Framework.h"
+#include "gtest/gtest.h"
 
 using HippoMocks::byRef;
 
 class IRefArg {
 public:
-	virtual void test() = 0;
+	virtual void test () = 0;
 };
 
 class IK {
@@ -15,10 +15,10 @@ public:
 	virtual void g(int &) = 0;
 	virtual int &h() = 0;
 	virtual const std::string &k() = 0;
-	virtual void l(IRefArg &refArg) { refArg.test();}
+	virtual void l(IRefArg &refArg) { refArg.test ();}
 };
 
-TEST (checkRefArgumentsAccepted)
+TEST (TestRefArgs, checkRefArgumentsAccepted)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -30,7 +30,7 @@ TEST (checkRefArgumentsAccepted)
 }
 
 
-TEST (checkRefArgumentsChecked)
+TEST (TestRefArgs, checkRefArgumentsChecked)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -46,7 +46,7 @@ TEST (checkRefArgumentsChecked)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 	mocks.reset();
 }
 
@@ -59,7 +59,7 @@ void plusequals2(int &x)
 	x+=2; 
 }
 
-TEST (checkRefArgumentsPassedAsRef)
+TEST (TestRefArgs, checkRefArgumentsPassedAsRef)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -68,11 +68,11 @@ TEST (checkRefArgumentsPassedAsRef)
 	mocks.ExpectCall(iamock, IK::g).Do(plusequals2);
 	iamock->f(x);
 	iamock->g(y);
-	CHECK(x == 2);
-	CHECK(y == 4);
+	EXPECT_EQ(x, 2);
+	EXPECT_EQ(y, 4);
 }
 
-TEST (checkRefReturnValues)
+TEST (TestRefArgs, checkRefReturnValues)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -80,8 +80,8 @@ TEST (checkRefReturnValues)
 	mocks.ExpectCall(iamock, IK::h).Return(x);
 	mocks.ExpectCall(iamock, IK::k).Return("Hello World");
 	iamock->h() = 1;
-	EQUALS(iamock->k(), "Hello World");
-	EQUALS(x, 1);
+	EXPECT_EQ(iamock->k(), "Hello World");
+	EXPECT_EQ(x, 1);
 }
 
 bool operator==(const IRefArg &a, const IRefArg &b)
@@ -89,7 +89,7 @@ bool operator==(const IRefArg &a, const IRefArg &b)
 	return (&a == &b);
 }
 
-TEST (checkRefArgCheckedAsReference)
+TEST (TestRefArgs, checkRefArgCheckedAsReference)
 {
 	MockRepository mocks;
 	IK *iamock = mocks.Mock<IK>();
@@ -115,7 +115,7 @@ public:
    
 };
 
-TEST (checkRefReturnAsReference)
+TEST (TestRefArgs, checkRefReturnAsReference)
 {
    MockRepository mocks;
 
@@ -126,7 +126,7 @@ TEST (checkRefReturnAsReference)
    mocks.OnCall(a, IA::getB).ReturnByRef(*b);
    mocks.ExpectCall(b, IB::doSomething);
 
-   CHECK(b == &a->getB());
+   EXPECT_EQ(b, &a->getB());
    a->getB().doSomething();
 
    mocks.VerifyAll();

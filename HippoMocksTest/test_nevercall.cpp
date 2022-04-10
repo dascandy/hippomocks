@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include "hippomocks.h"
 
 class IR { 
@@ -9,7 +9,7 @@ public:
 	virtual int h() { return 0; }
 };
 
-TEST (checkNeverCallWorks)
+TEST (TestNeverCall, checkNeverCallWorks)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -28,10 +28,10 @@ TEST (checkNeverCallWorks)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkNeverCallExceptionDetail)
+TEST (TestNeverCall, checkNeverCallExceptionDetail)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -44,12 +44,12 @@ TEST (checkNeverCallExceptionDetail)
 	catch (HippoMocks::ExpectationException &ex)
 	{
 		exceptionCaught = true;
-		CHECK(strstr(ex.what(), "IR::g") != NULL);
+		EXPECT_NE(strstr(ex.what(), "IR::g"), nullptr);
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (checkInteractionBetweenCallTypesWorks)
+TEST (TestNeverCall, checkInteractionBetweenCallTypesWorks)
 {
 	bool exceptionCaught = false;
 	MockRepository mocks;
@@ -61,13 +61,13 @@ TEST (checkInteractionBetweenCallTypesWorks)
 	Call &returnThree = mocks.ExpectCall(iamock, IR::h).After(onCallG).Return(3);
 	Call &returnFour = mocks.ExpectCall(iamock, IR::h).After(callF).Return(4);
 	mocks.NeverCall(iamock, IR::h).After(returnThree).After(returnFour);
-	CHECK(iamock->h() == 2);
-	CHECK(iamock->h() == 2);
+	EXPECT_EQ(iamock->h(), 2);
+	EXPECT_EQ(iamock->h(), 2);
 	iamock->f();
-	CHECK(iamock->h() == 4);
-	CHECK(iamock->h() == 2);
+	EXPECT_EQ(iamock->h(), 4);
+	EXPECT_EQ(iamock->h(), 2);
 	iamock->g();
-	CHECK(iamock->h() == 3);
+	EXPECT_EQ(iamock->h(), 3);
 	try 
 	{
 		iamock->h();
@@ -76,6 +76,6 @@ TEST (checkInteractionBetweenCallTypesWorks)
 	{
 		exceptionCaught = true;
 	}
-	CHECK(exceptionCaught);
+	EXPECT_TRUE(exceptionCaught);
 }
 

@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include "hippomocks.h"
 
 class IR { 
@@ -23,7 +23,7 @@ public:
 	virtual void f16(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int) {}
 };
 
-TEST (checkArgCount16SupportedAndWorking)
+TEST (TestRegressionArgCount, checkArgCount16SupportedAndWorking)
 {
 	MockRepository mocks;
 	IR *iamock = mocks.Mock<IR>();

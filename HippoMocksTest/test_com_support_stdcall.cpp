@@ -1,4 +1,4 @@
-#include "Framework.h"
+#include "gtest/gtest.h"
 #include <hippomocks.h>
 
 #ifdef _MSC_VER
@@ -34,7 +34,7 @@ public:
 };
 
 
-TEST(checkStdCallBase)
+TEST (TestComSupportStdCall, checkStdCallBase)
 {
 	MockRepository mocks;
 
@@ -43,10 +43,10 @@ TEST(checkStdCallBase)
 		.Return(1);
 
 	long actual = ic->A();
-	EQUALS(1, actual);
+	EXPECT_EQ(1, actual);
 }
 
-TEST(checkStdCallTemplateWithArgumentsImplementations)
+TEST (TestComSupportStdCall, checkStdCallTemplateWithArgumentsImplementations)
 {
 	MockRepository mocks;
 
@@ -100,7 +100,7 @@ TEST(checkStdCallTemplateWithArgumentsImplementations)
 	ic->P(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 }
 
-TEST(checkUnexpectedMethodCallThrowsException)
+TEST (TestComSupportStdCall, checkUnexpectedMethodCallThrowsException)
 {
 	//MockRepository mocks;
 
@@ -192,23 +192,23 @@ public:
         /* [size_is][size_is][out] */ ESTypeID **pIdList) = 0;
 };
 #if 0
-TEST(EnsureThat_VirtualFunctionIndexGenericWorksforAllCases)
+TEST (TestComSupportStdCall, EnsureThat_VirtualFunctionIndexGenericWorksforAllCases)
 {
-	EQUALS(1, VirtualFIndex(&AA::Get2));
-	EQUALS(0, VirtualFIndex(&AA::Get1));
-	EQUALS(0, VirtualFIndex(&IAA::f));
+	EXPECT_EQ(1, VirtualFIndex(&AA::Get2));
+	EXPECT_EQ(0, VirtualFIndex(&AA::Get1));
+	EXPECT_EQ(0, VirtualFIndex(&IAA::f));
 		
-	EQUALS(0, VirtualFIndex(&IUnknown::QueryInterface));
-	EQUALS(1, VirtualFIndex(&IUnknown::AddRef));
-	EQUALS(2, VirtualFIndex(&IUnknown::Release));
+	EXPECT_EQ(0, VirtualFIndex(&IUnknown::QueryInterface));
+	EXPECT_EQ(1, VirtualFIndex(&IUnknown::AddRef));
+	EXPECT_EQ(2, VirtualFIndex(&IUnknown::Release));
 		
-	EQUALS(0, VirtualFIndex(&COMInterface1::QueryInterface));
-	EQUALS(1, VirtualFIndex(&COMInterface1::AddRef));
-	EQUALS(2, VirtualFIndex(&COMInterface1::Release));
+	EXPECT_EQ(0, VirtualFIndex(&COMInterface1::QueryInterface));
+	EXPECT_EQ(1, VirtualFIndex(&COMInterface1::AddRef));
+	EXPECT_EQ(2, VirtualFIndex(&COMInterface1::Release));
 }
 #endif
 
-TEST(CheckThat_AddCommExpectations_Stubs_QueryInterface_AddRef_Release)
+TEST (TestComSupportStdCall, CheckThat_AddCommExpectations_Stubs_QueryInterface_AddRef_Release)
 {
 	MockRepository mocks; 
 	COMInterface1* deviceMock = mocks.Mock<COMInterface1>();
@@ -219,17 +219,17 @@ TEST(CheckThat_AddCommExpectations_Stubs_QueryInterface_AddRef_Release)
 		CComPtr<IUnknown> pUnk = deviceMock; 
 		CComQIPtr<COMInterface1> pDevice = pUnk;
 
-		CHECK(pDevice == pUnk);
+		EXPECT_EQ(pDevice, pUnk);
 
 		IUnknown* p = NULL;
 		pDevice->QueryInterface(__uuidof(IUnknown), (void**)&p);
 
-		CHECK(p == deviceMock);
+		EXPECT_EQ(p, deviceMock);
 
 	}
 }
 
-TEST(CheckThat_ConnectComInterfaces_Stubs_QueryInterface_ToEachOther)
+TEST (TestComSupportStdCall, CheckThat_ConnectComInterfaces_Stubs_QueryInterface_ToEachOther)
 {
 	MockRepository mocks; 
 	COMInterface1* deviceMock = mocks.Mock<COMInterface1>();
@@ -241,13 +241,13 @@ TEST(CheckThat_ConnectComInterfaces_Stubs_QueryInterface_ToEachOther)
 		//Com objects can reach each other
 		CComQIPtr<COMInterface2> pDevMapping = deviceMock;
 			
-		CHECK(pDevMapping != NULL);
-		CHECK(pDevMapping == devMappingMock);
+		EXPECT_NE(pDevMapping, nullptr);
+		EXPECT_EQ(pDevMapping, devMappingMock);
 
 		CComQIPtr<COMInterface1> pDevNavigate = devMappingMock;
 
-		CHECK(pDevNavigate != NULL);
-		CHECK(pDevNavigate == deviceMock);
+		EXPECT_NE(pDevNavigate, nullptr);
+		EXPECT_EQ(pDevNavigate, deviceMock);
 	}
 
 }
