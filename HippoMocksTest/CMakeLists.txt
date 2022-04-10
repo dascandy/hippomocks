@@ -38,9 +38,13 @@ add_executable(${PROJECT_NAME}
 	test_zombie.cpp
 )
 
+if (NOT MSVC)
+	target_link_libraries(${PROJECT_NAME}
+		PUBLIC pthread
+	)
+endif()
 
 target_link_libraries(${PROJECT_NAME}
-	PUBLIC pthread
 	PRIVATE HippoMocks
 )
 add_test(test ${PROJECT_NAME})

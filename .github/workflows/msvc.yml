@@ -1,0 +1,22 @@
+name: MSVC
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  
+  unit-tests:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Generate build files
+      run: cmake.exe -Bbuild
+    - name: Build HippoMocks
+      run: cmake.exe --build build --config Debug --target ALL_BUILD
+    - name: Run Unit Tests
+      run: "build/HippoMocksTest/Debug/HippoMocksTests.exe"

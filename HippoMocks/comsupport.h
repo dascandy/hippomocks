@@ -1,5 +1,5 @@
 #pragma once
-
+#if 0
 #ifdef _MSC_VER
 #include <hippomocks.h>
 #include <winerror.h>
@@ -39,4 +39,5 @@ void ConnectComInterfaces(HM_NS MockRepository& mocks, T1* m1, T2* m2)
 	//no support for interface hierarchies
 	//no Base IUnknown -> do it yourself if you really need that special case
 }
+#endif
 #endif

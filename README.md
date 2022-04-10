@@ -1,4 +1,5 @@
-[![Unit Tests](https://github.com/jeremy-ir/hippomocks/actions/workflows/test.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/test.yml)
+[![GCC](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml)
+[![MSVC](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml)
 
 # Table of Contents
 - [Introduction](#introduction)

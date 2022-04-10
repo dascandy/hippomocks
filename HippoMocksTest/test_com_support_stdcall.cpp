@@ -1,3 +1,4 @@
+#if 0
 #include "gtest/gtest.h"
 #include <hippomocks.h>
 
@@ -253,4 +254,5 @@ TEST (TestComSupportStdCall, CheckThat_ConnectComInterfaces_Stubs_QueryInterface
 }
 } // end of namespace
 
+#endif
 #endif

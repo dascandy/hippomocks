@@ -1,4 +1,4 @@
-name: Unit Tests
+name: GCC
 
 on:
   push:
@@ -15,8 +15,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Generate build files
-      run: cmake -Bbuild -H.
+      run: cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++  -Bbuild
     - name: Build HippoMocks
-      run: cmake --build build/ --target all
+      run: cmake --build build --config Debug --target all
     - name: Run Unit Tests
       run: build/HippoMocksTest/HippoMocksTests
