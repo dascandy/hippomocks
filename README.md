@@ -3,24 +3,30 @@
 [![Clang](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml)
 [![MSVC](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml)
 
-# Table of Contents
+
 - [Introduction](#introduction)
 - [To-Do](#to-do)
 - [MockRespository class](#mockrespository-class)
-  * [OnCall() Method](#oncall-method)
-  * [ExpectCall() Method](#expectcall-method)
-  * [NeverCall() Method](#nevercall-method)
+  - [OnCall() Method](#oncall-method)
+    - [OnCallFunc(funcName)](#oncallfuncfuncname)
+  - [ExpectCall() Method](#expectcall-method)
+    - [ExpectCallFunc(funcName)](#expectcallfuncfuncname)
+    - [ExpectCallsFunc(funcName, numCalls)](#expectcallsfuncfuncname-numcalls)
+    - [ExpectMinCallsFunc(funcName, minCalls)](#expectmincallsfuncfuncname-mincalls)
+    - [Disable ExpectCall Order Requirement](#disable-expectcall-order-requirement)
+  - [NeverCall() Method](#nevercall-method)
+    - [NeverCallFunc(funcName)](#nevercallfuncfuncname)
 - [TCall Class](#tcall-class)
-  * [Return() Method](#return-method)
-  * [With() Method](#with-method)
-  * [After() Method](#after-method)
-  * [Do() Method](#do-method)
-  * [Match() Method](#match-method)
-  * [Throw() Method](#throw-method)
+  - [Return() Method](#return-method)
+  - [With() Method](#with-method)
+  - [After() Method](#after-method)
+  - [Do() Method](#do-method)
+  - [Match() Method](#match-method)
+  - [Throw() Method](#throw-method)
 - [Other Methods](#other-methods)
-  * [In() Method](#in-method)
-  * [Out() Method](#out-method)
-  * [Deref() Method](#deref-method)
+  - [In() Method](#in-method)
+  - [Out() Method](#out-method)
+  - [Deref() Method](#deref-method)
 - [Further Examples](#further-examples)
 - [Special Thanks](#special-thanks)
 
@@ -30,8 +36,8 @@ HippoMocks is a C-compatible, C++-based, single-header mocking framework origina
 
 # To-Do
 - [ ] Update documentation with C++ usage model
-- [ ] Test and (if not working) enable With() filtering for NeverCallFunc()
-- [ ] Enable OnCallsFunc() (C-style mock setting a minimum number of expectations)
+- [x] Test and (if not working) enable With() filtering for NeverCallFunc()
+- [x] Enable OnCallsFunc() (C-style mock setting a minimum number of expectations)
 - [x] Migrate test framework to Google Test
 - [ ] Increase the number of unit tests
 - [x] Enable CI to gate checkins on the unit tests
@@ -55,6 +61,7 @@ After declaring a mock, the mock will persist for the lifespan of the MockReposi
 ## OnCall() Method
 OnCall() is used to mock a function. The name of the function name behaves like a function pointer. In the event that it is called, you may make assertions or take actions on it.
 
+### OnCallFunc(funcName)
 ``` C++
 // test.cpp
 #include "hippomocks.h"
@@ -68,8 +75,9 @@ TEST(MyTestSuite, MyTestName) {
 ```
 
 ## ExpectCall() Method
-ExpectCallFunc() is used to mock a function. It functions almost identically to OnCallFunc(); however, if the function is not called, upon destruction of the MockRepository object, an exception will be thrown. Additionally, it will expect the function to be called once and only once per instance of ExpectCallFunc(). If you have multiple calls to the function you want to mock, you will have to have multiple mocks, one for each call. The order of the ExpectCallFunc() methods matters; the framework will expect the mocks to be called in the listed order.
+ExpectCall() is used to mock a function. It functions almost identically to OnCall(); however, if the function is not called, upon destruction of the MockRepository object, an exception will be thrown. Additionally, it will expect the function to be called once and only once per instance of ExpectCall(). If you have multiple calls to the function you want to mock, you will have to have multiple mocks, one for each call. The order of the ExpectCall() methods matters; the framework will expect the mocks to be called in the listed order.
 
+### ExpectCallFunc(funcName)
 ``` C++
 #include "hippomocks.h"
  
@@ -83,7 +91,40 @@ TEST(MyTestSuite, MyTestName) {
 }
 ```
 
-In order to disable the order expectation functionality, you can denote so using the "autoExpect" flag.
+### ExpectCallsFunc(funcName, numCalls)
+Set a number of times a function must be called.
+
+``` C++
+#include "hippomocks.h"
+ 
+TEST(MyTestSuite, MyTestName) {
+  MockRepository mocks;
+ 
+  // bar() must be called 3 times in a row
+  mocks.ExpectCallsFunc(bar, 3)...
+ 
+  foo();
+}
+```
+
+### ExpectMinCallsFunc(funcName, minCalls)
+Sets a minumum number of times a mock must be called.
+
+``` C++
+#include "hippomocks.h"
+
+TEST(MyTestSuite, MyTestName) {
+  MockRepository mocks;
+
+  // bar() must be called at least 3 times in a row
+  mocks.ExpectMinCallsFunc(bar, 3)...
+
+  foo();
+}
+```
+
+### Disable ExpectCall Order Requirement
+In order to disable the order expectation functionality, you can denote that by setting the "autoExpect" flag to "false".
 
 ``` C++
 #include "hippomocks.h"
@@ -100,24 +141,10 @@ TEST(MyTestSuite, MyTestName) {
 }
 ```
 
-In the event that you want to ensure that a function a certain amount of times, you can use the derivative ExtendedCallsFunc() notation:
-
-``` C++
-#include "hippomocks.h"
- 
-TEST(MyTestSuite, MyTestName) {
-  MockRepository mocks;
- 
-  // bar() must be called 3 times in a row
-  mocks.ExpectCallsFunc(bar, 3)...
- 
-  foo();
-}
-```
-
 ## NeverCall() Method
 Unlike the former two functions, NeverCall() throws an exception if the function you are mocking is ever called.
 
+### NeverCallFunc(funcName)
 ``` C++
 #include "hippomocks.h"
  

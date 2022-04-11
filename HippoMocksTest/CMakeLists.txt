@@ -11,7 +11,8 @@ add_executable(${PROJECT_NAME}
 	test_array.cpp
 	test_autoptr.cpp
 	test_cfuncs.cpp
-	test_cfuncs_multi.cpp
+	test_cfuncs_expectmincalls.cpp
+	test_cfuncs_expectcalls.cpp
 	test_class_args.cpp
 	test_com_support_stdcall.cpp
 	test_constref_params.cpp

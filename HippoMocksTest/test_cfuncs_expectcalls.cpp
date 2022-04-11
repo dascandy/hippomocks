@@ -5,7 +5,7 @@
 // If it's not supported, then don't test it.
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 
-TEST (TestCfuncsMulti, checkMultiExpectedCall)
+TEST (TestCfuncsExpectCalls, checkExpectCalls)
 {
     MockRepository mocks;
     mocks.ExpectCallsFunc(ret_1, 2).Return(3);
@@ -13,7 +13,7 @@ TEST (TestCfuncsMulti, checkMultiExpectedCall)
     EXPECT_EQ(ret_1(), 3);
 }
 
-TEST (TestCfuncsMulti, checkMultiExpectCallWeaveOnCall)
+TEST (TestCfuncsExpectCalls, checkExpectCallsWeaveOnCall)
 {
     MockRepository mocks;
     mocks.ExpectCallsFunc(ret_1, 2).Return(3);
@@ -23,7 +23,7 @@ TEST (TestCfuncsMulti, checkMultiExpectCallWeaveOnCall)
     EXPECT_EQ(ret_1(), 3);
 }
 
-TEST (TestCfuncsMulti, checkMultiExpectCallWeaveExpectCall)
+TEST (TestCfuncsExpectCalls, checkExpectCallsWeaveExpectCall)
 {
     MockRepository mocks;
     mocks.ExpectCallsFunc(ret_1, 2).Return(3);
@@ -35,7 +35,7 @@ TEST (TestCfuncsMulti, checkMultiExpectCallWeaveExpectCall)
     EXPECT_EQ(ret_1(), 5);
 }
 
-TEST (TestCfuncsMulti, checkMultiExpectedCallUnder)
+TEST (TestCfuncsExpectCalls, checkExpectCallsUnder)
 {
     bool exceptionCaught = false;
     try {
@@ -49,7 +49,7 @@ TEST (TestCfuncsMulti, checkMultiExpectedCallUnder)
     EXPECT_TRUE(exceptionCaught);
 }
 
-TEST (TestCfuncsMulti, checkMultiExpectedCallOver)
+TEST (TestCfuncsExpectCalls, checkExpectCallsOver)
 {
     bool exceptionCaught = false;
     try {
@@ -66,7 +66,7 @@ TEST (TestCfuncsMulti, checkMultiExpectedCallOver)
 }
 
 
-TEST (TestCfuncsMulti, checkMultiExpectCallWeaveExpectCallException)
+TEST (TestCfuncsExpectCalls, checkExpectCallsWeaveExpectCallException)
 {
     bool exceptionCaught = false;
     try {
