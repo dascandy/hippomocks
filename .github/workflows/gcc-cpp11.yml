@@ -1,4 +1,4 @@
-name: GCC
+name: GCC C++11
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Generate build files
-      run: cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++  -Bbuild
+      run: cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_CXX_FLAGS=-std=c++11 -Bbuild
     - name: Build HippoMocks
       run: cmake --build build --config Debug --target all
     - name: Run Unit Tests

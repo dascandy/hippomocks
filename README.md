@@ -1,4 +1,5 @@
-[![GCC](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc.yml)
+[![GCC C++11](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc-cpp11.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc-cpp11.yml)
+[![GCC C++20](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc-cpp20.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/gcc-cpp20.yml)
 [![Clang](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/clang.yml)
 [![MSVC](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml/badge.svg)](https://github.com/jeremy-ir/hippomocks/actions/workflows/msvc.yml)
 
