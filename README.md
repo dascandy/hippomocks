@@ -27,6 +27,7 @@
   - [In() Method](#in-method)
   - [Out() Method](#out-method)
   - [Deref() Method](#deref-method)
+- [Gotchas](#gotchas)
 - [Further Examples](#further-examples)
 - [Special Thanks](#special-thanks)
 
@@ -36,6 +37,7 @@ HippoMocks is a C-compatible, C++-based, single-header mocking framework origina
 
 # To-Do
 - [ ] Update documentation with C++ usage model
+- [ ] Fix MacOS integration (changes to [permission protections in ld64](https://stackoverflow.com/a/61924409) mean that mprotect no longer works as expected in OSX) 
 - [x] Test and (if not working) enable With() filtering for NeverCallFunc()
 - [x] Enable OnCallsFunc() (C-style mock setting a minimum number of expectations)
 - [x] Migrate test framework to Google Test
@@ -440,10 +442,41 @@ When bar() is called, the first argument (which is a pointer) will be dereferenc
 Note: this only works with pass-by-pointer parameters.
 Note: for the purposes of [With() method](#with-method) matching, Deref() is treated like "_"
 
+# Gotchas
+* If you mock an empty function, the opcode patching that Hippomocks performs will clobber code that comes lower in the compiled object file. You may see issues like Segmentation Faults, trace/breakpoint trap, floating point exception, illegal instruction error, etc.
+``` C++
+void foo() {
+  return;
+}
+
+// If function foo is mocked, function bar is clobbered
+int bar() {
+  //...
+}
+```
+
+The approach to work around this is to pad out the empty function with nop commands such that the padding is greater than the jmp opcode that is patched. The amount of nop padding required to prevent failures is compiler and architecture specific.
+``` C++
+void foo() {
+  asm(
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    ...
+  )
+  return;
+}
+
+// If function foo is mocked, function bar is no longer clobbered
+int bar() {
+  //...
+}
+```
+
 # Further Examples
 For more examples of how to use all of these methods, refer to the [tests folder](HippoMocksTest).
 
 For testing Variadic Functions, please see [this Stack Overflow comment](https://stackoverflow.com/questions/36749410/hippomocks-mocking-function-with-variable-count-of-args/38769627#38769627).
 
 # Special Thanks
-Thanks to [Steven Taylor](https://github.com/SttIntc) & [Jacob Kirby](https://github.com/jacobkir) for battle testing this wiki. 
+Thanks to [Steven Taylor](https://github.com/SttIntc), [Jacob Kirby](https://github.com/jacobkir), and [Louis Duvoisin](https://github.com/lduv1) for battle testing this wiki. 
