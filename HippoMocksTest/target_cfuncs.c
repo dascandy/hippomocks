@@ -14,3 +14,12 @@ int ret_2(void)
     return 2;
 }
 
+void ret_3(void)
+{
+    void_test = 3;
+}
+
+void ret_4(void)
+{
+    void_test = 4;
+}

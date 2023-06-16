@@ -144,7 +144,7 @@ TEST(MyTestSuite, MyTestName) {
 ```
 
 ## NeverCall() Method
-Unlike the former two functions, NeverCall() throws an exception if the function you are mocking is ever called.
+Unlike the former two functions, NeverCall() throws an exception if the function you are mocking is ever called. 
 
 ### NeverCallFunc(funcName)
 ``` C++
@@ -160,6 +160,7 @@ TEST(MyTestSuite, MyTestName) {
 }
 ```
 You can further filter the NeverCall() trigger by using the [After() method](#after-method).
+When establishing a mock for a function, ExpectCall() will take priority over NeverCall().
 
 # TCall Class
 The TCall class cannot be instantiated directly. Nevertheless, it useful in order to create conditionals or sequences between mocks that have been instantiated.

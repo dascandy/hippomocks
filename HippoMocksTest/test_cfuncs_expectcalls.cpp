@@ -82,4 +82,20 @@ TEST (TestCfuncsExpectCalls, checkExpectCallsWeaveExpectCallException)
 
     EXPECT_TRUE(exceptionCaught);
 }
+
+
+TEST (TestCfuncsExpectCalls, checkExpectCallOverridesNeverCall) {
+	MockRepository mocks;
+	mocks.NeverCallFunc(ret_1);
+	mocks.ExpectCallFunc(ret_1).Return(3);
+	ret_1();
+}
+
+TEST (TestCfuncsExpectCalls, checkExpectCallOverridesNeverCallVoid) {
+	MockRepository mocks;
+	mocks.NeverCallFunc(ret_3);
+	mocks.ExpectCallFunc(ret_3);
+	ret_3();
+}
+
 #endif

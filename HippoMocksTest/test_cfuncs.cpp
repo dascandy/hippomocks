@@ -5,6 +5,8 @@
 // If it's not supported, then don't test it.
 #ifdef _HIPPOMOCKS__ENABLE_CFUNC_MOCKING_SUPPORT
 
+int void_test;
+
 TEST (TestCfuncs, checkFunctionReplacedAndChecked)
 {
 	EXPECT_EQ(ret_2(), 2);

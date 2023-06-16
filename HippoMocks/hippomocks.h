@@ -4276,6 +4276,15 @@ public:
 
   void DoVoidExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple, bool makeLatent = false)
   {
+    for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
+    {
+      Call *call = *i;
+      if ( isUnsatisfied( call, mock, funcno, tuple ) )
+      {
+        doVoidCall( call, tuple, makeLatent );
+        return;
+      }
+    }
     for (std::list<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
     {
       Call *call = *i;
@@ -4283,15 +4292,6 @@ public:
       {
          doThrow( call, makeLatent );
          return;
-      }
-    }
-     for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
-    {
-      Call *call = *i;
-      if ( isUnsatisfied( call, mock, funcno, tuple ) )
-      {
-        doVoidCall( call, tuple, makeLatent );
-        return;
       }
     }
     for (std::list<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
@@ -6348,6 +6348,14 @@ TCall<Y,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P> &MockRepository::RegisterExpect_(Z2 *mc
 template <typename Z>
 Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, const base_tuple &tuple)
 {
+  for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
+  {
+    Call *call = *i;
+    if( isUnsatisfied( call, mock, funcno, tuple ) )
+    {
+      return doReturnCall<Z>( call, tuple );
+    }
+  }
   for (std::list<Call *>::reverse_iterator i = neverCalls.rbegin(); i != neverCalls.rend(); ++i)
   {
     Call *call = *i;
@@ -6355,14 +6363,6 @@ Z MockRepository::DoExpectation(base_mock *mock, std::pair<int, int> funcno, con
     {
       call->satisfied = true;
       RAISEEXCEPTION(ExpectationException(this, call->getArgs(), call->funcName));
-    }
-  }
-   for (std::list<Call *>::reverse_iterator i = expectations.rbegin(); i != expectations.rend(); ++i)
-  {
-    Call *call = *i;
-    if( isUnsatisfied( call, mock, funcno, tuple ) )
-    {
-      return doReturnCall<Z>( call, tuple );
     }
   }
   for (std::list<Call *>::reverse_iterator i = optionals.rbegin(); i != optionals.rend(); ++i)
