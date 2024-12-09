@@ -133,6 +133,11 @@ class X{};
 #include <algorithm>
 #include <limits>
 
+#if __cplusplus > 201703L
+#include <locale>
+#include <codecvt>
+#endif
+
 #ifdef _MSC_VER
 // these warnings are pointless and huge, and will confuse new users.
 #pragma warning(push)
@@ -484,6 +489,21 @@ struct printArg
 		os << arg;
 	}
 };
+
+#if __cplusplus > 201703L
+template <>
+struct printArg<const wchar_t*>
+{
+	static inline void print(std::ostream &os, const wchar_t* arg, bool withComma)
+	{
+		if (withComma)
+			os << ",";
+
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> c;
+		os << c.to_bytes(arg);
+	}
+};
+#endif
 
 template <>
 struct printArg<NullType>
